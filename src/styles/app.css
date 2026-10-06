@@ -361,3 +361,453 @@ table.records td {
   gap: 12px;
   flex-wrap: wrap;
 }
+
+/* ---------- Forms (Capture disruption, UI kit fields) ---------- */
+.form-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .form-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+
+.form-grid-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+@media (max-width: 700px) {
+  .form-grid,
+  .form-grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.field {
+  margin-bottom: 14px;
+}
+
+.field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--ink);
+  background: #fff;
+}
+
+.input:focus {
+  outline: 2px solid var(--teal);
+  outline-offset: 0;
+  border-color: var(--teal);
+}
+
+.input:disabled {
+  background: var(--status-idle-bg);
+  color: var(--muted);
+}
+
+textarea.input {
+  resize: vertical;
+}
+
+.field-error {
+  color: var(--target-bad-fg);
+  font-size: 13px;
+  font-weight: 600;
+  margin: 6px 0 0;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 6px 0 0;
+}
+
+.field-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 26px;
+}
+
+.field-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--teal);
+}
+
+.field-check label {
+  margin: 0;
+  font-weight: 600;
+}
+
+.checklist {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+
+.checklist li {
+  padding: 6px 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.checklist li.ok {
+  color: var(--target-good-fg);
+}
+
+.actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 4px 0 24px;
+}
+
+.actions-bar .btn-primary {
+  margin-left: auto;
+}
+
+.btn-link {
+  display: inline-block;
+  text-decoration: none;
+  color: var(--teal);
+}
+
+/* ---------- Success / inline confirmation ---------- */
+.success {
+  background: var(--target-good-bg);
+  border-left: 3px solid var(--target-good-fg);
+  border-radius: 0 8px 8px 0;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.success-inline {
+  color: var(--target-good-fg);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+/* ---------- Workflow stepper (operations workspace) ---------- */
+.steps {
+  list-style: none;
+  display: flex;
+  gap: 0;
+  margin: 14px 0 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+}
+
+.step {
+  flex: 1;
+  padding: 10px 8px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--faint);
+  border-top: 2px solid transparent;
+  margin-top: -1px;
+}
+
+.step-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--status-idle-bg);
+  font-size: 11px;
+  margin-right: 6px;
+}
+
+.step.current {
+  color: var(--teal-dark);
+  border-top-color: var(--teal);
+}
+
+.step.current .step-n {
+  background: var(--teal);
+  color: #fff;
+}
+
+.step.done {
+  color: var(--muted);
+}
+
+.step.done .step-n {
+  background: var(--teal-tint);
+  color: var(--teal-dark);
+}
+
+/* ---------- Severity radio cards ---------- */
+.sev-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 12px 0 16px;
+}
+
+@media (max-width: 860px) {
+  .sev-cards {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.sev-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+  background: #fff;
+}
+
+.sev-card.selected {
+  border-color: var(--teal);
+  outline: 2px solid var(--teal);
+}
+
+.sev-card input {
+  accent-color: var(--teal);
+}
+
+/* ---------- Misc ---------- */
+.note.warn {
+  background: var(--target-warn-bg);
+  border-left-color: var(--target-warn-fg);
+}
+
+input.check {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--teal);
+}
+
+/* ---------- KPI cards (operations overview) ---------- */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 960px) {
+  .kpi-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.kpi-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+
+.kpi-card h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.kpi-value {
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.kpi-value.bad {
+  color: var(--target-bad-fg);
+}
+
+.kpi-value.good {
+  color: var(--target-good-fg);
+}
+
+.kpi-card a {
+  color: var(--teal);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.alert {
+  background: var(--target-bad-bg);
+  border-left: 3px solid var(--target-bad-fg);
+  border-radius: 0 8px 8px 0;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+/* ---------- Queue filters ---------- */
+.filters {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 960px) {
+  .filters {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ---------- Countdown card (composer rail) ---------- */
+.countcard {
+  background: #fdf6e3;
+  border: 1px solid #ead9a8;
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+
+.countcard.good {
+  background: var(--target-good-bg);
+  border-color: #bfe0cb;
+}
+
+.countcard.bad {
+  background: var(--target-bad-bg);
+  border-color: #f3c1bc;
+}
+
+.countcard h3 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.count-big {
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
+  margin: 4px 0 8px;
+}
+
+/* ---------- Passenger preview ---------- */
+.preview {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: #fbfcfd;
+}
+
+.preview h3 {
+  margin: 4px 0 8px;
+  font-size: 16px;
+  color: var(--ink);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* ---------- Channels ---------- */
+.channels {
+  border: none;
+  padding: 0;
+  margin: 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.channels legend {
+  padding: 0;
+  margin-bottom: 6px;
+}
+
+.channel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+
+.channel input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--teal);
+}
+
+/* ---------- Confirmation dialog ---------- */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(14, 42, 62, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 50;
+}
+
+.dialog {
+  background: #fff;
+  border-radius: 14px;
+  max-width: 560px;
+  width: 100%;
+  padding: 24px 28px;
+}
+
+.dialog h2 {
+  margin: 0 0 10px;
+  font-size: 19px;
+}
+
+.dialog ul {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  font-size: 14px;
+}
+
+.dialog-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  margin: 12px 0;
+}
+
+.dialog-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--teal);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+/* ---------- Accessibility ---------- */
+:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}

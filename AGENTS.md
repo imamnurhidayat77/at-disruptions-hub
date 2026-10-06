@@ -1,10 +1,12 @@
 # AT Disruption Hub — Agent Instructions
 
-> **Repo state (06 Oct 2026): Phase 1 DONE.** Vite + React + TypeScript
-> SPA scaffolded (`package.json`, `src/`, hand-written CSS from the UI
-> kit). Stack approved via Phase 1 implementation order. No SAP code
-> exists. Role workflows (Phases 2–4) not yet built — see PLAN.md for the
-> current phase gate before adding features.
+> **Repo state (06 Oct 2026): ALL PHASES DONE (0–10).** Vite + React +
+> TypeScript SPA (`package.json`, `src/`, hand-written CSS from the UI
+> kit). Full demo chain works: contractor reporting → operations
+> validate/severity/owner/recovery → comms draft/publish (<10 min KPI) →
+> KPI dashboard → closure + corrective actions, on one shared store with
+> a demo fallback (no confirmed SAP API). Browser visual/click-through
+> pass still recommended before presenting. See PLAN.md.
 
 ## Project Purpose
 

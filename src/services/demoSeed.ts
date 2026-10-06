@@ -1,3 +1,4 @@
+import { defaultRecoveryTasks } from '../domain/operations.js';
 import { assessSeverity } from '../domain/severity.js';
 import type { Incident } from '../domain/types.js';
 
@@ -58,6 +59,8 @@ function incident1043(): Incident {
     operationalStatus: 'REPORTED',
     communicationStatus: 'REQUIRED',
     recoveryStatus: 'NOT_STARTED',
+    recoveryTasks: defaultRecoveryTasks(),
+    commsDraft: null,
     estimatedRestorationAt: null,
     restoredAt: null,
     firstPublishedAt: null,
@@ -94,6 +97,14 @@ function incident1039(): Incident {
     operationalStatus: 'RECOVERY_IN_PROGRESS',
     communicationStatus: 'PUBLISHED',
     recoveryStatus: 'IN_PROGRESS',
+    recoveryTasks: defaultRecoveryTasks().map((t) =>
+      t.id === 'contact-operator'
+        ? { ...t, doneAt: at('07:50') }
+        : t.id === 'replacement-requested'
+          ? { ...t, doneAt: at('07:55') }
+          : t,
+    ),
+    commsDraft: null,
     estimatedRestorationAt: at('09:30'),
     restoredAt: null,
     firstPublishedAt: at('07:52'),
@@ -142,6 +153,8 @@ function incident1041(): Incident {
     operationalStatus: 'ACTIVE',
     communicationStatus: 'DRAFT',
     recoveryStatus: 'NOT_STARTED',
+    recoveryTasks: defaultRecoveryTasks(),
+    commsDraft: null,
     estimatedRestorationAt: at('09:30'),
     restoredAt: null,
     firstPublishedAt: null,

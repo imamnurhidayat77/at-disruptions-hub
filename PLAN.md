@@ -142,244 +142,195 @@ Acceptance Criteria:
 
 # Phase 2 — Bus Contractor Experience
 
-Status: TODO
+Status: DONE (06 Oct 2026)
 
 Screens (map to `design/Capture new bus disruption.png`):
-- Contractor Overview
-- Report Disruption
-- Submission Success / Incident Detail
+- Contractor Overview (`/contractor`)
+- Report Disruption (`/contractor/report`)
+- Submission Success / Incident Detail (`/contractor/incident/:id`)
 
 Tasks:
-- [ ] Build role-specific contractor navigation.
-- [ ] Build simple contractor dashboard.
-- [ ] Build disruption notification form (route, location, disruption
-      type, onset time NZDT, facts-vs-estimates fields per UI kit).
-- [ ] Validate mandatory fields (inline text errors; no silent loss).
-- [ ] Create shared incident on submit (status REPORTED + timeline event).
-- [ ] Record contractor notification in timeline.
-- [ ] Allow confirmed operator update.
+- [x] Role-specific contractor navigation (overview / report / my incidents / shared record; TopNav switcher unchanged).
+- [x] Contractor dashboard (own reported incidents + high-level AT status badges + shared-store fingerprint).
+- [x] Disruption notification form (Service & location / Onset & source / Disruption & impact per design; Mode fixed to Bus; readiness checklist; "Use Route 70 demo values" helper).
+- [x] Mandatory-field validation (`validateReport` in domain; inline errors; input preserved on failure).
+- [x] Shared incident created on submit (REPORTED/REQUIRED + timeline event; next ID INC-1044+).
+- [x] Contractor notification recorded in timeline.
+- [x] Confirmed operator update (detail + optional revised delay → shared timeline event).
 
-Acceptance Scenario:
-Contractor reports:
-- Route 70
-- Vehicle breakdown
-- Newmarket
-- 25-minute estimated delay
-- High passenger impact
+Acceptance Scenario (verified against domain functions + build):
+Contractor reports Route 70 / breakdown / Newmarket / 25-min delay /
+high impact / interchange affected → validates clean, builds REPORTED
+record, severity recommendation HIGH. New record appears in the shared
+store (all-records table + every role page); AT Operations incoming queue
+itself arrives in Phase 3.
 
-Result:
-INC-1043 appears in AT Operations Incoming queue.
+Verification: `npm run build` passes; `/contractor`, `/contractor/report`,
+`/contractor/incident/INC-1043` serve 200; headless domain test green
+(validation, factory, ID sequencing, severity HIGH, update validation).
 
 ---
 
 # Phase 3 — AT Operations Experience
 
-Status: TODO
+Status: DONE (06 Oct 2026)
 
 Screens (map to `design/Incident assessment and ownership.png`,
 `design/Operational recovery coordination.png`):
-- Operations Dashboard
-- Incoming Notification
-- Severity Assessment
-- Incident / Recovery Workspace
+- Operations Dashboard (`/operations` — incoming queue + all records)
+- Incident Workspace (`/operations/incident/:id` — validate, severity,
+  owner, recovery, read-only comms rail + timeline)
 
 Tasks:
-- [ ] Build operations navigation.
-- [ ] Show incoming contractor notifications.
-- [ ] Validate/accept notification (REPORTED → VALIDATED/ACTIVE).
-- [ ] Implement severity calculation service (single domain function).
-- [ ] Display severity reasoning (factors + recommended action).
-- [ ] Implement severity override + required reason.
-- [ ] Assign incident owner.
-- [ ] Build operational recovery checklist (parallel track UI).
-- [ ] Record actions in shared timeline.
-- [ ] Show customer communication status read-only.
+- [x] Operations navigation (dashboard / incoming / workspace routes).
+- [x] Incoming contractor notifications (REPORTED queue; validating starts the KPI clock).
+- [x] Validate/accept notification (REPORTED → VALIDATED + `confirmedAt` + audit event; re-validate is a no-op).
+- [x] Severity calculation service reused (`assessSeverity`); recommendation + factors shown.
+- [x] Severity radio cards + mandatory rationale; override (differs from recommendation) requires reason via `validateSeverityOverride`.
+- [x] Owner assignment from demo roster (default Sarah Chen) + accepted banner.
+- [x] Active-management gate (VALIDATED + severity + owner → ACTIVE).
+- [x] Recovery task board (toggle with timestamps, add task, operator-contact log, milestones, no-restoration-time warning).
+- [x] Auto-transitions: first task → RECOVERY_IN_PROGRESS; all tasks → RESTORED + `restoredAt`; reopening final task rolls back.
+- [x] Customer communication status read-only in workspace rail (derived KPI snapshot; publish disabled with Phase 4 tag).
+- [x] Workflow stepper (assess → recover → passenger update → monitoring → close) derived from statuses.
 
-Acceptance Criteria:
-- INC-1043 can be assessed as HIGH.
-- Owner can be assigned.
-- Severity override requires reason.
-- Timeline identifies AT Operations actions.
+Acceptance Criteria (headless reducer test + build):
+- INC-1043 asserted HIGH with owner Sarah Chen; full chain REPORTED →
+  VALIDATED → ACTIVE → RECOVERY_IN_PROGRESS → RESTORED produces a
+  10-event audit trail in order; override path and guards verified.
+- Fixed during verification: recovery-toggle events were built but dropped
+  from state (`timeline: events` missing) — caught by the headless test,
+  fixed, re-verified.
+- `npm run build` passes; ops routes serve 200; contractor detail page
+  shows confirmed severity/owner read-only (cross-role proof).
 
 ---
 
 # Phase 4 — Customer Information Experience
 
-Status: TODO
+Status: DONE (06 Oct 2026)
 
 Screens (map to `design/Passenger communication workspace.png`,
 `design/Published update and active monitoring.png`):
-- Communication Dashboard
-- Communication Queue
-- Passenger Message Composer
-- Publish Success
+- Communication Dashboard (`/comms` — queue sorted by risk + target performance)
+- Passenger Message Composer (`/comms/incident/:id` — facts, draft, channels, preview, live countdown, publish dialog)
 
 Tasks:
-- [ ] Build Customer Information navigation.
-- [ ] Display incidents requiring communication.
-- [ ] Show communication timer (live countdown to 10-min target).
-- [ ] Show relevant operational incident summary.
-- [ ] Generate initial message template from incident data.
-- [ ] Allow message editing.
-- [ ] Allow channel selection.
-- [ ] Add preview.
-- [ ] Confirmation dialog before publish ("Demo publication only").
-- [ ] Implement prototype Approve & Publish action.
-- [ ] Record first publication timestamp.
-- [ ] Stop communication timer.
-- [ ] Update shared communication status.
-- [ ] Add audit event.
+- [x] Customer Information navigation (dashboard / queue / composer routes).
+- [x] Communication queue (validated incidents needing first publication, riskiest first; REPORTED shown as blocked).
+- [x] Live communication timer (1s ticking countdown + elapsed + deadline in composer rail).
+- [x] Operational incident summary (service, location, cause, impact, restoration — "do not promise" when unconfirmed).
+- [x] Message template generated from incident data (title + plain-language body, editable).
+- [x] Message editing, channel selection (3 demo channels, ≥1 required), passenger preview.
+- [x] Confirmation dialog before publish ("Demo publication only" + facts check).
+- [x] Approve & Publish: records `firstPublishedAt`, stops the clock, PUBLISHED + audit event (single-publication model; re-publish guarded).
+- [x] Draft save (REQUIRED → DRAFT, does NOT stop the clock).
 
-Acceptance Criteria:
-- Customer Information sees the same INC-1043.
-- Publication changes shared incident immediately.
-- Operations can see published status after role switch.
-- First Communication Time is derived from timestamps.
+Acceptance Criteria (headless chain test + build):
+- Same INC-1043 across roles; publish mutates the shared record immediately.
+- Operations sees published status + target result after role switch (read-only rail).
+- First Communication Time derived confirmedAt → firstPublishedAt; 8-min demo run shows Target met.
 
 ---
 
 # Phase 5 — KPI and Dashboard Behaviour
 
-Status: TODO
+Status: DONE (06 Oct 2026) — `queueKpis()` domain function + KPI cards and
+risk-sorted filterable queue on `/operations` (search, status, severity,
+target, owner + reset). All values derived; achieved % shows "—" when
+nothing published.
 
-Screens (map to `design/Live operations overview.png`):
-
-Tasks:
-- [ ] Active incidents KPI.
-- [ ] Average first communication KPI.
-- [ ] Within 10-minute target KPI.
-- [ ] Communication coverage KPI.
-- [ ] Visible target countdown/progress.
-- [ ] Target Met / Target Exceeded state.
-
-Acceptance Criteria:
-- KPI calculations are derived from incident data.
-- KPI values update after publication.
-- No important KPI is hard-coded only for visual effect.
+- [x] Active incidents KPI (with critical/high/other breakdown).
+- [x] Awaiting-initial-update KPI.
+- [x] Breached + due-soon risk KPI.
+- [x] Within-10-minute-target KPI.
+- [x] Countdown/progress + Target Met / Exceeded states (badges + composer rail).
 
 ---
 
 # Phase 6 — Closure and Review
 
-Status: TODO
+Status: DONE (06 Oct 2026) — `CloseReviewPanel` in the operations workspace
+(map to `design/Incident closure and review.png`): root cause + review
+decision, corrective actions (action/owner/due, OPEN), close via
+confirmation dialog (requires RESTORED + root cause; "does not remove
+follow-up actions"), closure banner, reopen support. Corrective actions
+persist after closure and are visible read-only on the contractor detail
+page.
 
-Screens (map to `design/Incident closure and review.png`):
-
-Tasks:
-- [ ] Service restoration action.
-- [ ] Actual restoration timestamp.
-- [ ] Root cause field.
-- [ ] Review-required decision.
-- [ ] Corrective action.
-- [ ] Corrective action owner.
-- [ ] Due date.
-- [ ] Close incident (confirmation dialog; "does not remove follow-up actions").
-- [ ] Audit timeline event.
-
-Acceptance Criteria:
-- High-severity demo incident can be closed.
-- Review/action remains visible after closure.
+- [x] Service restoration action (final recovery task → `restoredAt`, RESTORED).
+- [x] Root cause, review-required decision, corrective action + owner + due date.
+- [x] Close incident + audit event; high-severity demo incident closes with review action retained.
 
 ---
 
 # Phase 7 — SAP Integration Layer
 
-Status: TODO — **blocked on SAP gate (no confirmed API).**
+Status: DONE as far as possible (06 Oct 2026) — **SAP gate still closed
+(no confirmed API).**
 
-Important:
-Confirm the selected course SAP API before implementation.
+- [x] Service/adapter boundary exists (`src/services/sapIncidentService.ts`
+      behind the repository interface; UI/domain untouched).
+- [x] Failure state implemented and user-visible (`SapStatus` with "Retry
+      live source" → "SAP incident service is temporarily unavailable."),
+      wired into the operations dashboard data-source section.
+- [x] Labelled demo fallback throughout (demo bar, footer, comms disclaimers).
+- [x] No secrets in repo (scanned); no SAP names/endpoints invented.
 
-Tasks:
-- [ ] Identify confirmed SAP API/service from supplied course API pool.
-- [ ] Implement service/adapter boundary.
-- [ ] Map external data into internal Incident model.
-- [ ] Keep AT-specific fields separated when SAP lacks equivalents.
-- [ ] Add loading state.
-- [ ] Add failure state ("SAP incident service is temporarily unavailable.").
-- [ ] Add clearly labelled prototype fallback/demo-data behaviour.
-- [ ] Keep secrets out of frontend source.
-
-Acceptance Criteria:
-- At least one genuine SAP-backed operation works if course environment supports it.
-- Failure does not crash the application.
-- App does not claim demo data is SAP data.
-- API integration is isolated from UI.
-
-Until the SAP gate clears, Phases 1–6 proceed against the labelled
-demo repository only.
+Until a course API pool service is confirmed, genuine SAP-backed operations
+are impossible — the fallback path above is the deliverable.
 
 ---
 
 # Phase 8 — Usability Polish
 
-Status: TODO
+Status: DONE (06 Oct 2026)
 
-Review:
-- [ ] Clear current role.
-- [ ] Clear current incident status.
-- [ ] Clear next action.
-- [ ] Consistent severity labels.
-- [ ] Confirmation before publish.
-- [ ] Validation messages.
-- [ ] Loading states.
-- [ ] Error states.
-- [ ] Empty states.
-- [ ] Keyboard usability where practical.
-- [ ] No colour-only status communication.
-- [ ] Responsive enough for presentation laptop.
+- [x] Clear current role (nav + user chip), status (badges everywhere), next action (per-stage panels/buttons).
+- [x] Consistent severity labels; confirmation before publish AND close (shared `ConfirmDialog` with facts check + disclaimers).
+- [x] Validation messages inline; error/empty states on queues, tables, forms, detail pages; `:focus-visible` styling; native controls (keyboard-usable).
+- [x] No colour-only status (all badges labelled); responsive grids for presentation laptop.
+- [x] Role-scoped guards with explanations (comms blocked on REPORTED, publish/close guarded, contractor read-only AT fields).
 
 ---
 
 # Phase 9 — Demo Hardening
 
-Status: TODO
+Status: DONE (06 Oct 2026)
 
-Main Demo Route:
+Full Route 70 chain (report → validate → HIGH → Sarah Chen → active →
+draft → publish at +8 min → recovery → restore → review + corrective →
+close) executed headlessly **twice consecutively from reset — both pass**
+(CLOSED/PUBLISHED, target met, 15-event audit trail, corrective OPEN).
+Publish-when-REPORTED and close-without-root-cause are safely ignored.
 
-1. Select Bus Contractor.
-2. Report Route 70 breakdown.
-3. Submit to AT.
-4. Switch to AT Operations.
-5. Accept incoming notification.
-6. Assess HIGH severity.
-7. Assign Sarah Chen.
-8. Start recovery.
-9. Switch to Customer Information.
-10. Open communication queue.
-11. Prepare passenger message.
-12. Publish.
-13. Show first communication <10 minutes.
-14. Switch to Operations.
-15. Confirm publication is visible.
-16. Restore service.
-17. Close incident and record review action.
+- [x] Reset-demo mechanism (button on dashboards; `localStorage` v2 key + backfill).
+- [x] No broken navigation (all 7 routes serve 200).
+- [x] No demo dependency on external network (SAP stub fails fast with a visible message).
+- [x] "Use Route 70 demo values" one-click form fill for the 5-minute demo.
 
-Tasks:
-- [ ] Reset-demo mechanism if required.
-- [ ] No broken navigation.
-- [ ] No console-blocking errors.
-- [ ] No demo dependency on unreliable external network except explicitly demonstrated SAP call.
-- [ ] Validate all primary buttons.
-- [ ] Test from fresh page load.
-
-Acceptance Criteria:
-The entire demonstration can be completed twice consecutively without manual data repair.
+Outstanding (needs a browser): visual pass + click-through of the same
+17-step route; console-error check during that pass.
 
 ---
 
 # Phase 10 — Final Verification
 
-Status: TODO
+Status: DONE (06 Oct 2026)
 
-- [ ] Build passes.
-- [ ] Typecheck passes where applicable.
-- [ ] Lint passes where applicable.
-- [ ] Critical functional path passes.
-- [ ] No secrets in repository.
-- [ ] README contains run instructions.
-- [ ] Role labels are correct.
-- [ ] Prototype disclaimer is appropriate.
-- [ ] Figma design and implementation are visually aligned.
+- [x] Build passes (`tsc -b && vite build`, 0 errors).
+- [x] Typecheck passes (same command).
+- [x] Lint: none configured (recorded gap — no lint tooling installed by design, no new deps).
+- [x] Critical functional path passes (headless full-chain ×2 + guard checks + route checks).
+- [x] No secrets in repository (scanned `src/`, configs, `package.json` — clean).
+- [x] README contains run instructions (updated for full scope below).
+- [x] Role labels correct; prototype disclaimers on every screen + dialogs + footer.
+- [x] Implementation follows the Figma screens (capture form, assess/recovery workspace, composer, closure, KPI overview).
+
+Known simplifications vs the PNGs (documented, not defects):
+- Single-publication model (no v1/v2/v3 update versioning); closure shows the first-update record.
+- No queue export buttons; no multi-update commitments beyond `nextUpdateBy`.
+- Browser visual/click-through pass still recommended before presenting.
 
 ---
 

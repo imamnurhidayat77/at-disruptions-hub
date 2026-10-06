@@ -1,3 +1,4 @@
+import { normalizeIncident } from '../domain/operations.js';
 import type { Incident } from '../domain/types.js';
 import { buildDemoSeed } from './demoSeed.js';
 
@@ -10,7 +11,7 @@ import { buildDemoSeed } from './demoSeed.js';
  * plugs in here without touching UI or domain code.
  */
 
-const STORAGE_KEY = 'at-disruption-hub/demo-state/v1';
+const STORAGE_KEY = 'at-disruption-hub/demo-state/v2';
 
 function isIncident(value: unknown): value is Incident {
   if (typeof value !== 'object' || value === null) return false;
@@ -29,7 +30,8 @@ export function loadDemoState(): Incident[] | null {
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed) || !parsed.every(isIncident)) return null;
-    return parsed;
+    // Backfill records persisted before newer fields existed.
+    return parsed.map(normalizeIncident);
   } catch {
     return null;
   }

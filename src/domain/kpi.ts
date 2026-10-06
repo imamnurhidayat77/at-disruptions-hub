@@ -90,3 +90,63 @@ export function formatNzdtTime(iso: string): string {
   }).format(new Date(iso));
   return `${parts} NZDT`;
 }
+
+/** Remaining ms under 3 minutes counts as "due soon" (UI-kit convention). */
+export const DUE_SOON_MS = 3 * 60 * 1000;
+
+export interface QueueKpis {
+  active: number;
+  activeCritical: number;
+  activeHigh: number;
+  activeOther: number;
+  awaiting: number;
+  breached: number;
+  dueSoon: number;
+  /** Published records with a met target, over published records. Null when none published. */
+  achievedPct: number | null;
+  achievedCount: number;
+  publishedCount: number;
+}
+
+/** Dashboard KPIs derived from the shared records — never hard-coded. */
+export function queueKpis(incidents: Incident[], nowIso?: string): QueueKpis {
+  const active = incidents.filter(
+    (i) => i.operationalStatus !== 'CLOSED' && i.operationalStatus !== 'RESTORED',
+  );
+  let awaiting = 0;
+  let breached = 0;
+  let dueSoon = 0;
+  let achievedCount = 0;
+  let publishedCount = 0;
+
+  for (const i of incidents) {
+    const kpi = firstCommunicationKpi(i, nowIso);
+    if (kpi.state === 'MET') {
+      achievedCount += 1;
+      publishedCount += 1;
+    } else if (kpi.state === 'EXCEEDED') {
+      publishedCount += 1;
+      breached += 1;
+    } else if (kpi.state === 'COUNTING') {
+      awaiting += 1;
+      const remaining = kpi.remainingMs ?? 0;
+      if (remaining <= 0) breached += 1;
+      else if (remaining <= DUE_SOON_MS) dueSoon += 1;
+    } else if (kpi.state === 'AWAITING_CONFIRMATION' && i.operationalStatus === 'REPORTED') {
+      awaiting += 1;
+    }
+  }
+
+  return {
+    active: active.length,
+    activeCritical: active.filter((i) => i.severity === 'CRITICAL').length,
+    activeHigh: active.filter((i) => i.severity === 'HIGH').length,
+    activeOther: active.filter((i) => i.severity !== 'CRITICAL' && i.severity !== 'HIGH').length,
+    awaiting,
+    breached,
+    dueSoon,
+    achievedPct: publishedCount === 0 ? null : Math.round((achievedCount / publishedCount) * 100),
+    achievedCount,
+    publishedCount,
+  };
+}

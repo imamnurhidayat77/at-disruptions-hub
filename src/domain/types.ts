@@ -54,6 +54,24 @@ export interface CorrectiveAction {
   status: 'OPEN' | 'DONE';
 }
 
+export interface RecoveryTask {
+  id: string;
+  label: string;
+  responsible: string;
+  /** ISO-8601 completion. Null while pending. */
+  doneAt: string | null;
+}
+
+export interface CommsDraft {
+  title: string;
+  message: string;
+  channels: string[];
+  /** HH:MM next-update commitment (NZDT). */
+  nextUpdateBy: string;
+  commitmentOwner: string;
+  updatedAt: string;
+}
+
 export interface Incident {
   id: string;
   route: string;
@@ -79,6 +97,10 @@ export interface Incident {
   communicationStatus: CommunicationStatus;
   /** Parallel recovery track; independent of communicationStatus. */
   recoveryStatus: 'NOT_STARTED' | 'IN_PROGRESS' | 'RESTORED';
+  /** Operational recovery checklist (AT Operations coordinates). */
+  recoveryTasks: RecoveryTask[];
+  /** Passenger communication draft (AT Customer Information). Null until drafted. */
+  commsDraft: CommsDraft | null;
   estimatedRestorationAt: string | null;
   /** ISO-8601 actual restoration. */
   restoredAt: string | null;
