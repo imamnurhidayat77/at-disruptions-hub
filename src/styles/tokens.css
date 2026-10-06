@@ -1,0 +1,63 @@
+/**
+ * Design tokens derived from design/AT Disruption Hub UI kit.png.
+ * Single source of visual truth — no component framework.
+ * Desktop-first enterprise operations interface. All times NZDT.
+ */
+
+:root {
+  /* Brand / navigation */
+  --nav: #0e2a3e;
+  --nav-ink: #ffffff;
+  --nav-muted: #9db4c2;
+
+  /* Actions */
+  --teal: #0e7c74;
+  --teal-dark: #0a5f59;
+  --teal-tint: #e6f3f1;
+
+  /* Page */
+  --bg: #f3f5f6;
+  --card: #ffffff;
+  --border: #dfe6e9;
+  --ink: #1c2b33;
+  --muted: #5d6f79;
+  --faint: #8ba0ab;
+
+  /* Severity (always paired with a text label — never colour-alone) */
+  --sev-critical-fg: #b42318;
+  --sev-critical-bg: #fdecea;
+  --sev-high-fg: #b54708;
+  --sev-high-bg: #fef1e2;
+  --sev-medium-fg: #7a5c00;
+  --sev-medium-bg: #fdf3d7;
+  --sev-low-fg: #1c6b3a;
+  --sev-low-bg: #e7f4ec;
+
+  /* Operational status */
+  --status-ops-fg: #0e7c74;
+  --status-ops-bg: #e6f3f1;
+  --status-done-fg: #1c6b3a;
+  --status-done-bg: #e7f4ec;
+  --status-idle-fg: #5d6f79;
+  --status-idle-bg: #edf1f3;
+
+  /* Communication target */
+  --target-bad-fg: #b42318;
+  --target-bad-bg: #fdecea;
+  --target-warn-fg: #b54708;
+  --target-warn-bg: #fef1e2;
+  --target-good-fg: #1c6b3a;
+  --target-good-bg: #e7f4ec;
+  --target-idle-fg: #3d5a80;
+  --target-idle-bg: #e8eef5;
+
+  /* Banners */
+  --demo-bar-bg: #eaf4f3;
+  --demo-bar-fg: #0e7c74;
+  --note-bg: #eef4fb;
+  --note-border: #3d5a80;
+
+  --radius: 12px;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+}
