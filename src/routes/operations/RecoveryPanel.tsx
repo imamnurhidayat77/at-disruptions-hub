@@ -11,12 +11,13 @@ import { useAppStore } from '../../state/AppStore.js';
  * the final task reopens recovery (statuses follow automatically).
  */
 export function RecoveryPanel({ incident }: { incident: Incident }): React.JSX.Element {
-  const { toggleRecoveryTask, addRecoveryTask, logOperatorNote } = useAppStore();
+  const { toggleRecoveryTask, addRecoveryTask, logOperatorNote, updateRestoration } = useAppStore();
   const [label, setLabel] = useState('');
   const [responsible, setResponsible] = useState('Operator liaison');
   const [note, setNote] = useState('');
   const [noteError, setNoteError] = useState<string | undefined>(undefined);
   const [labelError, setLabelError] = useState<string | undefined>(undefined);
+  const [ert, setErt] = useState(incident.estimatedRestorationAt?.slice(0, 16) ?? '');
 
   const locked = incident.operationalStatus === 'CLOSED';
   const done = incident.recoveryTasks.filter((t) => t.doneAt !== null).length;
@@ -33,6 +34,15 @@ export function RecoveryPanel({ incident }: { incident: Incident }): React.JSX.E
     setLabelError(undefined);
     addRecoveryTask(incident.id, label.trim(), responsible.trim() || 'Incident owner');
     setLabel('');
+  }
+
+  function onUpdateRecovery(): void {
+    if (ert.trim() === '') {
+      updateRestoration(incident.id, null);
+      return;
+    }
+    // datetime-local yields "YYYY-MM-DDTHH:MM"; store as NZDT (+13:00 October).
+    updateRestoration(incident.id, `${ert}:00+13:00`);
   }
 
   function onLogNote(): void {
@@ -126,7 +136,7 @@ export function RecoveryPanel({ incident }: { incident: Incident }): React.JSX.E
         </Field>
         {!locked && (
           <button className="btn" type="button" onClick={onLogNote}>
-            Log operator contact
+            + Log operator contact
           </button>
         )}
       </Section>
@@ -137,7 +147,31 @@ export function RecoveryPanel({ incident }: { incident: Incident }): React.JSX.E
           <dd>{firstDone ? formatNzdtTime(firstDone) : 'Not yet confirmed'}</dd>
           <dt>Normal service restored</dt>
           <dd>{incident.restoredAt ? formatNzdtTime(incident.restoredAt) : 'Not yet confirmed'}</dd>
+          <dt>Estimated Restoration Time</dt>
+          <dd>
+            {incident.estimatedRestorationAt
+              ? formatNzdtTime(incident.estimatedRestorationAt)
+              : 'Not yet confirmed'}
+          </dd>
         </dl>
+        {!locked && (
+          <div className="form-grid">
+            <Field id="ert" label="Estimated restoration (NZDT)">
+              <input
+                id="ert"
+                className="input"
+                type="datetime-local"
+                value={ert}
+                onChange={(e) => setErt(e.target.value)}
+              />
+            </Field>
+          </div>
+        )}
+        {!locked && (
+          <button className="btn btn-primary" type="button" onClick={onUpdateRecovery}>
+            ✓ Update Recovery
+          </button>
+        )}
         {!incident.restoredAt && (
           <div className="note warn">
             <strong>No confirmed restoration time.</strong> Checkpoints are operator

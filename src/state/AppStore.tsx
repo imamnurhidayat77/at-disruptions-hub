@@ -43,10 +43,12 @@ export type AppAction =
       at: string;
     }
   | { type: 'VALIDATE_INCIDENT'; id: string; at: string }
+  | { type: 'REQUEST_INFO'; id: string; at: string }
   | {
       type: 'CONFIRM_SEVERITY';
       id: string;
       level: Severity;
+      calculated: Severity;
       score: number;
       rationale: string;
       overrideReason: string | null;
@@ -57,6 +59,7 @@ export type AppAction =
   | { type: 'TOGGLE_RECOVERY_TASK'; id: string; taskId: string; at: string }
   | { type: 'ADD_RECOVERY_TASK'; id: string; label: string; responsible: string; at: string }
   | { type: 'LOG_OPERATOR_NOTE'; id: string; note: string; at: string }
+  | { type: 'UPDATE_RESTORATION'; id: string; estimatedRestorationAt: string | null; at: string }
   | { type: 'SAVE_DRAFT'; id: string; draft: CommsDraft; at: string }
   | { type: 'PUBLISH_COMMS'; id: string; draft: CommsDraft; detail: string; at: string }
   | { type: 'SET_REVIEW'; id: string; rootCause: string; reviewRequired: boolean; at: string }
@@ -191,6 +194,7 @@ export function reducer(state: AppState, action: AppAction): AppState {
     case 'ADD_OPERATOR_UPDATE':
       return updateIncident(state, action.id, (i) => ({
         ...i,
+        infoRequested: false,
         estimatedDelayMinutes: action.estimatedDelayMinutes ?? i.estimatedDelayMinutes,
         timeline: [
           ...i.timeline,
@@ -210,6 +214,8 @@ export function reducer(state: AppState, action: AppAction): AppState {
           ...i,
           operationalStatus: 'VALIDATED',
           confirmedAt: action.at,
+          communicationStatus: 'REQUIRED',
+          infoRequested: false,
           timeline: [
             ...i.timeline,
             {
@@ -220,6 +226,23 @@ export function reducer(state: AppState, action: AppAction): AppState {
         };
         return next;
       });
+    case 'REQUEST_INFO':
+      return updateIncident(state, action.id, (i) => {
+        if (i.operationalStatus === 'CLOSED') return i;
+        if (i.infoRequested) return i;
+        return {
+          ...i,
+          infoRequested: true,
+          timeline: [
+            ...i.timeline,
+            {
+              ...event(i, 1, action.at, 'More information requested', ''),
+              detail:
+                'AT Operations asked the operator for more information — contractor status set to More Information Requested.',
+            },
+          ],
+        };
+      });
     case 'CONFIRM_SEVERITY':
       return updateIncident(state, action.id, (i) => ({
         ...i,
@@ -227,15 +250,19 @@ export function reducer(state: AppState, action: AppAction): AppState {
         severityScore: action.score,
         severityReason: action.rationale,
         severityOverrideReason: action.overrideReason,
+        infoRequested: false,
         timeline: [
           ...i.timeline,
           {
             ...event(i, 1, action.at, 'Severity assessed', ''),
             action:
               action.overrideReason !== null
-                ? `Severity overridden to ${action.level}`
+                ? `Severity overridden from ${action.calculated} to ${action.level}`
                 : `Severity confirmed: ${action.level}`,
-            detail: action.rationale,
+            detail:
+              action.overrideReason !== null
+                ? `Reason: ${action.rationale}`
+                : `Calculated ${action.calculated} (score ${action.score}). ${action.rationale}`,
           },
         ],
       }));
@@ -299,10 +326,36 @@ export function reducer(state: AppState, action: AppAction): AppState {
           },
         ],
       }));
+    case 'UPDATE_RESTORATION':
+      return updateIncident(state, action.id, (i) => {
+        if (i.operationalStatus === 'CLOSED') return i;
+        return {
+          ...i,
+          estimatedRestorationAt: action.estimatedRestorationAt,
+          timeline: [
+            ...i.timeline,
+            {
+              ...event(i, 1, action.at, 'Restoration estimate updated', ''),
+              detail:
+                action.estimatedRestorationAt === null
+                  ? 'Estimated restoration time cleared — not yet confirmed.'
+                  : `Estimated restoration: ${action.estimatedRestorationAt}. Checkpoints are check-ins, not promises.`,
+            },
+          ],
+        };
+      });
     case 'SAVE_DRAFT':
       return updateIncident(state, action.id, (i) => {
         if (i.operationalStatus === 'REPORTED' || i.operationalStatus === 'CLOSED') return i;
-        if (i.communicationStatus === 'PUBLISHED') return i;
+        if (i.communicationStatus === 'PUBLISHED') {
+          // Follow-up draft: refresh content without touching the
+          // first-publication record or restarting the KPI clock.
+          return {
+            ...i,
+            commsDraft: action.draft,
+            timeline: [...i.timeline, commsEvent(i, action.at, 'Follow-up draft saved', `Draft for ${action.draft.channels.join(' + ') || 'no channels'}. First-publication time unchanged.`)],
+          };
+        }
         return {
           ...i,
           commsDraft: action.draft,
@@ -313,12 +366,22 @@ export function reducer(state: AppState, action: AppAction): AppState {
     case 'PUBLISH_COMMS':
       return updateIncident(state, action.id, (i) => {
         if (i.operationalStatus === 'REPORTED' || i.operationalStatus === 'CLOSED') return i;
-        if (i.communicationStatus === 'PUBLISHED') return i;
+        if (i.communicationStatus === 'PUBLISHED') {
+          // Follow-up publication: new audit event, same firstPublishedAt —
+          // the first-communication KPI always measures the FIRST publish.
+          return {
+            ...i,
+            commsDraft: action.draft,
+            selectedChannels: action.draft.channels,
+            timeline: [...i.timeline, commsEvent(i, action.at, 'Follow-up passenger update published', action.detail)],
+          };
+        }
         return {
           ...i,
           commsDraft: action.draft,
           communicationStatus: 'PUBLISHED',
           firstPublishedAt: i.firstPublishedAt ?? action.at,
+          selectedChannels: action.draft.channels,
           timeline: [...i.timeline, commsEvent(i, action.at, 'Initial passenger update published', action.detail)],
         };
       });
@@ -406,6 +469,8 @@ interface Store {
   addOperatorUpdate: (id: string, detail: string, estimatedDelayMinutes: number | null) => void;
   /** Operations: accept a REPORTED notification (starts the KPI clock). */
   validateIncident: (id: string) => void;
+  /** Operations: ask the operator for more information (contractor-visible status). */
+  requestInfo: (id: string) => void;
   /** Operations: confirm or override severity (override needs a reason). */
   confirmSeverity: (id: string, level: Severity, rationale: string, overrideReason: string | null) => void;
   assignOwner: (id: string, owner: string) => void;
@@ -413,6 +478,8 @@ interface Store {
   toggleRecoveryTask: (id: string, taskId: string) => void;
   addRecoveryTask: (id: string, label: string, responsible: string) => void;
   logOperatorNote: (id: string, note: string) => void;
+  /** Operations: set or clear the estimated restoration time. */
+  updateRestoration: (id: string, estimatedRestorationAt: string | null) => void;
   /** Comms: save a draft (REQUIRED → DRAFT). */
   saveDraft: (id: string, input: DraftInput) => void;
   /** Comms: approve & publish (records firstPublishedAt + stops the KPI clock). */
@@ -423,15 +490,6 @@ interface Store {
   /** Operations: close a restored incident (requires root cause). */
   closeIncident: (id: string) => void;
   reopenIncident: (id: string) => void;
-}
-
-function severityScoreFor(incident: Incident): number {
-  return assessSeverity({
-    estimatedDelayMinutes: incident.estimatedDelayMinutes,
-    passengerImpact: incident.passengerImpact,
-    majorInterchangeAffected: incident.majorInterchangeAffected,
-    disruptionType: incident.disruptionType,
-  }).score;
 }
 
 const AppStoreContext = createContext<Store | null>(null);
@@ -471,14 +529,23 @@ export function AppStoreProvider({
         }),
       validateIncident: (id: string) =>
         dispatch({ type: 'VALIDATE_INCIDENT', id, at: new Date().toISOString() }),
+      requestInfo: (id: string) =>
+        dispatch({ type: 'REQUEST_INFO', id, at: new Date().toISOString() }),
       confirmSeverity: (id: string, level: Severity, rationale: string, overrideReason: string | null) => {
         const incident = state.incidents.find((i) => i.id === id);
         if (!incident) return;
+        const assessment = assessSeverity({
+          estimatedDelayMinutes: incident.estimatedDelayMinutes,
+          passengerImpact: incident.passengerImpact,
+          majorInterchangeAffected: incident.majorInterchangeAffected,
+          disruptionType: incident.disruptionType,
+        });
         dispatch({
           type: 'CONFIRM_SEVERITY',
           id,
           level,
-          score: severityScoreFor(incident),
+          calculated: assessment.level,
+          score: assessment.score,
           rationale,
           overrideReason,
           at: new Date().toISOString(),
@@ -494,6 +561,8 @@ export function AppStoreProvider({
         dispatch({ type: 'ADD_RECOVERY_TASK', id, label, responsible, at: new Date().toISOString() }),
       logOperatorNote: (id: string, note: string) =>
         dispatch({ type: 'LOG_OPERATOR_NOTE', id, note, at: new Date().toISOString() }),
+      updateRestoration: (id: string, estimatedRestorationAt: string | null) =>
+        dispatch({ type: 'UPDATE_RESTORATION', id, estimatedRestorationAt, at: new Date().toISOString() }),
       saveDraft: (id: string, input: DraftInput) => {
         const at = new Date().toISOString();
         dispatch({ type: 'SAVE_DRAFT', id, draft: toCommsDraft(input, at), at });

@@ -106,6 +106,8 @@ export interface QueueKpis {
   achievedPct: number | null;
   achievedCount: number;
   publishedCount: number;
+  /** Mean confirmation → first-publication ms across published records. Null when none. */
+  averageFirstCommMs: number | null;
 }
 
 /** Dashboard KPIs derived from the shared records — never hard-coded. */
@@ -118,14 +120,17 @@ export function queueKpis(incidents: Incident[], nowIso?: string): QueueKpis {
   let dueSoon = 0;
   let achievedCount = 0;
   let publishedCount = 0;
+  let elapsedTotal = 0;
 
   for (const i of incidents) {
     const kpi = firstCommunicationKpi(i, nowIso);
     if (kpi.state === 'MET') {
       achievedCount += 1;
       publishedCount += 1;
+      elapsedTotal += kpi.elapsedMs ?? 0;
     } else if (kpi.state === 'EXCEEDED') {
       publishedCount += 1;
+      elapsedTotal += kpi.elapsedMs ?? 0;
       breached += 1;
     } else if (kpi.state === 'COUNTING') {
       awaiting += 1;
@@ -148,5 +153,6 @@ export function queueKpis(incidents: Incident[], nowIso?: string): QueueKpis {
     achievedPct: publishedCount === 0 ? null : Math.round((achievedCount / publishedCount) * 100),
     achievedCount,
     publishedCount,
+    averageFirstCommMs: publishedCount === 0 ? null : Math.round(elapsedTotal / publishedCount),
   };
 }

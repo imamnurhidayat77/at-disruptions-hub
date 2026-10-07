@@ -1,13 +1,19 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { CommsTargetBadge, OpStatusBadge, SeverityBadge } from '../../components/badges.js';
 import { Section } from '../../components/chrome.js';
+import {
+  activeForOperator,
+  assessedByAT,
+  contractorIncidents,
+  needsOperatorUpdate,
+} from '../../domain/contractor.js';
 import { useAppStore } from '../../state/AppStore.js';
+import { ContractorNav, ContractorIncidentTable } from './ContractorTable.js';
 
 /**
- * Contractor overview — own reported incidents + high-level AT status.
- * Reporting itself lives at /contractor/report (Phase 2); validation,
- * severity and ownership are AT Operations concerns (Phase 3).
+ * Bus Operator Portal — overview. Summary cards and recent incidents in
+ * operator wording, derived from the shared record. No severity reasoning,
+ * no SLA timers, no AT analytics.
  */
 export function ContractorOverview(): React.JSX.Element {
   const { state, setRole } = useAppStore();
@@ -16,87 +22,79 @@ export function ContractorOverview(): React.JSX.Element {
     setRole('CONTRACTOR');
   }, [setRole]);
 
-  const mine = state.incidents.filter((i) =>
-    i.timeline.some((e) => e.action === 'Operator submitted initial disruption notification'),
-  );
-  const fingerprint = `records=${state.incidents.length} mine=${mine.length}`;
+  const mine = contractorIncidents(state.incidents);
+  const active = activeForOperator(state.incidents);
+  const awaiting = mine.filter((i) => !assessedByAT(i) && i.operationalStatus !== 'CLOSED');
+  const updates = mine.filter(needsOperatorUpdate);
+  const closed = mine.filter((i) => i.operationalStatus === 'CLOSED');
 
   return (
     <div>
       <div className="pagehead">
-        <span className="eyebrow">Bus Contractor</span>
-        <h1>Contractor overview</h1>
+        <span className="eyebrow">Bus Operator Portal</span>
+        <h1>Overview</h1>
         <p className="lede">
-          Report disruption quickly without completing unnecessary AT-internal work.
-          Submitted notifications enter the shared record AT Operations validates.
+          Report disruptions and send confirmed updates. AT validates each
+          notification and manages severity, recovery and passenger communication.
         </p>
       </div>
 
-      <nav className="subnav" aria-label="Bus Contractor navigation">
-        <Link to="/contractor">Overview</Link>
-        <Link to="/contractor/report">Report disruption</Link>
-        <a href="#mine">My incidents</a>
-        <a href="#shared">Shared record</a>
-      </nav>
+      <ContractorNav />
+
+      <div className="kpi-grid">
+        <div className="kpi-card">
+          <h3>Active Incidents</h3>
+          <div className="kpi-value">{active.length}</div>
+          <p className="muted small">Reported and not yet closed</p>
+          <Link className="kpi-link" to="/contractor/incidents">
+            View my incidents
+          </Link>
+        </div>
+        <div className="kpi-card">
+          <h3>Awaiting AT Assessment</h3>
+          <div className="kpi-value">{awaiting.length}</div>
+          <p className="muted small">Submitted, severity not yet set by AT</p>
+          <Link className="kpi-link" to="/contractor/incidents">
+            View my incidents
+          </Link>
+        </div>
+        <div className="kpi-card">
+          <h3>Updates Required</h3>
+          <div className="kpi-value">{updates.length}</div>
+          <p className="muted small">Validated by AT, no follow-up sent yet</p>
+          <Link className="kpi-link" to="/contractor/incidents">
+            View my incidents
+          </Link>
+        </div>
+        <div className="kpi-card">
+          <h3>Closed</h3>
+          <div className="kpi-value">{closed.length}</div>
+          <p className="muted small">Restored and closed by AT</p>
+          <Link className="kpi-link" to="/contractor/incidents">
+            View my incidents
+          </Link>
+        </div>
+      </div>
 
       <Section title="Report a disruption">
         <p className="muted">
-          Capture what is known now — route, location, onset and impact. AT severity
-          assessment and owner assignment happen after submission.
+          Record route, location, onset and impact as confirmed. AT assesses severity
+          and assigns an owner after submission.
         </p>
         <Link className="btn btn-primary btn-link" to="/contractor/report">
-          + Capture disruption
+          + Report disruption
         </Link>
       </Section>
 
-      <Section id="mine" title="My reported incidents">
-        {mine.length === 0 ? (
-          <p className="muted">No notifications submitted yet in this demo state.</p>
-        ) : (
-          <table className="records">
-            <thead>
-              <tr>
-                <th>Incident</th>
-                <th>Route</th>
-                <th>Severity</th>
-                <th>AT status</th>
-                <th>Update target</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mine.map((i) => (
-                <tr key={i.id}>
-                  <td>
-                    <strong>{i.id}</strong>
-                    <div className="muted small">{i.location}</div>
-                  </td>
-                  <td>{i.route}</td>
-                  <td>
-                    <SeverityBadge level={i.severity} />
-                  </td>
-                  <td>
-                    <OpStatusBadge status={i.operationalStatus} />
-                  </td>
-                  <td>
-                    <CommsTargetBadge incident={i} />
-                  </td>
-                  <td>
-                    <Link to={`/contractor/incident/${i.id}`}>Open →</Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <Section title="Recent incidents">
+        <ContractorIncidentTable rows={mine.slice(0, 5)} />
+        {mine.length > 5 && (
+          <p>
+            <Link className="btn" to="/contractor/incidents">
+              View all my incidents
+            </Link>
+          </p>
         )}
-      </Section>
-
-      <Section id="shared" title="One shared record">
-        <p className="muted">
-          These are the same records AT Operations and AT Customer Information see —
-          switching roles never duplicates or resets them.
-        </p>
-        <div className="fingerprint">Shared store: {fingerprint}</div>
       </Section>
     </div>
   );

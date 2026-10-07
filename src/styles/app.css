@@ -13,14 +13,41 @@ body {
   line-height: 1.5;
 }
 
+a {
+  color: var(--teal);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--teal-dark);
+}
+
+a:visited {
+  color: var(--teal-dark);
+  text-decoration: none;
+}
+
+.role-switch a,
+.role-switch a:visited {
+  color: var(--nav-muted);
+}
+
+.role-switch a:hover,
+.role-switch a.active,
+.role-switch a.active:visited {
+  color: #fff;
+}
+
 /* ---------- Top navigation (UI kit: dark navy + role chip) ---------- */
 .topnav {
   background: var(--nav);
   color: var(--nav-ink);
+}
+
+.topnav-inner {
   display: flex;
   align-items: center;
   gap: 24px;
-  padding: 0 24px;
   height: 60px;
 }
 
@@ -40,6 +67,27 @@ body {
   border-radius: 6px;
   padding: 2px 8px;
   font-size: 14px;
+}
+
+a.brand-link,
+a.brand-link:visited {
+  color: #fff;
+}
+
+a.brand-link:hover {
+  color: #fff;
+  opacity: 0.9;
+}
+
+.role-tag {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  border-radius: 6px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 .role-switch {
@@ -76,14 +124,59 @@ body {
   white-space: nowrap;
 }
 
-/* ---------- Demo disclosure bar (every screen, per UI kit) ---------- */
-.demobar {
-  background: var(--demo-bar-bg);
-  color: var(--demo-bar-fg);
+/* ---------- Demo Role control (prototype demonstration only) ---------- */
+.demo-role {
+  margin-left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  padding: 6px 24px;
+  color: var(--nav-muted);
+  white-space: nowrap;
+}
+
+.demo-role select {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.demo-role select option {
+  color: var(--ink);
+}
+
+/* ---------- Discreet prototype-only reset control ---------- */
+.demo-reset {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: var(--nav-muted);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.demo-reset:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* ---------- Shared page gutter: header and body align ---------- */
+.wrap {
+  width: 100%;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding-left: 24px;
+  padding-right: 24px;
 }
 
 /* ---------- Layout ---------- */
@@ -96,6 +189,14 @@ body {
 .pagehead h1 {
   margin: 0 0 4px;
   font-size: 28px;
+  letter-spacing: -0.015em;
+}
+
+.crumbs {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 0 6px;
 }
 
 .eyebrow {
@@ -128,6 +229,22 @@ body {
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.subnav a:hover {
+  border-color: var(--teal);
+  color: var(--teal-dark);
+}
+
+.subnav a.active {
+  background: var(--nav);
+  border-color: var(--nav);
+  color: #fff;
+}
+
+.subnav a.active:visited {
+  color: #fff;
 }
 
 .phase-tag {
@@ -159,6 +276,7 @@ body {
   border-radius: var(--radius);
   padding: 18px 20px;
   margin-bottom: 16px;
+  box-shadow: 0 1px 2px rgba(14, 42, 62, 0.06);
 }
 
 .card h2 {
@@ -200,7 +318,7 @@ body {
 .sev-low { color: var(--sev-low-fg); background: var(--sev-low-bg); }
 .sev-none { color: var(--status-idle-fg); background: var(--status-idle-bg); }
 
-.st-ops { color: var(--status-ops-fg); background: var(--status-ops-bg); }
+.st-ops { color: var(--teal-dark); background: var(--status-ops-bg); }
 .st-done { color: var(--status-done-fg); background: var(--status-done-bg); }
 .st-idle { color: var(--status-idle-fg); background: var(--status-idle-bg); }
 
@@ -250,6 +368,22 @@ table.records td {
   vertical-align: middle;
 }
 
+table.records tbody tr {
+  transition: background 120ms ease;
+}
+
+table.records tbody tr:hover {
+  background: #f7fafb;
+}
+
+table.records td:last-child {
+  white-space: nowrap;
+}
+
+table.records tbody tr:hover {
+  background: #f7fafb;
+}
+
 .timeline {
   list-style: none;
   margin: 0;
@@ -270,6 +404,7 @@ table.records td {
   font-size: 12px;
   font-weight: 700;
   margin-right: 8px;
+  font-variant-numeric: tabular-nums;
 }
 
 .timeline .t-action {
@@ -321,24 +456,44 @@ table.records td {
 
 .btn {
   appearance: none;
-  border: 1px solid var(--border);
-  background: #fff;
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
   border-radius: 8px;
   padding: 10px 18px;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   color: var(--ink);
+  text-decoration: none;
 }
 
-.btn-primary {
+.btn:visited {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.btn-primary,
+.btn-primary:visited {
   background: var(--teal);
   border-color: var(--teal);
   color: #fff;
+  text-decoration: none;
 }
 
-.btn-primary:hover {
+.btn-primary:not(:disabled):hover {
   background: var(--teal-dark);
+  border-color: var(--teal-dark);
+  color: #fff;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn:not(:disabled):hover {
+  background: var(--btn-hover-bg);
+  border-color: var(--faint);
 }
 
 .fingerprint {
@@ -355,7 +510,11 @@ table.records td {
   border-top: 1px solid var(--border);
   color: var(--muted);
   font-size: 12px;
-  padding: 14px 24px 28px;
+  padding-top: 14px;
+  padding-bottom: 28px;
+}
+
+.footer-inner {
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -430,6 +589,14 @@ textarea.input {
   resize: vertical;
 }
 
+select.input {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%235d6f79' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
 .field-error {
   color: var(--target-bad-fg);
   font-size: 13px;
@@ -481,18 +648,22 @@ textarea.input {
 .actions-bar {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   margin: 4px 0 24px;
-}
-
-.actions-bar .btn-primary {
-  margin-left: auto;
+  flex-wrap: wrap;
 }
 
 .btn-link {
   display: inline-block;
   text-decoration: none;
-  color: var(--teal);
+  /* No color here: .btn / .btn-primary control the text color. */
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 7px;
+  white-space: nowrap;
 }
 
 /* ---------- Success / inline confirmation ---------- */
@@ -560,7 +731,6 @@ textarea.input {
   background: var(--teal-tint);
   color: var(--teal-dark);
 }
-
 /* ---------- Severity radio cards ---------- */
 .sev-cards {
   display: grid;
@@ -607,7 +777,29 @@ input.check {
   accent-color: var(--teal);
 }
 
-/* ---------- KPI cards (operations overview) ---------- */
+/* ---------- Severity display ---------- */
+.sev-display {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Recovery progress ---------- */
+.progress {
+  background: var(--status-idle-bg);
+  border-radius: 999px;
+  height: 10px;
+  overflow: hidden;
+  margin: 8px 0 4px;
+}
+
+.progress-fill {
+  background: var(--teal);
+  height: 100%;
+  border-radius: 999px;
+}
+
+/* ---------- KPI cards (operations overview + contractor portal) ---------- */
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -618,6 +810,12 @@ input.check {
 @media (max-width: 960px) {
   .kpi-grid {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .kpi-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -639,6 +837,7 @@ input.check {
   font-size: 34px;
   font-weight: 800;
   line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
 
 .kpi-value.bad {
@@ -649,11 +848,23 @@ input.check {
   color: var(--target-good-fg);
 }
 
-.kpi-card a {
+.kpi-card .muted.small {
+  margin: 0 0 12px;
+}
+
+.kpi-link {
   color: var(--teal);
   font-size: 13px;
   font-weight: 700;
   text-decoration: none;
+}
+
+.kpi-link:visited {
+  color: var(--teal-dark);
+}
+
+.kpi-link:hover {
+  color: var(--teal-dark);
 }
 
 .alert {
@@ -708,6 +919,7 @@ input.check {
   font-weight: 800;
   line-height: 1;
   margin: 4px 0 8px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---------- Passenger preview ---------- */
@@ -768,10 +980,12 @@ input.check {
 
 .dialog {
   background: #fff;
+  color: var(--ink);
   border-radius: 14px;
   max-width: 560px;
   width: 100%;
   padding: 24px 28px;
+  box-shadow: 0 12px 40px rgba(14, 42, 62, 0.25);
 }
 
 .dialog h2 {
@@ -804,6 +1018,27 @@ input.check {
   justify-content: flex-end;
   gap: 10px;
   margin-top: 14px;
+}
+
+/* ---------- SAP integration ---------- */
+.sap-chip {
+  margin-left: auto;
+  align-self: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.sap-details {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.sap-details summary {
+  cursor: pointer;
+  color: var(--teal);
+  font-weight: 700;
 }
 
 /* ---------- Accessibility ---------- */

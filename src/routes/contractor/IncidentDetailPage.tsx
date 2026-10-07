@@ -6,9 +6,9 @@ import { Section } from '../../components/chrome.js';
 import { Field } from '../../components/forms.js';
 import { formatNzdtTime } from '../../domain/kpi.js';
 import { validateOperatorUpdate } from '../../domain/reporting.js';
-import { assessSeverity } from '../../domain/severity.js';
 import { SeverityBadge } from '../../components/badges.js';
 import { useAppStore } from '../../state/AppStore.js';
+import { ContractorNav } from './ContractorTable.js';
 
 /**
  * Contractor incident detail + submission success + confirmed updates.
@@ -44,12 +44,6 @@ export function IncidentDetailPage(): React.JSX.Element {
   }
 
   const closed = incident.operationalStatus === 'CLOSED';
-  const recommendation = assessSeverity({
-    estimatedDelayMinutes: incident.estimatedDelayMinutes,
-    passengerImpact: incident.passengerImpact,
-    majorInterchangeAffected: incident.majorInterchangeAffected,
-    disruptionType: incident.disruptionType,
-  });
   const timeline = [...incident.timeline].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
 
   function onUpdate(e: FormEvent): void {
@@ -70,20 +64,22 @@ export function IncidentDetailPage(): React.JSX.Element {
   return (
     <div>
       <div className="pagehead">
-        <span className="eyebrow">Bus Contractor</span>
+        <span className="eyebrow">Bus Operator Portal</span>
         <h1>Incident {incident.id}</h1>
         <p>
           <Link to="/contractor">← Back to overview</Link>
         </p>
       </div>
 
+      <ContractorNav />
+
       {fresh && (
         <div className="success" role="status">
           <strong>Disruption notification submitted to AT.</strong>
           <div>
-            {incident.id} is now in the AT Operations incoming queue as REPORTED. Severity
-            assessment and owner assignment follow in Phase 3 — no action needed from the
-            operator unless facts change.
+            {incident.id} is recorded as submitted. AT will validate the
+            notification and assess severity — no action needed from the operator
+            unless facts change.
           </div>
         </div>
       )}
@@ -95,20 +91,21 @@ export function IncidentDetailPage(): React.JSX.Element {
       <div className="grid-2">
         <Section title="AT assessment (read-only)">
           <p>
-            Severity:{' '}
             {incident.severity ? (
-              <SeverityBadge level={incident.severity} />
-            ) : (
               <>
-                <span className="badge sev-none">◌ Not assessed</span>{' '}
-                <span className="muted small">
-                  (system recommendation: {recommendation.level}, score {recommendation.score})
-                </span>
+                <span className="muted small">AT Severity: </span>
+                <SeverityBadge level={incident.severity} />
               </>
+            ) : (
+              <span className="muted">Awaiting AT Assessment</span>
             )}
           </p>
           <p className="muted">
             Owner: {incident.owner ?? '— unassigned (AT Operations assigns the owner)'}
+          </p>
+          <p className="muted">
+            Passenger information:{' '}
+            {incident.communicationStatus === 'PUBLISHED' ? 'Published' : 'Not yet published'}
           </p>
           <div className="note">
             Contractors cannot set final severity, assign the owner or publish passenger
@@ -164,7 +161,7 @@ export function IncidentDetailPage(): React.JSX.Element {
                 />
               </Field>
               <button className="btn btn-primary" type="submit">
-                Send update to AT
+                ↑ Send update to AT
               </button>
             </form>
           )}

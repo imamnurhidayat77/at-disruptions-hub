@@ -57,10 +57,11 @@ function incident1043(): Incident {
     severityOverrideReason: null,
     owner: null,
     operationalStatus: 'REPORTED',
-    communicationStatus: 'REQUIRED',
+    communicationStatus: 'NOT_REQUIRED',
     recoveryStatus: 'NOT_STARTED',
     recoveryTasks: defaultRecoveryTasks(),
     commsDraft: null,
+    infoRequested: false,
     estimatedRestorationAt: null,
     restoredAt: null,
     firstPublishedAt: null,
@@ -98,13 +99,22 @@ function incident1039(): Incident {
     communicationStatus: 'PUBLISHED',
     recoveryStatus: 'IN_PROGRESS',
     recoveryTasks: defaultRecoveryTasks().map((t) =>
-      t.id === 'contact-operator'
+      t.id === 'operator-contacted'
         ? { ...t, doneAt: at('07:50') }
         : t.id === 'replacement-requested'
           ? { ...t, doneAt: at('07:55') }
           : t,
     ),
-    commsDraft: null,
+    commsDraft: {
+      title: 'Route 18 suspended — Great North Road',
+      message:
+        'Route 18 services are suspended in both directions near Great North Road due to a road closure. Please use alternative routes and allow additional travel time.',
+      channels: ['AT Mobile App', 'Website'],
+      nextUpdateBy: '08:15',
+      commitmentOwner: 'Talia Reed',
+      updatedAt: at('07:51'),
+    },
+    infoRequested: false,
     estimatedRestorationAt: at('09:30'),
     restoredAt: null,
     firstPublishedAt: at('07:52'),
@@ -151,18 +161,34 @@ function incident1041(): Incident {
     severityOverrideReason: null,
     owner: 'J. Chen',
     operationalStatus: 'ACTIVE',
-    communicationStatus: 'DRAFT',
+    communicationStatus: 'PUBLISHED',
     recoveryStatus: 'NOT_STARTED',
     recoveryTasks: defaultRecoveryTasks(),
-    commsDraft: null,
+    commsDraft: {
+      title: 'Route 22N delays — New North Road',
+      message:
+        'Route 22N citybound services are delayed because a scheduled vehicle is unavailable. Please allow additional travel time while we arrange a standby bus. We do not yet have a confirmed restoration time.',
+      channels: ['AT Mobile App', 'Website'],
+      nextUpdateBy: '09:10',
+      commitmentOwner: 'Talia Reed',
+      updatedAt: at('08:49'),
+    },
+    infoRequested: false,
     estimatedRestorationAt: at('09:30'),
     restoredAt: null,
-    firstPublishedAt: null,
-    selectedChannels: [],
+    firstPublishedAt: at('08:50'),
+    selectedChannels: ['AT Mobile App', 'Website'],
     reviewRequired: false,
     rootCause: null,
     correctiveActions: [],
     timeline: [
+      {
+        id: 'evt-1041-pub',
+        at: at('08:50'),
+        actorRole: 'CUSTOMER_INFORMATION',
+        action: 'Initial passenger update published',
+        detail: '7 min from confirmation — target met.',
+      },
       {
         id: 'evt-1041-conf',
         at: at('08:43'),

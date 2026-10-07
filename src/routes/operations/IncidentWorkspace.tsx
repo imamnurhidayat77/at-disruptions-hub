@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { CommsTargetBadge, OpStatusBadge, SeverityBadge } from '../../components/badges.js';
-import { Section } from '../../components/chrome.js';
+import { Crumbs, Section } from '../../components/chrome.js';
 import { Field } from '../../components/forms.js';
+import { lastOperatorUpdateAt } from '../../domain/contractor.js';
 import { firstCommunicationKpi, formatMmSs, formatNzdtTime } from '../../domain/kpi.js';
 import {
   OWNER_ROSTER,
+  OWNER_TITLES,
   canAssess,
   canMarkActive,
   canValidate,
+  operationalStatusLabel,
   recoveryOpen,
   workflowStage,
 } from '../../domain/operations.js';
@@ -17,6 +20,7 @@ import type { Incident, Severity } from '../../domain/types.js';
 import { useAppStore } from '../../state/AppStore.js';
 import { RecoveryPanel } from './RecoveryPanel.js';
 import { CloseReviewPanel } from './CloseReviewPanel.js';
+import { OpsNav } from './OpsNav.js';
 
 const STEPS = ['Assess & assign', 'Coordinate recovery', 'Passenger update', 'Active monitoring', 'Close & review'];
 
@@ -25,6 +29,13 @@ const SEVERITY_DESCRIPTIONS: Record<Severity, string> = {
   HIGH: 'Significant service impact',
   MEDIUM: 'Limited service impact',
   LOW: 'Minor local impact',
+};
+
+const SEVERITY_SUPPORT: Record<Severity, string> = {
+  CRITICAL: 'This incident requires immediate operational response and passenger communication.',
+  HIGH: 'This incident requires priority operational response and passenger communication.',
+  MEDIUM: 'This incident requires close monitoring and timely passenger information.',
+  LOW: 'Routine monitoring; passenger advice as needed.',
 };
 
 function Stepper({ stage }: { stage: number }): React.JSX.Element {
@@ -43,6 +54,151 @@ function Stepper({ stage }: { stage: number }): React.JSX.Element {
   );
 }
 
+function IncomingDetail({ incident }: { incident: Incident }): React.JSX.Element {
+  const { requestInfo, validateIncident } = useAppStore();
+  const navigate = useNavigate();
+  const lastUpdate = lastOperatorUpdateAt(incident);
+
+  if (!canValidate(incident)) return <></>;
+
+  function onAccept(): void {
+    validateIncident(incident.id);
+    navigate(`/operations/incident/${incident.id}#severity-assessment`);
+  }
+
+  return (
+    <Section title="Incoming notification">
+      <dl className="facts">
+        <dt>Incident ID</dt>
+        <dd>{incident.id}</dd>
+        <dt>Operator</dt>
+        <dd>{incident.operator}</dd>
+        <dt>Route</dt>
+        <dd>{incident.route}</dd>
+        <dt>Vehicle / Service ID</dt>
+        <dd>{incident.vehicleOrServiceId}</dd>
+        <dt>Location</dt>
+        <dd>{incident.location}</dd>
+        <dt>Disruption Type</dt>
+        <dd>{incident.disruptionType}</dd>
+        <dt>Detection Time</dt>
+        <dd>{formatNzdtTime(incident.detectedAt)}</dd>
+        <dt>Estimated Delay</dt>
+        <dd>{incident.estimatedDelayMinutes} minutes</dd>
+        <dt>Passenger Impact</dt>
+        <dd>{incident.passengerImpact}</dd>
+        <dt>Major Interchange Affected</dt>
+        <dd>{incident.majorInterchangeAffected ? 'Yes' : 'No'}</dd>
+        <dt>Description</dt>
+        <dd>{incident.description}</dd>
+        <dt>Operator Update Status</dt>
+        <dd>{lastUpdate ? `Last operator update ${formatNzdtTime(lastUpdate)}` : 'Initial notification only'}</dd>
+      </dl>
+      <div className="note">Information provided by Bus Contractor.</div>
+      {incident.infoRequested ? (
+        <p>
+          <span className="badge tg-warn">More Information Requested</span>{' '}
+          <span className="muted">Awaiting Operator Update.</span>
+        </p>
+      ) : (
+        <p>
+          <button className="btn" type="button" onClick={() => requestInfo(incident.id)}>
+            ? Request More Information
+          </button>{' '}
+          <button
+            className="btn btn-primary"
+            type="button"
+            onClick={() => {
+              onAccept();
+            }}
+          >
+            ✓ Accept & Assess
+          </button>
+        </p>
+      )}
+    </Section>
+  );
+}
+
+function OverrideModal({
+  incident,
+  calculated,
+  initialLevel,
+  initialReason,
+  onConfirm,
+  onCancel,
+}: {
+  incident: Incident;
+  calculated: Severity;
+  initialLevel: Severity;
+  initialReason: string;
+  onConfirm: (level: Severity, reason: string) => void;
+  onCancel: () => void;
+}): React.JSX.Element {
+  const [level, setLevel] = useState<Severity>(initialLevel);
+  const [reason, setReason] = useState(initialReason);
+  const [error, setError] = useState<string | undefined>(undefined);
+
+  function onSubmit(): void {
+    const err = validateSeverityOverride(reason);
+    if (err) {
+      setError(err);
+      return;
+    }
+    onConfirm(level, reason.trim());
+  }
+
+  return (
+    <div className="dialog-backdrop" role="presentation" onClick={onCancel}>
+      <div
+        className="dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Override severity"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2>Override Severity</h2>
+        <p className="muted small">
+          Calculated severity for {incident.id} is {calculated}. Overriding records the
+          reason and an AT Operations audit event.
+        </p>
+        <Field id="ov-level" label="New Severity" required>
+          <select
+            id="ov-level"
+            className="input"
+            value={level}
+            onChange={(e) => setLevel(e.target.value as Severity)}
+          >
+            {(Object.keys(SEVERITY_DESCRIPTIONS) as Severity[]).map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field id="ov-reason" label="Reason for Override" required error={error}>
+          <textarea
+            id="ov-reason"
+            className="input"
+            rows={3}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </Field>
+        <div className="note">Severity rules are a prototype assumption, not official Auckland Transport policy.</div>
+        <div className="dialog-actions">
+          <button className="btn" type="button" onClick={onCancel}>
+            × Cancel
+          </button>
+          <button className="btn btn-primary" type="button" onClick={onSubmit}>
+            ⚠ Confirm Override
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SeveritySection({ incident }: { incident: Incident }): React.JSX.Element {
   const { confirmSeverity } = useAppStore();
   const recommendation = assessSeverity({
@@ -54,6 +210,7 @@ function SeveritySection({ incident }: { incident: Incident }): React.JSX.Elemen
   const [selected, setSelected] = useState<Severity>(incident.severity ?? recommendation.level);
   const [rationale, setRationale] = useState('');
   const [error, setError] = useState<string | undefined>(undefined);
+  const [overriding, setOverriding] = useState(false);
 
   if (!canAssess(incident)) {
     return (
@@ -73,28 +230,53 @@ function SeveritySection({ incident }: { incident: Incident }): React.JSX.Elemen
   const isOverride = selected !== recommendation.level;
 
   function onConfirm(): void {
+    if (isOverride) {
+      setOverriding(true);
+      return;
+    }
     if (rationale.trim().length < 10) {
       setError('Severity rationale needs at least 10 characters.');
       return;
     }
-    if (isOverride) {
-      const overrideError = validateSeverityOverride(rationale);
-      if (overrideError) {
-        setError(overrideError);
-        return;
-      }
-    }
     setError(undefined);
-    confirmSeverity(incident.id, selected, rationale.trim(), isOverride ? rationale.trim() : null);
+    confirmSeverity(incident.id, selected, rationale.trim(), null);
     setRationale('');
   }
 
+  const severityBadgeClass =
+    recommendation.level === 'CRITICAL'
+      ? 'sev-critical'
+      : recommendation.level === 'HIGH'
+        ? 'sev-high'
+        : recommendation.level === 'MEDIUM'
+          ? 'sev-medium'
+          : 'sev-low';
+
   return (
-    <Section title="Severity assessment">
+    <Section title="Severity assessment" id="severity-assessment">
+      <p>
+        <span className={`badge ${severityBadgeClass} sev-display`}>{recommendation.level} SEVERITY</span>
+      </p>
+      <p>
+        <strong>{SEVERITY_SUPPORT[recommendation.level]}</strong>
+      </p>
+      <h3>Why this severity?</h3>
+      <ul>
+        <li>Estimated delay: {incident.estimatedDelayMinutes} minutes</li>
+        <li>
+          Passenger impact:{' '}
+          {incident.passengerImpact.charAt(0) + incident.passengerImpact.slice(1).toLowerCase()}
+        </li>
+        <li>
+          {incident.majorInterchangeAffected
+            ? 'Major interchange affected'
+            : 'No major interchange affected'}
+        </li>
+        <li>Recovery action required</li>
+      </ul>
       <p className="muted small">
-        Severity reflects operational impact; it is separate from communication-target
-        risk. System recommendation: <SeverityBadge level={recommendation.level} />{' '}
-        (score {recommendation.score}).
+        Severity score: {recommendation.score}. Severity rules are a prototype
+        decision-support rule, not official Auckland Transport policy.
       </p>
       {incident.severity && (
         <p>
@@ -121,9 +303,10 @@ function SeveritySection({ incident }: { incident: Incident }): React.JSX.Elemen
       </div>
       <Field
         id={`rationale-${incident.id}`}
-        label={isOverride ? 'Override reason (differs from recommendation)' : 'Severity rationale'}
+        label="Severity rationale"
         required
         error={error}
+        hint="Assessment notes (required). Differing from the recommendation opens the override dialog."
       >
         <textarea
           id={`rationale-${incident.id}`}
@@ -133,10 +316,30 @@ function SeveritySection({ incident }: { incident: Incident }): React.JSX.Elemen
           onChange={(e) => setRationale(e.target.value)}
         />
       </Field>
-      <button className="btn btn-primary" type="button" onClick={onConfirm}>
-        Confirm {selected.charAt(0) + selected.slice(1).toLowerCase()} severity
-      </button>
+      <p>
+        <button className="btn btn-primary" type="button" onClick={onConfirm}>
+          ✓ Confirm Severity
+        </button>{' '}
+        <button className="btn" type="button" onClick={() => setOverriding(true)}>
+          ⚠ Override Severity
+        </button>
+      </p>
       <div className="note">{recommendation.prototypeNote}</div>
+      {overriding && (
+        <OverrideModal
+          incident={incident}
+          calculated={recommendation.level}
+          initialLevel={selected}
+          initialReason={rationale}
+          onConfirm={(level, reason) => {
+            confirmSeverity(incident.id, level, reason, reason);
+            setRationale('');
+            setError(undefined);
+            setOverriding(false);
+          }}
+          onCancel={() => setOverriding(false)}
+        />
+      )}
     </Section>
   );
 }
@@ -144,6 +347,9 @@ function SeveritySection({ incident }: { incident: Incident }): React.JSX.Elemen
 function OwnerSection({ incident }: { incident: Incident }): React.JSX.Element {
   const { assignOwner } = useAppStore();
   const [name, setName] = useState(incident.owner ?? 'Sarah Chen');
+  const options = incident.owner && !OWNER_ROSTER.includes(incident.owner)
+    ? [incident.owner, ...OWNER_ROSTER]
+    : OWNER_ROSTER;
 
   if (incident.operationalStatus === 'REPORTED') {
     return (
@@ -159,14 +365,14 @@ function OwnerSection({ incident }: { incident: Incident }): React.JSX.Element {
         The owner coordinates recovery and keeps passenger communication on track.
       </p>
       <div className="form-grid">
-        <Field id={`owner-${incident.id}`} label="Incident owner" required>
+        <Field id={`owner-${incident.id}`} label="Incident Owner" required>
           <select
             id={`owner-${incident.id}`}
             className="input"
-            value={OWNER_ROSTER.includes(name) ? name : 'Sarah Chen'}
+            value={options.includes(name) ? name : options[0]}
             onChange={(e) => setName(e.target.value)}
           >
-            {OWNER_ROSTER.map((o) => (
+            {options.map((o) => (
               <option key={o}>{o}</option>
             ))}
           </select>
@@ -178,7 +384,7 @@ function OwnerSection({ incident }: { incident: Incident }): React.JSX.Element {
         onClick={() => assignOwner(incident.id, name)}
         disabled={incident.owner === name}
       >
-        Assign owner
+        + Assign Owner
       </button>
       {incident.owner && (
         <div className="success" role="status" style={{ marginTop: 12 }}>
@@ -190,56 +396,74 @@ function OwnerSection({ incident }: { incident: Incident }): React.JSX.Element {
   );
 }
 
-function CommsRail({ incident }: { incident: Incident }): React.JSX.Element {
+function CommsPanel({ incident }: { incident: Incident }): React.JSX.Element {
+  const [open, setOpen] = useState(false);
   const kpi = firstCommunicationKpi(incident);
+
   return (
-    <div>
-      <Section title="Passenger communication (read-only)">
-        <p>
-          <CommsTargetBadge incident={incident} />
-        </p>
-        {kpi.state === 'AWAITING_CONFIRMATION' && (
-          <p className="muted small">Clock starts when the notification is validated.</p>
-        )}
-        {kpi.state === 'COUNTING' && (
-          <p className="muted small">
-            Elapsed {kpi.elapsedMs === null ? '–' : formatMmSs(kpi.elapsedMs)} · remaining{' '}
-            {kpi.remainingMs === null ? '–' : formatMmSs(kpi.remainingMs)} of 10:00.
-          </p>
-        )}
-        {(kpi.state === 'MET' || kpi.state === 'EXCEEDED') && (
-          <p className="muted small">
-            Published {kpi.firstPublishedAt ? formatNzdtTime(kpi.firstPublishedAt) : '–'} · target{' '}
-            {kpi.targetMet ? 'met' : 'exceeded'}.
-          </p>
-        )}
-        <div className="note">
-          Communicate before recovery is complete — an unknown recovery time does not
-          block an initial update. Operations cannot edit published messages.
-        </div>
-        <p>
-          <button className="btn" type="button" disabled title="Available in Phase 4">
-            Prepare passenger update
-          </button>{' '}
-          <span className="phase-tag">Phase 4</span>
-        </p>
-      </Section>
-    </div>
+    <Section title="Passenger Communication">
+      <p className="muted small">Operations sees communication status only — no editing or publishing here.</p>
+      <p>
+        <CommsTargetBadge incident={incident} />
+      </p>
+      <dl className="facts">
+        <dt>Passenger notice</dt>
+        <dd>{incident.communicationStatus === 'PUBLISHED' ? 'Published' : 'Required'}</dd>
+        <dt>Publication</dt>
+        <dd>{incident.firstPublishedAt ? formatNzdtTime(incident.firstPublishedAt) : 'Not yet published'}</dd>
+        <dt>First communication time</dt>
+        <dd>
+          {incident.firstPublishedAt !== null && kpi.elapsedMs !== null
+            ? `${formatMmSs(kpi.elapsedMs)} · Target ${kpi.targetMet ? 'met' : 'exceeded'}`
+            : 'Not yet published'}
+        </dd>
+        <dt>Communication timer</dt>
+        <dd>{kpi.elapsedMs === null ? '—' : `${formatMmSs(kpi.elapsedMs)} elapsed`}</dd>
+        <dt>Remaining</dt>
+        <dd>{kpi.remainingMs === null ? '—' : formatMmSs(kpi.remainingMs)}</dd>
+        <dt>Target</dt>
+        <dd>10 minutes</dd>
+      </dl>
+      <button className="btn" type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        {open ? '▴' : '▾'} View Communication Status
+      </button>
+      {open && (
+        <dl className="facts" style={{ marginTop: 12 }}>
+          <dt>Channels</dt>
+          <dd>{incident.selectedChannels.length > 0 ? incident.selectedChannels.join(' + ') : '—'}</dd>
+          <dt>Draft</dt>
+          <dd>{incident.commsDraft ? `Saved ${formatNzdtTime(incident.commsDraft.updatedAt)}` : 'No draft yet'}</dd>
+        </dl>
+      )}
+      <div className="note">
+        Operational recovery and passenger communication are parallel workflows on
+        this shared record. Editing, approval and publishing belong to AT Customer
+        Information.
+      </div>
+    </Section>
   );
 }
 
 /**
- * Operations incident workspace — validate → assess severity → assign
+ * AT Operations incident workspace — validate → assess severity → assign
  * owner → coordinate recovery, with passenger communication visible as a
- * read-only parallel track. Publishing itself arrives in Phase 4.
+ * read-only parallel track.
  */
 export function IncidentWorkspace(): React.JSX.Element {
   const { id } = useParams<{ id: string }>();
-  const { setRole, getIncident, validateIncident, markActive } = useAppStore();
+  const { setRole, getIncident, markActive } = useAppStore();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     setRole('OPERATIONS');
   }, [setRole]);
+
+  useEffect(() => {
+    if (location.hash) {
+      document.querySelector(location.hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [location.hash]);
 
   const incident = id ? getIncident(id) : undefined;
 
@@ -258,44 +482,62 @@ export function IncidentWorkspace(): React.JSX.Element {
   const stage = workflowStage(incident);
   const timeline = [...incident.timeline].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
   const showRecovery = recoveryOpen(incident) || incident.operationalStatus === 'RESTORED';
+  const ownerAssignedEvent = [...incident.timeline]
+    .reverse()
+    .find((e) => e.action === 'Incident owner assigned');
 
   return (
     <div>
       <div className="pagehead">
+        <Crumbs trail={['Operations', 'Incidents', incident.id]} />
         <span className="eyebrow">AT Operations</span>
-        <h1>{stage <= 1 ? 'Assess severity & assign ownership' : 'Coordinate operational recovery'}</h1>
+        <h1>{incident.id}</h1>
+        <p className="lede">
+          Route {incident.route} — {incident.disruptionType}
+          <br />
+          {incident.location}
+        </p>
         <p>
-          <Link to="/operations">← Back to dashboard</Link>
+          <Link to="/operations">← Back to overview</Link>
         </p>
       </div>
 
-      <Section title={`${incident.disruptionType} · ${incident.location}`}>
-        <p className="muted small">
-          {incident.id} · Route {incident.route} · Detected {formatNzdtTime(incident.detectedAt)}
-          {incident.confirmedAt && <> · Confirmed {formatNzdtTime(incident.confirmedAt)}</>}
-        </p>
+      <OpsNav />
+
+      <Section title="Incident summary">
         <p>
           <SeverityBadge level={incident.severity} />{' '}
           <OpStatusBadge status={incident.operationalStatus} />{' '}
           <CommsTargetBadge incident={incident} />
         </p>
-        <p className="muted small">Accountable owner: {incident.owner ?? '— unassigned'}</p>
+        <dl className="facts">
+          <dt>Incident Owner</dt>
+          <dd>
+            {incident.owner
+              ? `${incident.owner}${OWNER_TITLES[incident.owner] ? ` — ${OWNER_TITLES[incident.owner]}` : ''}${
+                  ownerAssignedEvent ? ` (assigned ${formatNzdtTime(ownerAssignedEvent.at)})` : ''
+                }`
+              : '— unassigned'}
+          </dd>
+          <dt>Operational Status</dt>
+          <dd>{operationalStatusLabel(incident.operationalStatus)}</dd>
+          <dt>Detected</dt>
+          <dd>{formatNzdtTime(incident.detectedAt)}</dd>
+          <dt>Confirmed</dt>
+          <dd>{incident.confirmedAt ? formatNzdtTime(incident.confirmedAt) : '— awaiting validation'}</dd>
+          <dt>Estimated Restoration</dt>
+          <dd>
+            {incident.estimatedRestorationAt
+              ? formatNzdtTime(incident.estimatedRestorationAt)
+              : 'Not yet confirmed'}
+          </dd>
+        </dl>
         <Stepper stage={stage} />
       </Section>
 
       <div className="form-layout">
         <div>
-          {canValidate(incident) && (
-            <Section title="Validate notification">
-              <p>
-                {incident.operator} reported: {incident.description}
-              </p>
-              <button className="btn btn-primary" type="button" onClick={() => validateIncident(incident.id)}>
-                Validate & accept notification
-              </button>
-            </Section>
-          )}
-
+          <IncomingDetail incident={incident} />
           <SeveritySection incident={incident} />
           <OwnerSection incident={incident} />
 
@@ -304,13 +546,24 @@ export function IncidentWorkspace(): React.JSX.Element {
               <p className="muted">
                 Severity {incident.severity} confirmed and owner {incident.owner} assigned.
               </p>
-              <button className="btn btn-primary" type="button" onClick={() => markActive(incident.id)}>
-                Mark active — open recovery & comms tracks
+              <button
+                className="btn btn-primary"
+                type="button"
+                onClick={() => {
+                  markActive(incident.id);
+                  navigate(`/operations/incident/${incident.id}#recovery`);
+                }}
+              >
+                → Mark active — open Incident Workspace recovery
               </button>
             </Section>
           )}
 
-          {showRecovery && <RecoveryPanel incident={incident} />}
+          {showRecovery && (
+            <div id="recovery">
+              <RecoveryPanel incident={incident} />
+            </div>
+          )}
 
           {(incident.operationalStatus === 'RESTORED' ||
             incident.operationalStatus === 'CLOSED') && (
@@ -332,7 +585,7 @@ export function IncidentWorkspace(): React.JSX.Element {
           </Section>
         </div>
         <aside>
-          <CommsRail incident={incident} />
+          <CommsPanel incident={incident} />
         </aside>
       </div>
     </div>

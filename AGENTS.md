@@ -4,9 +4,10 @@
 > TypeScript SPA (`package.json`, `src/`, hand-written CSS from the UI
 > kit). Full demo chain works: contractor reporting → operations
 > validate/severity/owner/recovery → comms draft/publish (<10 min KPI) →
-> KPI dashboard → closure + corrective actions, on one shared store with
-> a demo fallback (no confirmed SAP API). Browser visual/click-through
-> pass still recommended before presenting. See PLAN.md.
+> KPI dashboard → closure + corrective actions, on one shared store.
+> SAP: integration code complete (server proxy + adapter + panel + tests)
+> but BLOCKED on credentials — no live response observed yet. See PLAN.md
+> Phase 7 and docs/SAP_INTEGRATION.md.
 
 ## Project Purpose
 
@@ -89,8 +90,10 @@ Rules:
 - `Incident closure and review.png` — restoration + corrective action.
 
 Key visual conventions (from UI kit):
-- Dark navy top navigation with role/user chip; persistent
-  "DEMO WORKSPACE · Synthetic data · No live connections" disclosure bar.
+- Dark navy top navigation with role/user chip; brand links to the role
+  home. Prototype disclosure lives in the persistent footer disclaimer
+  ("Illustrative workflow only · All times NZDT · Not a live operational
+  record").
 - Teal primary actions (`Publish update`, `Capture disruption`); labelled
   severity badges (Critical/High/Medium/Low) and communication-target
   badges (Due soon / Breached / Achieved / Not published) — never
@@ -359,7 +362,8 @@ Roles:
 - AT Operations
 - AT Customer Information
 
-The role switcher is a DEMO mechanism.
+The role switcher is a DEMO mechanism, implemented as a small top-right
+"Demo Role" profile control (university prototype demonstration only).
 
 It is not intended to represent production authentication.
 

@@ -1,15 +1,30 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CommsTargetBadge, OpStatusBadge, SeverityBadge } from '../../components/badges.js';
-import { Section } from '../../components/chrome.js';
-import { needsFirstPublication } from '../../domain/comms.js';
-import { firstCommunicationKpi, queueKpis } from '../../domain/kpi.js';
+import { Crumbs, Section } from '../../components/chrome.js';
+import {
+  awaitingFirstUpdate,
+  communicationCoverage,
+  needsFirstPublication,
+  oldestCountingElapsedMs,
+} from '../../domain/comms.js';
+import { firstCommunicationKpi, formatMmSs, queueKpis } from '../../domain/kpi.js';
 import { useAppStore } from '../../state/AppStore.js';
+import { CommsNav } from './CommsNav.js';
+
+function useNowTick(active: boolean): string {
+  const [now, setNow] = useState(() => new Date().toISOString());
+  useEffect(() => {
+    if (!active) return;
+    const t = setInterval(() => setNow(new Date().toISOString()), 1000);
+    return () => clearInterval(t);
+  }, [active]);
+  return now;
+}
 
 /**
- * Communication queue — validated incidents still needing their first
- * passenger publication, riskiest first. The KPI clock only runs on
- * validated records; REPORTED items wait for Operations.
+ * Customer Information Overview — four communication KPIs derived from the
+ * shared records plus a preview of the queue. Publishing itself happens in
+ * the composer; recovery stays with AT Operations (parallel track).
  */
 export function CommsOverview(): React.JSX.Element {
   const { state, setRole } = useAppStore();
@@ -25,27 +40,69 @@ export function CommsOverview(): React.JSX.Element {
       const rb = firstCommunicationKpi(b).remainingMs ?? Number.POSITIVE_INFINITY;
       return ra - rb;
     });
-  const blocked = state.incidents.filter((i) => i.operationalStatus === 'REPORTED');
-  const kpis = queueKpis(state.incidents);
+  const counting = queue.length > 0;
+  const nowIso = useNowTick(counting);
+  const awaiting = awaitingFirstUpdate(state.incidents);
+  const oldestMs = oldestCountingElapsedMs(state.incidents, nowIso);
+  const kpis = queueKpis(state.incidents, nowIso);
+  const coverage = communicationCoverage(state.incidents);
 
   return (
     <div>
       <div className="pagehead">
+        <Crumbs trail={['Customer Information', 'Overview']} />
         <span className="eyebrow">AT Customer Information</span>
-        <h1>Communications dashboard</h1>
+        <h1>Customer Information Overview</h1>
         <p className="lede">
-          Receive validated information early enough to communicate without waiting
-          for recovery to finish.
+          Prepare timely and consistent passenger updates using validated disruption
+          information.
         </p>
       </div>
 
-      <nav className="subnav" aria-label="Customer Information navigation">
-        <Link to="/comms">Dashboard</Link>
-        <a href="#queue">Communication queue</a>
-        <a href="#kpi">Target performance</a>
-      </nav>
+      <CommsNav />
 
-      <Section id="queue" title={`Communication queue (${queue.length})`}>
+      <div className="kpi-grid">
+        <div className="kpi-card">
+          <h3>Awaiting Passenger Update</h3>
+          <div className="kpi-value">{awaiting.length}</div>
+          <p className="muted small">Validated, not yet published</p>
+          <Link className="kpi-link" to="/comms/queue">
+            Open communication queue
+          </Link>
+        </div>
+        <div className="kpi-card">
+          <h3>Oldest Communication Timer</h3>
+          <div className="kpi-value">{oldestMs === null ? '—' : formatMmSs(oldestMs)}</div>
+          <p className="muted small">Longest running unpublished timer</p>
+          <Link className="kpi-link" to="/comms/queue">
+            Open communication queue
+          </Link>
+        </div>
+        <div className="kpi-card">
+          <h3>Average First Publication</h3>
+          <div className="kpi-value">
+            {kpis.averageFirstCommMs === null ? '—' : formatMmSs(kpis.averageFirstCommMs)}
+          </div>
+          <p className="muted small">
+            Confirmation → first publication ({kpis.publishedCount} published)
+          </p>
+          <Link className="kpi-link" to="/comms/analytics">
+            Review analytics
+          </Link>
+        </div>
+        <div className="kpi-card">
+          <h3>Communication Coverage</h3>
+          <div className="kpi-value">{coverage.pct === null ? '—' : `${coverage.pct}%`}</div>
+          <p className="muted small">
+            {coverage.published} of {coverage.inScope} updates published
+          </p>
+          <Link className="kpi-link" to="/comms/analytics">
+            Review analytics
+          </Link>
+        </div>
+      </div>
+
+      <Section title={`Passenger communication queue (${queue.length})`}>
         {queue.length === 0 ? (
           <p className="muted">Nothing needs a first publication right now.</p>
         ) : (
@@ -55,13 +112,12 @@ export function CommsOverview(): React.JSX.Element {
                 <th>Incident</th>
                 <th>Route</th>
                 <th>Severity</th>
-                <th>Status</th>
-                <th>Update target</th>
+                <th>Communication</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
-              {queue.map((i) => (
+              {queue.slice(0, 5).map((i) => (
                 <tr key={i.id}>
                   <td>
                     <strong>{i.id}</strong>
@@ -70,46 +126,25 @@ export function CommsOverview(): React.JSX.Element {
                     </div>
                   </td>
                   <td>{i.route}</td>
+                  <td>{i.severity ?? '—'}</td>
+                  <td>{i.communicationStatus}</td>
                   <td>
-                    <SeverityBadge level={i.severity} />
-                  </td>
-                  <td>
-                    <OpStatusBadge status={i.operationalStatus} />
-                  </td>
-                  <td>
-                    <CommsTargetBadge incident={i} />
-                  </td>
-                  <td>
-                    <Link to={`/comms/incident/${i.id}`}>Prepare →</Link>
+                    <Link className="btn btn-small btn-primary" to={`/comms/incident/${i.id}`}>
+                      Prepare update
+                    </Link>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
-        {blocked.length > 0 && (
-          <p className="muted small">
-            Awaiting Operations validation (not yet actionable):{' '}
-            {blocked.map((i) => i.id).join(', ')}.
+        {queue.length > 5 && (
+          <p>
+            <Link className="btn" to="/comms/queue">
+              Open full queue
+            </Link>
           </p>
         )}
-      </Section>
-
-      <Section id="kpi" title="Target performance">
-        <dl className="facts">
-          <dt>Awaiting initial update</dt>
-          <dd>{kpis.awaiting}</dd>
-          <dt>At risk (breached + due soon)</dt>
-          <dd>
-            {kpis.breached} breached · {kpis.dueSoon} due soon
-          </dd>
-          <dt>Within 10-minute target</dt>
-          <dd>
-            {kpis.achievedPct === null
-              ? '— no publications yet'
-              : `${kpis.achievedPct}% (${kpis.achievedCount} of ${kpis.publishedCount})`}
-          </dd>
-        </dl>
         <div className="note">
           All figures are derived from confirmation and publication timestamps — the
           clock stops at first publication, never on draft save.

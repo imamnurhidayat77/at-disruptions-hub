@@ -93,7 +93,7 @@ export function CloseReviewPanel({ incident }: { incident: Incident }): React.JS
         </div>
         {!closed && (
           <button className="btn" type="button" onClick={onSaveReview}>
-            Save review details
+            ✓ Save review details
           </button>
         )}
 

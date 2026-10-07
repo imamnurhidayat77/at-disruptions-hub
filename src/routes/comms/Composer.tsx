@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { CommsTargetBadge, SeverityBadge } from '../../components/badges.js';
+import { CommsTargetBadge, OpStatusBadge, SeverityBadge } from '../../components/badges.js';
 import { Section } from '../../components/chrome.js';
 import { ConfirmDialog } from '../../components/ConfirmDialog.js';
 import { Field } from '../../components/forms.js';
@@ -8,16 +8,19 @@ import {
   buildMessageTemplate,
   buildTitle,
   CHANNELS,
+  targetProgress,
   validateDraft,
   type DraftErrors,
   type DraftInput,
 } from '../../domain/comms.js';
+import { lastOperatorUpdateAt } from '../../domain/contractor.js';
 import {
   FIRST_COMM_TARGET_MS,
   firstCommunicationKpi,
   formatMmSs,
   formatNzdtTime,
 } from '../../domain/kpi.js';
+import { operationalStatusLabel } from '../../domain/operations.js';
 import type { Incident } from '../../domain/types.js';
 import { useAppStore } from '../../state/AppStore.js';
 
@@ -32,9 +35,10 @@ function useNowTick(active: boolean): string {
 }
 
 /**
- * Passenger message composer. Drafts from incident facts, previews the
- * passenger notice, and publishes through a confirmation dialog. Publishing
- * records firstPublishedAt and stops the 10-minute KPI clock.
+ * Prepare Passenger Update — read-only operational summary, editable
+ * passenger message, channel selection, preview, live 10-minute timer and
+ * Approve & Publish. First publication stops the KPI clock; follow-up
+ * publications never reset firstPublishedAt.
  */
 export function Composer(): React.JSX.Element {
   const { id } = useParams<{ id: string }>();
@@ -50,7 +54,16 @@ export function Composer(): React.JSX.Element {
   const [form, setForm] = useState<DraftInput | null>(null);
   const [errors, setErrors] = useState<DraftErrors>({});
   const [confirming, setConfirming] = useState(false);
+  const [followUp, setFollowUp] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
+
+  useEffect(() => {
+    setForm(null);
+    setErrors({});
+    setConfirming(false);
+    setFollowUp(false);
+    setDraftSavedAt(null);
+  }, [id]);
 
   const draft: DraftInput =
     form ??
@@ -67,7 +80,7 @@ export function Composer(): React.JSX.Element {
       ? {
           title: buildTitle(incident),
           message: buildMessageTemplate(incident),
-          channels: [],
+          channels: ['AT Mobile App', 'Website'],
           nextUpdateBy: '',
           commitmentOwner: 'Talia Reed',
         }
@@ -82,7 +95,7 @@ export function Composer(): React.JSX.Element {
         <h1>Incident not found</h1>
         <p className="muted">No shared record with ID {id ?? '(unknown)'} in this demo state.</p>
         <Link className="btn btn-link" to="/comms">
-          Back to dashboard
+          Back to overview
         </Link>
       </div>
     );
@@ -93,9 +106,9 @@ export function Composer(): React.JSX.Element {
       <div>
         <div className="pagehead">
           <span className="eyebrow">AT Customer Information</span>
-          <h1>Prepare passenger communication</h1>
+          <h1>Prepare Passenger Update</h1>
           <p>
-            <Link to="/comms">← Back to dashboard</Link>
+            <Link to="/comms/queue">← Back to queue</Link>
           </p>
         </div>
         <Section title={`${incident.id} — awaiting validation`}>
@@ -112,9 +125,10 @@ export function Composer(): React.JSX.Element {
   // Narrowed once for handlers below (direct code after the guards is fine).
   const record: Incident = incident;
 
-  const set = (key: 'title' | 'message' | 'nextUpdateBy' | 'commitmentOwner') => (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => setForm({ ...draft, [key]: e.target.value });
+  const set =
+    (key: 'title' | 'message' | 'nextUpdateBy' | 'commitmentOwner') =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setForm({ ...draft, [key]: e.target.value });
 
   function toggleChannel(channel: string): void {
     setForm({
@@ -145,6 +159,7 @@ export function Composer(): React.JSX.Element {
     publishComms(record.id, draft);
     setForm({ ...draft });
     setConfirming(false);
+    setFollowUp(false);
   }
 
   const kpi = firstCommunicationKpi(incident, nowIso);
@@ -153,81 +168,123 @@ export function Composer(): React.JSX.Element {
       ? null
       : new Date(Date.parse(incident.confirmedAt) + FIRST_COMM_TARGET_MS).toISOString();
   const published = incident.communicationStatus === 'PUBLISHED';
+  const editable = !published || followUp;
   const timeline = [...incident.timeline].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
   const tasksDone = incident.recoveryTasks.filter((t) => t.doneAt !== null).length;
+  const lastUpdate = lastOperatorUpdateAt(incident);
+  const progress = targetProgress(kpi.elapsedMs);
+  const firstMinutes = kpi.elapsedMs === null ? '–' : `${Math.round(kpi.elapsedMs / 60000)} min`;
 
   return (
     <div>
       <div className="pagehead">
         <span className="eyebrow">AT Customer Information</span>
-        <h1>Prepare passenger communication</h1>
+        <h1>Prepare Passenger Update</h1>
         <p className="lede">
-          Publish accurate service information from verified facts, with a clear
-          next-update commitment.
+          Incident {incident.id} · Route {incident.route} ·{' '}
+          {incident.severity ?? 'Severity not yet assessed'}
         </p>
         <p>
-          <Link to="/comms">← Back to dashboard</Link>{' '}
+          <Link to="/comms/queue">← Back to queue</Link>{' '}
           {!published && (
             <button className="btn btn-primary" type="button" onClick={onPublishStart}>
-              ➤ Publish initial update
+              Approve &amp; Publish
             </button>
           )}
         </p>
       </div>
 
-      {published && (
+      {published && !followUp && (
         <div className="success" role="status">
           <strong>
-            Initial update published — target {kpi.targetMet ? 'achieved' : 'exceeded'}
-            {kpi.elapsedMs === null ? '' : ` (${Math.round(kpi.elapsedMs / 60000)} min)`}.
+            Passenger update published —{' '}
+            {kpi.targetMet ? 'TARGET MET' : kpi.targetMet === false ? 'TARGET EXCEEDED' : ''}
           </strong>
+          <div>Published: {incident.firstPublishedAt ? formatNzdtTime(incident.firstPublishedAt) : '–'}</div>
           <div>
-            AT Operations can immediately see this publication status on the same shared
-            record.
+            First Communication Time: {firstMinutes}
+            {kpi.targetMet ? ' — published within the 10-minute communication target.' : ''}
           </div>
+          <div>
+            Channels:{' '}
+            {incident.selectedChannels.length > 0
+              ? incident.selectedChannels.map((c) => `✓ ${c}`).join(' · ')
+              : '—'}
+          </div>
+          <p>
+            <a className="btn" href="#incident-summary">
+              View Incident
+            </a>{' '}
+            <button className="btn btn-primary" type="button" onClick={() => setFollowUp(true)}>
+              ➤ Publish Follow-Up Update
+            </button>
+          </p>
         </div>
       )}
 
-      <Section title="Confirmed incident facts">
+      {followUp && (
+        <div className="note" role="status">
+          Preparing a follow-up update. Publishing it adds a new timeline event but never
+          resets the first-publication time ({firstMinutes}).
+        </div>
+      )}
+
+      <Section id="incident-summary" title="Operational summary (read-only)">
         <p className="muted small">
-          <SeverityBadge level={incident.severity} /> Owner: {incident.owner ?? '—'} ·
-          Recovery: {tasksDone}/{incident.recoveryTasks.length} tasks complete
+          <SeverityBadge level={incident.severity} />{' '}
+          <OpStatusBadge status={incident.operationalStatus} /> Recovery:{' '}
+          {tasksDone}/{incident.recoveryTasks.length} tasks complete
         </p>
         <dl className="facts">
-          <dt>Service</dt>
-          <dd>
-            Route {incident.route} · {incident.vehicleOrServiceId}
-          </dd>
+          <dt>Incident ID</dt>
+          <dd>{incident.id}</dd>
+          <dt>Route</dt>
+          <dd>{incident.route}</dd>
           <dt>Location</dt>
           <dd>{incident.location}</dd>
-          <dt>Cause</dt>
+          <dt>Operator</dt>
+          <dd>{incident.operator}</dd>
+          <dt>Disruption type</dt>
           <dd>{incident.disruptionType}</dd>
-          <dt>Impact</dt>
+          <dt>AT Severity</dt>
+          <dd>{incident.severity ?? 'Not yet assessed'}</dd>
+          <dt>Operational status</dt>
+          <dd>{operationalStatusLabel(incident.operationalStatus)}</dd>
+          <dt>Estimated delay</dt>
+          <dd>{incident.estimatedDelayMinutes} minutes</dd>
+          <dt>Estimated restoration</dt>
           <dd>
-            {incident.estimatedDelayMinutes}-min delay · {incident.passengerImpact} passenger
-            impact
+            {incident.estimatedRestorationAt
+              ? formatNzdtTime(incident.estimatedRestorationAt)
+              : 'Not confirmed · do not promise'}
           </dd>
-          <dt>Restoration time</dt>
-          <dd>{incident.restoredAt ? formatNzdtTime(incident.restoredAt) : 'Not confirmed · do not promise'}</dd>
+          <dt>Incident owner</dt>
+          <dd>{incident.owner ?? '— unassigned'}</dd>
+          <dt>Latest operator update</dt>
+          <dd>{lastUpdate ? formatNzdtTime(lastUpdate) : '— initial notification only'}</dd>
         </dl>
+        <div className="note">
+          Severity, ownership and recovery decisions belong to AT Operations and cannot
+          be changed here.
+        </div>
       </Section>
 
       <div className="form-layout">
         <div>
-          <Section title="Initial passenger update">
-            <Field id="c-title" label="Passenger-facing title" required error={errors.title}>
+          <Section title={published ? 'Passenger update' : 'Initial passenger update'}>
+            <Field id="c-title" label="Message title" required error={errors.title}>
               <input
                 id="c-title"
                 className="input"
                 value={draft.title}
-                disabled={published}
+                disabled={!editable}
                 onChange={set('title')}
                 aria-invalid={Boolean(errors.title)}
               />
             </Field>
             <Field
               id="c-message"
-              label="Passenger-facing message"
+              label="Passenger message"
               required
               error={errors.message}
               hint="Plain language. No internal references, unverified detours or unsupported recovery estimates."
@@ -237,24 +294,25 @@ export function Composer(): React.JSX.Element {
                 className="input"
                 rows={6}
                 value={draft.message}
-                disabled={published}
+                disabled={!editable}
                 onChange={set('message')}
                 aria-invalid={Boolean(errors.message)}
               />
             </Field>
+            <p className="muted small">{draft.message.trim().length} characters</p>
             <div className="form-grid">
               <Field
                 id="c-next"
-                label="Next passenger update by (NZDT)"
-                required
+                label="Next update time (NZDT, optional)"
                 error={errors.nextUpdateBy}
+                hint="Leave blank when no commitment can be made yet."
               >
                 <input
                   id="c-next"
                   className="input"
                   placeholder="HH:MM"
                   value={draft.nextUpdateBy}
-                  disabled={published}
+                  disabled={!editable}
                   onChange={set('nextUpdateBy')}
                   aria-invalid={Boolean(errors.nextUpdateBy)}
                 />
@@ -269,19 +327,24 @@ export function Composer(): React.JSX.Element {
                   id="c-owner"
                   className="input"
                   value={draft.commitmentOwner}
-                  disabled={published}
+                  disabled={!editable}
                   onChange={set('commitmentOwner')}
                   aria-invalid={Boolean(errors.commitmentOwner)}
                 />
               </Field>
             </div>
             {draftSavedAt && (
-              <p className="muted small">Draft saved {formatNzdtTime(draftSavedAt)} — saving a draft does not stop the clock.</p>
+              <p className="muted small">
+                Draft saved {formatNzdtTime(draftSavedAt)} — saving a draft does not stop the
+                clock.
+              </p>
             )}
-            {!published && (
-              <button className="btn" type="button" onClick={onSaveDraft}>
-                Save draft
-              </button>
+            {editable && (
+              <p>
+                <button className="btn" type="button" onClick={onSaveDraft}>
+                  ✎ Save draft
+                </button>
+              </p>
             )}
           </Section>
 
@@ -296,7 +359,7 @@ export function Composer(): React.JSX.Element {
                   <input
                     type="checkbox"
                     checked={draft.channels.includes(c)}
-                    disabled={published}
+                    disabled={!editable}
                     onChange={() => toggleChannel(c)}
                   />
                   {c}
@@ -319,10 +382,10 @@ export function Composer(): React.JSX.Element {
                 <span aria-hidden="true">☑</span> Next update and owner confirmed
               </li>
             </ul>
-            {!published && (
+            {editable && (
               <p>
                 <button className="btn btn-primary" type="button" onClick={onPublishStart}>
-                  ➤ Publish initial update
+                  {published ? '➤ Publish follow-up update' : '➤ Approve & Publish'}
                 </button>
               </p>
             )}
@@ -345,28 +408,33 @@ export function Composer(): React.JSX.Element {
 
         <aside>
           <div className={`countcard${published ? (kpi.targetMet ? ' good' : ' bad') : ''}`}>
-            <h3>Initial passenger update</h3>
+            <h3>First Communication Target</h3>
             {published ? (
               <>
                 <div className="count-big">
-                  {kpi.elapsedMs === null ? '–' : `${Math.round(kpi.elapsedMs / 60000)}:00`}
+                  {kpi.elapsedMs === null ? '–' : formatMmSs(kpi.elapsedMs)}
                 </div>
                 <p>
                   <CommsTargetBadge incident={incident} />
                 </p>
                 <p className="muted small">
                   Published{' '}
-                  {incident.firstPublishedAt ? formatNzdtTime(incident.firstPublishedAt) : '–'}
+                  {incident.firstPublishedAt ? formatNzdtTime(incident.firstPublishedAt) : '–'} ·
+                  target ≤10:00
                 </p>
               </>
             ) : (
               <>
                 <div className="count-big">
+                  {kpi.elapsedMs === null ? '–' : `${formatMmSs(kpi.elapsedMs)} elapsed`}
+                </div>
+                <p className="muted small">
                   {kpi.remainingMs === null
-                    ? '–'
-                    : kpi.remainingMs <= 0
-                      ? formatMmSs(-kpi.remainingMs)
-                      : formatMmSs(kpi.remainingMs)}
+                    ? 'Target: ≤10:00'
+                    : `${formatMmSs(Math.max(0, kpi.remainingMs))} remaining · target ≤10:00`}
+                </p>
+                <div className="progress" role="progressbar" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100}>
+                  <div className="progress-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
                 </div>
                 <p>
                   <CommsTargetBadge incident={incident} />
@@ -390,8 +458,8 @@ export function Composer(): React.JSX.Element {
               <p>{draft.message || '(no message)'}</p>
               <p className="muted small">
                 {published
-                  ? `Published ${incident.firstPublishedAt ? formatNzdtTime(incident.firstPublishedAt) : ''}.`
-                  : 'Publication time will be added when published.'}
+                  ? `Updated ${incident.firstPublishedAt ? formatNzdtTime(incident.firstPublishedAt) : ''}.`
+                  : 'Updated time will be added when published.'}
               </p>
             </div>
             <p className="muted small">Preview only — same message is used for all selected channels.</p>
@@ -401,16 +469,20 @@ export function Composer(): React.JSX.Element {
 
       {confirming && (
         <ConfirmDialog
-          title="Publish initial passenger update?"
+          title={published ? 'Publish follow-up passenger update?' : 'Publish passenger update?'}
           summary={[
-            `Title: ${draft.title}`,
-            `Channels: ${draft.channels.join(' + ')}`,
-            `Next update commitment: ${draft.nextUpdateBy} NZDT · ${draft.commitmentOwner}`,
-            `This records the first-update time (${kpi.elapsedMs === null ? '–' : formatMmSs(kpi.elapsedMs)} elapsed).`,
+            `Incident: ${record.id}`,
+            `Channels: ${draft.channels.join(' + ') || 'none'}`,
+            ...(draft.nextUpdateBy.trim() !== ''
+              ? [`Next update commitment: ${draft.nextUpdateBy.trim()} NZDT · ${draft.commitmentOwner.trim() || '—'}`]
+              : []),
+            published
+              ? 'This is a follow-up — the first-publication time stays unchanged.'
+              : `This records the first-update time (${kpi.elapsedMs === null ? '–' : formatMmSs(kpi.elapsedMs)} elapsed).`,
           ]}
           checkLabel="I have checked the facts and the selected channels"
           disclaimer="Demo publication only. No live channel is connected. The publication result is synthetic."
-          confirmLabel="Confirm & publish"
+          confirmLabel="Approve & Publish"
           onConfirm={onPublishConfirm}
           onCancel={() => setConfirming(false)}
         />

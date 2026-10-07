@@ -101,6 +101,12 @@ export interface Incident {
   recoveryTasks: RecoveryTask[];
   /** Passenger communication draft (AT Customer Information). Null until drafted. */
   commsDraft: CommsDraft | null;
+  /**
+   * AT Operations asked the operator for more information. Shown to the
+   * contractor as "More Information Requested"; cleared by a contractor
+   * update, validation or severity assessment.
+   */
+  infoRequested: boolean;
   estimatedRestorationAt: string | null;
   /** ISO-8601 actual restoration. */
   restoredAt: string | null;

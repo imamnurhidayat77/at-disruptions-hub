@@ -3,7 +3,7 @@ import type { ChangeEvent, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Section } from '../../components/chrome.js';
 import { Field } from '../../components/forms.js';
-import {
+import { ContractorNav } from './ContractorTable.js';import {
   DISRUPTION_TYPES,
   EMPTY_REPORT,
   ROUTE_70_DEMO_VALUES,
@@ -59,8 +59,8 @@ export function ReportPage(): React.JSX.Element {
   return (
     <div>
       <div className="pagehead">
-        <span className="eyebrow">Bus Contractor</span>
-        <h1>Capture unplanned bus disruption</h1>
+        <span className="eyebrow">Bus Operator Portal</span>
+        <h1>Report bus disruption</h1>
         <p className="lede">
           Record what is known now. Refine the assessment as confirmed information
           arrives. Required fields are marked *.
@@ -74,10 +74,12 @@ export function ReportPage(): React.JSX.Element {
               setErrors({});
             }}
           >
-            Use Route 70 demo values
+            ↻ Use Route 70 demo values
           </button>
         </p>
       </div>
+
+      <ContractorNav />
 
       <form onSubmit={onSubmit} noValidate>
         <div className="form-layout">
@@ -321,20 +323,20 @@ export function ReportPage(): React.JSX.Element {
               </ul>
             </Section>
             <div className="note">
-              Creating this incident opens severity assessment and owner assignment. It does
-              not send passenger communications.
+              Submitting sends this notification to AT. It does not publish
+              passenger communications.
             </div>
           </aside>
         </div>
 
         <div className="actions-bar">
           <Link className="btn btn-link" to="/contractor">
-            Cancel
+            × Cancel
           </Link>
-          <span className="muted small">No passenger update will be published yet.</span>
           <button className="btn btn-primary" type="submit">
-            → Create &amp; assess incident
+            → Submit to AT
           </button>
+          <span className="muted small">No passenger update will be published yet.</span>
         </div>
       </form>
     </div>

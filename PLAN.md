@@ -173,7 +173,40 @@ Verification: `npm run build` passes; `/contractor`, `/contractor/report`,
 
 # Phase 3 — AT Operations Experience
 
-Status: DONE (06 Oct 2026)
+Status: DONE, refined (07 Oct 2026) — full role nav (Overview, Incoming,
+Incidents, Recovery, Reviews, Analytics), spec dashboards and workspace.
+
+Refinement (per role brief):
+- Overview: Active / High-Critical / Average First Communication /
+  Within-10-Min KPIs (all derived) + Incoming Operator Notifications with
+  Request More Information + Accept & Assess inline.
+- Incoming detail: 11-field contractor summary, "Information provided by
+  Bus Contractor", Request More Information (audit event + contractor
+  status "More Information Requested", cleared by update/validate/assess).
+- Severity: reusable `assessSeverity` (HIGH + supporting message + factors
+  + score for Route 70); Confirm Severity + Override Severity modal (new
+  severity + mandatory reason); calculated severity retained in the audit
+  detail ("overridden from HIGH to CRITICAL").
+- Owner roster Sarah Chen / James Wilson / Mia Roberts (demo: Sarah Chen);
+  legacy owners preserved in existing records.
+- Workspace header per spec (INC-1043, Route 70 — Vehicle Breakdown,
+  Newmarket; HIGH/ACTIVE; owner; friendly operational status) + shared
+  timeline + parallel recovery/comms panels; comms read-only with "View
+  Communication Status" expander (no edit/publish for Operations).
+- Recovery: 5 spec tasks, ERT editor + Update Recovery, milestones.
+- Reviews/Analytics/Incidents/Recovery pages derived from shared state.
+- Contractor sees More Information Requested / Recovery in Progress /
+  AT Severity: High from the same record; no state duplicated.
+- Second pass (role brief): shared Demo Role shell with "AT Disruption Hub
+  / Operations" context; INC-1043 seeds clean (no MIR flag); request action
+  hides after use showing "Awaiting Operator Update"; post-update REPORTED
+  reads "Ready for AT Assessment" (timeline-derived); Accept & Assess jumps
+  to #severity-assessment; HIGH SEVERITY display + exact four factors +
+  prototype-rule label; override modal (level + mandatory reason, calculated
+  retained in audit); Sarah Chen — Duty Operations Manager with assignment
+  timestamp; ERT editor + Update Recovery; comms panel shows
+  notice/publication/timer/remaining/target read-only; friendly operational
+  status labels. Verified headlessly + screenshots.
 
 Screens (map to `design/Incident assessment and ownership.png`,
 `design/Operational recovery coordination.png`):
@@ -208,7 +241,44 @@ Acceptance Criteria (headless reducer test + build):
 
 # Phase 4 — Customer Information Experience
 
-Status: DONE (06 Oct 2026)
+Status: DONE, refined (07 Oct 2026) — full role nav (Overview,
+Communication Queue, Published Updates, Templates, Analytics), spec
+dashboards and composer.
+
+Refinement (per role brief, no SAP work):
+- Shell: same global chrome; "Customer Information" role tag next to
+  "AT Disruption Hub"; Demo Role switcher unchanged; comms-only nav.
+- Overview (`/comms`): title "Customer Information Overview" + four
+  derived KPI cards (Awaiting Passenger Update, Oldest Communication
+  Timer, Average First Publication, Communication Coverage) + queue preview.
+- Queue (`/comms/queue`): validated + severity-assessed incidents needing
+  first publication, riskiest first, with derived elapsed/remaining per row
+  and "Prepare update" buttons. REPORTED and awaiting-severity records are
+  listed as blocked, never queue-ready.
+- Published (`/comms/published`): every PUBLISHED record with title,
+  channels, published time, first-communication time and target badge.
+- Templates (`/comms/templates`): default title/message pattern generated
+  from validated facts (editable in composer) + prototype channel list.
+- Analytics (`/comms/analytics`): average, coverage, within-target and
+  awaiting figures, all timestamp-derived, plus per-incident record.
+- Composer (`/comms/incident/:id`, "Prepare Passenger Update"): read-only
+  operational summary (11 fields incl. owner + latest operator update),
+  editable title/message, character count, optional next-update time,
+  channels AT Mobile App / Website / Social Media (Mobile + Website
+  pre-selected), live preview, prominent timer with progress bar, and an
+  "Approve & Publish" confirmation modal (Cancel / Approve & Publish).
+  First publish records firstPublishedAt and stops the clock; follow-up
+  publishes add audit events without resetting it. Draft save never stops
+  the clock and never discards input on validation errors.
+- Channels renamed to AT Mobile App / Website / Social Media (demo seed
+  updated; legacy "AT website" labels backfilled on load).
+- Cross-role: ops workspace shows read-only first-communication time +
+  target met/exceeded; contractor detail shows high-level
+  "Passenger information: Published".
+- Comms components call no Operations-only actions (verified by grep);
+  publish stays possible while recovery is in progress (parallel tracks).
+
+Original implementation (06 Oct 2026):
 
 Screens (map to `design/Passenger communication workspace.png`,
 `design/Published update and active monitoring.png`):
@@ -266,19 +336,33 @@ page.
 
 # Phase 7 — SAP Integration Layer
 
-Status: DONE as far as possible (06 Oct 2026) — **SAP gate still closed
-(no confirmed API).**
+Status: BLOCKED — SAP credentials / sandbox required (07 Oct 2026).
 
-- [x] Service/adapter boundary exists (`src/services/sapIncidentService.ts`
-      behind the repository interface; UI/domain untouched).
-- [x] Failure state implemented and user-visible (`SapStatus` with "Retry
-      live source" → "SAP incident service is temporarily unavailable."),
-      wired into the operations dashboard data-source section.
-- [x] Labelled demo fallback throughout (demo bar, footer, comms disclaimers).
-- [x] No secrets in repo (scanned); no SAP names/endpoints invented.
+Completed code (verified without a network):
+- [x] Server-side proxy (`server/sapProxy.ts` Vite plugin): same-origin
+      `/api/sap/status` + `/api/sap/incidents`, key stays server-side,
+      5-record cap, NOT_CONFIGURED (503) / upstream-error (502) mapping.
+- [x] Integration boundary (`src/services/sap/`): service (proxy-only,
+      typed NotConfigured/Unavailable errors), central testable mapper
+      (OData V2/V4/bare/single, candidate-key reads, nulls never invented,
+      rawSource preserved), normalised `SapIncidentReference` type.
+- [x] UI: SAP Integration panel on Operations → Analytics (status, last
+      sync, count, Sync action, results table with SAP badge, normalised
+      details expander), subtle ops-only nav chip, refactored `SapStatus`.
+- [x] Tests: `npm run test:sap` — 8 passing (valid V2/V4, missing fields,
+      empty, HTTP error, unreachable, 503 mapping, store non-mutation).
+- [x] Secrets: `.env.example` + git-ignored `.env*`; no key in `src/`;
+      `.env.example` contains blanks only.
+- [x] Docs: `docs/SAP_INTEGRATION.md` (selected API, Option-2 fit,
+      adaptation, auth, failure handling, demo steps).
 
-Until a course API pool service is confirmed, genuine SAP-backed operations
-are impossible — the fallback path above is the deliverable.
+Not verified (hence BLOCKED, not complete):
+- No live request has returned data — no `SAP_API_BASE_URL`/`SAP_API_KEY`
+  supplied. Evidence-backed so far: service path + `A_Incident` entity set
+  from SAP's official EHS integration guide; exact sandbox properties are
+  intentionally unconfirmed and must be recorded in
+  `docs/SAP_INTEGRATION.md` after the first real response.
+- "Use as Reference" import deferred (lower priority than working GET).
 
 ---
 
@@ -308,6 +392,15 @@ Publish-when-REPORTED and close-without-root-cause are safely ignored.
 - [x] No broken navigation (all 7 routes serve 200).
 - [x] No demo dependency on external network (SAP stub fails fast with a visible message).
 - [x] "Use Route 70 demo values" one-click form fill for the 5-minute demo.
+- [x] Deterministic demo lifecycle (07 Oct 2026): INC-1043 seeds REPORTED /
+  NOT_REQUIRED (State A); validation flips comms to REQUIRED (State B);
+  severity gate admits it to the CI queue; draft never stops the clock;
+  publish removes it and flips coverage 67% → 100%. Cross-role flow
+  verified headlessly twice (contractor → ops → CI → ops, incl. queue
+  counts, COUNTING timer, target-met, shared timestamp/event).
+- [x] Discreet header "↺ Reset demo" control with confirmation dialog
+  ("Reset demo scenario?"); resets data in place without reload,
+  preserves current role; store key bumped to v4 for a clean reseed.
 
 Outstanding (needs a browser): visual pass + click-through of the same
 17-step route; console-error check during that pass.

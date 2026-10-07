@@ -7,34 +7,22 @@ import type { Incident, OperationalStatus, RecoveryTask } from './types.js';
  */
 
 /** Demo owner roster. Canonical demo owner: Sarah Chen. */
-export const OWNER_ROSTER = [
-  'Sarah Chen',
-  'Maya King',
-  'J. Chen',
-  'L. Patel',
-  'A. Wilson',
-];
+export const OWNER_ROSTER = ['Sarah Chen', 'James Wilson', 'Mia Roberts'];
+
+/** Display titles for the demo roster (prototype labels). */
+export const OWNER_TITLES: Record<string, string> = {
+  'Sarah Chen': 'Duty Operations Manager',
+  'James Wilson': 'Operations Controller',
+  'Mia Roberts': 'Operations Controller',
+};
 
 export function defaultRecoveryTasks(): RecoveryTask[] {
   return [
-    {
-      id: 'contact-operator',
-      label: 'Operator contacted — passenger arrangements confirmed',
-      responsible: 'Operator liaison',
-      doneAt: null,
-    },
-    {
-      id: 'replacement-requested',
-      label: 'Replacement vehicle requested',
-      responsible: 'Operator liaison',
-      doneAt: null,
-    },
-    {
-      id: 'service-restored',
-      label: 'Service restored and verified with operator',
-      responsible: 'Incident owner',
-      doneAt: null,
-    },
+    { id: 'operator-contacted', label: 'Operator contacted', responsible: 'Operator liaison', doneAt: null },
+    { id: 'vehicle-located', label: 'Vehicle location confirmed', responsible: 'Operator liaison', doneAt: null },
+    { id: 'replacement-requested', label: 'Replacement vehicle requested', responsible: 'Operator liaison', doneAt: null },
+    { id: 'alternative-service', label: 'Alternative service confirmed', responsible: 'Incident owner', doneAt: null },
+    { id: 'service-restored', label: 'Normal service restored', responsible: 'Incident owner', doneAt: null },
   ];
 }
 
@@ -46,6 +34,17 @@ export function normalizeIncident(incident: Incident): Incident {
   }
   if (!('commsDraft' in next) || next.commsDraft === undefined) {
     next = { ...next, commsDraft: null };
+  }
+  if (typeof (next as { infoRequested?: unknown }).infoRequested !== 'boolean') {
+    next = { ...next, infoRequested: false };
+  }
+  // Rename legacy prototype channel labels on load (demo convenience).
+  const renameChannel = (c: string): string => (c === 'AT website' ? 'Website' : c);
+  if (Array.isArray(next.selectedChannels) && next.selectedChannels.some((c) => c === 'AT website')) {
+    next = { ...next, selectedChannels: next.selectedChannels.map(renameChannel) };
+  }
+  if (next.commsDraft !== null && next.commsDraft.channels.some((c) => c === 'AT website')) {
+    next = { ...next, commsDraft: { ...next.commsDraft, channels: next.commsDraft.channels.map(renameChannel) } };
   }
   return next;
 }
@@ -96,6 +95,24 @@ export function recoveryOpen(incident: Incident): boolean {
     incident.operationalStatus === 'ACTIVE' ||
     incident.operationalStatus === 'RECOVERY_IN_PROGRESS'
   );
+}
+
+/** Operator/operations-friendly lifecycle label (badges keep raw state visible). */
+export function operationalStatusLabel(status: Incident['operationalStatus']): string {
+  switch (status) {
+    case 'REPORTED':
+      return 'Reported — awaiting validation';
+    case 'VALIDATED':
+      return 'Validated';
+    case 'ACTIVE':
+      return 'Active';
+    case 'RECOVERY_IN_PROGRESS':
+      return 'Recovery in Progress';
+    case 'RESTORED':
+      return 'Restored';
+    case 'CLOSED':
+      return 'Closed';
+  }
 }
 
 export type OpsStatus = Extract<

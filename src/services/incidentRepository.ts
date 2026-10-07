@@ -11,7 +11,7 @@ import { buildDemoSeed } from './demoSeed.js';
  * plugs in here without touching UI or domain code.
  */
 
-const STORAGE_KEY = 'at-disruption-hub/demo-state/v2';
+const STORAGE_KEY = 'at-disruption-hub/demo-state/v4';
 
 function isIncident(value: unknown): value is Incident {
   if (typeof value !== 'object' || value === null) return false;

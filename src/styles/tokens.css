@@ -15,13 +15,18 @@
   --teal-dark: #0a5f59;
   --teal-tint: #e6f3f1;
 
+  /* Secondary buttons: visibly filled so they read as buttons */
+  --btn-bg: #e9eef1;
+  --btn-border: #c3cfd5;
+  --btn-hover-bg: #dde5ea;
+
   /* Page */
   --bg: #f3f5f6;
   --card: #ffffff;
   --border: #dfe6e9;
   --ink: #1c2b33;
   --muted: #5d6f79;
-  --faint: #8ba0ab;
+  --faint: #47616d;
 
   /* Severity (always paired with a text label — never colour-alone) */
   --sev-critical-fg: #b42318;

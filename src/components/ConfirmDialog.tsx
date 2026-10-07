@@ -8,7 +8,8 @@ import { useState } from 'react';
 export function ConfirmDialog({
   title,
   summary,
-  checkLabel,
+  checkLabel = '',
+  requireCheck = true,
   disclaimer,
   confirmLabel,
   onConfirm,
@@ -16,7 +17,9 @@ export function ConfirmDialog({
 }: {
   title: string;
   summary: string[];
-  checkLabel: string;
+  checkLabel?: string;
+  /** When false, no acknowledgement checkbox is shown and confirm is immediate. */
+  requireCheck?: boolean;
   disclaimer: string;
   confirmLabel: string;
   onConfirm: () => void;
@@ -39,22 +42,24 @@ export function ConfirmDialog({
             <li key={line}>{line}</li>
           ))}
         </ul>
-        <label className="dialog-check">
-          <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
-          {checkLabel}
-        </label>
+        {requireCheck && (
+          <label className="dialog-check">
+            <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
+            {checkLabel}
+          </label>
+        )}
         <div className="note">{disclaimer}</div>
         <div className="dialog-actions">
           <button className="btn" type="button" onClick={onCancel}>
-            Cancel
+            × Cancel
           </button>
           <button
             className="btn btn-primary"
             type="button"
-            disabled={!checked}
+            disabled={requireCheck && !checked}
             onClick={onConfirm}
           >
-            {confirmLabel}
+            ➤ {confirmLabel}
           </button>
         </div>
       </div>
