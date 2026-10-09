@@ -48,6 +48,37 @@ export function buildMessageTemplate(incident: Incident): string {
   );
 }
 
+export type TemplateKind = 'breakdown' | 'recovery' | 'restored';
+
+export const TEMPLATE_KINDS: { kind: TemplateKind; label: string; purpose: string }[] = [
+  { kind: 'breakdown', label: 'Vehicle Breakdown', purpose: 'First passenger notice' },
+  { kind: 'recovery', label: 'Service Recovery Update', purpose: 'Progress update' },
+  { kind: 'restored', label: 'Normal Service Restored', purpose: 'Final passenger notice' },
+];
+
+/** Template wording variants (Figma Templates page). */
+export function buildTemplateTitle(incident: Incident, kind: TemplateKind): string {
+  if (kind === 'recovery') return `Route ${incident.route} Service Recovery`;
+  if (kind === 'restored') return `Route ${incident.route} Services Restored`;
+  return buildTitle(incident);
+}
+
+export function buildTemplateMessage(incident: Incident, kind: TemplateKind): string {
+  if (kind === 'breakdown') return buildMessageTemplate(incident);
+  const place = `near ${shortLocation(incident.location)}`;
+  const cause = `following an earlier ${lowerFirst(incident.disruptionType)}`;
+  if (kind === 'recovery') {
+    return (
+      `Route ${incident.route} services are recovering ${place} ${cause}. ` +
+      `Please continue to allow additional travel time.`
+    );
+  }
+  return (
+    `Route ${incident.route} services have returned to normal ${place} ${cause}. ` +
+    `Thank you for your patience.`
+  );
+}
+
 function lowerFirst(value: string): string {
   const t = value.trim();
   return t.length === 0 ? t : t.charAt(0).toLowerCase() + t.slice(1);
@@ -58,7 +89,6 @@ export interface DraftInput {
   message: string;
   channels: string[];
   nextUpdateBy: string;
-  commitmentOwner: string;
 }
 
 export type DraftErrors = Partial<Record<keyof DraftInput, string>>;
@@ -72,9 +102,6 @@ export function validateDraft(input: DraftInput): DraftErrors {
   if (input.channels.length === 0) errors.channels = 'Select at least one publication channel.';
   if (input.nextUpdateBy.trim() !== '' && !TIME_RE.test(input.nextUpdateBy.trim())) {
     errors.nextUpdateBy = 'Enter the next-update commitment in HH:MM format, or leave blank.';
-  }
-  if (input.commitmentOwner.trim().length === 0) {
-    errors.commitmentOwner = 'Commitment owner is required.';
   }
   return errors;
 }
@@ -90,7 +117,6 @@ export function toCommsDraft(input: DraftInput, updatedAt: string): CommsDraft {
     message: input.message.trim(),
     channels,
     nextUpdateBy: input.nextUpdateBy.trim(),
-    commitmentOwner: input.commitmentOwner.trim(),
     updatedAt,
   };
 }

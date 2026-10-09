@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Section } from '../../components/chrome.js';
+import { DataTable, type DataColumn } from '../../components/DataTable.js';
 import {
-  SapNotConfiguredError,
-  fetchSapIncidents,
   fetchSapStatus,
-  type SapIncidentReference,
+  getLastAutoSync,
   type SapStatusInfo,
 } from '../../services/sap/sapIncidentService.ts';
+import type { SapCandidate } from '../../domain/types.ts';
+import { useAppStore } from '../../state/AppStore.js';
 import { formatNzdtTime } from '../../domain/kpi.js';
-
-type Phase = 'idle' | 'loading' | 'ok' | 'error';
 
 function statusBadge(state: SapStatusInfo['state']): React.JSX.Element {
   if (state === 'connected') return <span className="badge tg-good">● Connected</span>;
@@ -18,18 +17,16 @@ function statusBadge(state: SapStatusInfo['state']): React.JSX.Element {
 }
 
 /**
- * SAP Integration panel (Operations → Analytics). Syncs up to 5 incident
- * references from API_EHS_REPORT_INCIDENT_SRV through the protected
- * server-side proxy and displays them normalised. Sandbox records are
- * never presented as Auckland Transport incidents, and sync never touches
- * the shared AT incident store.
+ * SAP Integration panel (Operations → Analytics). Up to 5 SAP incident
+ * references load automatically when the Incoming worklist opens — no
+ * manual sync. This panel reports the connection state and shows the
+ * auto-enriched intake candidates. Sandbox records are never presented
+ * as Auckland Transport incidents, and loading never touches the shared
+ * AT incident store.
  */
 export function SapIntegrationPanel(): React.JSX.Element {
+  const { state } = useAppStore();
   const [status, setStatus] = useState<SapStatusInfo | null>(null);
-  const [phase, setPhase] = useState<Phase>('idle');
-  const [refs, setRefs] = useState<SapIncidentReference[]>([]);
-  const [syncedAt, setSyncedAt] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSapStatus()
@@ -37,101 +34,119 @@ export function SapIntegrationPanel(): React.JSX.Element {
       .catch(() => setStatus(null));
   }, []);
 
-  async function onSync(): Promise<void> {
-    setPhase('loading');
-    setMessage(null);
-    try {
-      const result = await fetchSapIncidents();
-      setRefs(result.references);
-      setSyncedAt(result.syncedAt);
-      setPhase('ok');
-      setMessage(
-        result.references.length === 0
-          ? 'SAP sync completed — no incident records returned.'
-          : `SAP sync completed — ${result.references.length} SAP incident record${result.references.length === 1 ? '' : 's'} retrieved.`,
-      );
-      const next = await fetchSapStatus().catch(() => null);
-      if (next) setStatus(next);
-    } catch (err) {
-      setPhase('error');
-      setMessage(
-        err instanceof SapNotConfiguredError
-          ? 'SAP Incident Service is not configured — set SAP_API_BASE_URL and SAP_API_KEY.'
-          : 'SAP Incident Service is temporarily unavailable.',
-      );
-    }
-  }
+  const autoSync = getLastAutoSync();
+  const lastSyncLabel = autoSync?.at ?? status?.lastSync ?? null;
+  const live = autoSync !== null;
+
+  const columns: Array<DataColumn<SapCandidate>> = [
+    {
+      key: 'sap',
+      label: 'SAP Incident',
+      sortable: true,
+      sortValue: (r) => r.sapId,
+      render: (r) => (
+        <span>
+          <strong>{r.sapId}</strong>
+          <div className="muted small">{r.title}</div>
+        </span>
+      ),
+    },
+    {
+      key: 'desc',
+      label: 'Description',
+      sortable: true,
+      sortValue: (r) => r.description,
+      render: (r) => r.description,
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      sortable: true,
+      filter: 'select',
+      filterValue: (r) => r.sapStatus,
+      sortValue: (r) => r.sapStatus,
+      render: (r) => r.sapStatus,
+    },
+    {
+      key: 'category',
+      label: 'Category',
+      sortable: true,
+      filter: 'select',
+      filterValue: (r) => r.category,
+      sortValue: (r) => r.category,
+      render: (r) => r.category,
+    },
+    {
+      key: 'date',
+      label: 'Received',
+      sortable: true,
+      sortValue: (r) => r.receivedAt,
+      render: (r) => r.receivedAt,
+    },
+    {
+      key: 'source',
+      label: 'Source',
+      render: (r) => (
+        <span>
+          <span className="badge tg-idle">{live ? 'SAP connected' : 'SAP offline'}</span>{' '}
+          <details className="sap-details">
+            <summary>View Details</summary>
+            <dl className="facts">
+              <dt>Title</dt>
+              <dd>{r.title}</dd>
+              <dt>Description</dt>
+              <dd>{r.description}</dd>
+              <dt>Status</dt>
+              <dd>{r.sapStatus}</dd>
+              <dt>Category</dt>
+              <dd>{r.category}</dd>
+              <dt>Received</dt>
+              <dd>{r.receivedAt}</dd>
+              <dt>Location</dt>
+              <dd>{r.locationDescription}</dd>
+              <dt>Intake route</dt>
+              <dd>{r.intakeRoute}</dd>
+            </dl>
+          </details>
+        </span>
+      ),
+    },
+  ];
 
   return (
-    <Section title="SAP Integration">
+    <Section
+      title="SAP Integration"
+      count={`${state.sapCandidates.length} record${state.sapCandidates.length === 1 ? '' : 's'}`}
+    >
       <dl className="facts">
         <dt>API</dt>
         <dd>API_EHS_REPORT_INCIDENT_SRV (EHS / Compliance — partial fit, Option 2)</dd>
         <dt>Status</dt>
         <dd>{status ? statusBadge(status.state) : <span className="badge tg-idle">○ Checking…</span>}</dd>
         <dt>Last Sync</dt>
-        <dd>{syncedAt ?? status?.lastSync ? formatNzdtTime((syncedAt ?? status?.lastSync) as string) : '—'}</dd>
+        <dd>{lastSyncLabel !== null ? formatNzdtTime(lastSyncLabel) : '—'}</dd>
         <dt>Records Retrieved</dt>
-        <dd>{refs.length === 0 ? (status?.lastCount ?? '—') : refs.length}</dd>
+        <dd>
+          {live
+            ? `Live: ${autoSync.count}`
+            : 'Unavailable — configure SAP_API_BASE_URL and SAP_API_KEY, then open Incoming.'}
+        </dd>
       </dl>
-      <p>
-        <button className="btn btn-primary" type="button" onClick={() => void onSync()} disabled={phase === 'loading'}>
-          {phase === 'loading' ? '↻ Connecting to SAP Incident Service…' : '↻ Sync SAP Incidents'}
-        </button>
+      <p className="muted small">
+        Candidates load automatically when the Incoming worklist opens — no manual sync.
       </p>
-      {phase === 'loading' && <p className="muted">Connecting to SAP Incident Service…</p>}
-      {message && (
-        <p className={phase === 'error' ? 'field-error' : 'success-inline'} role="status">
-          {message}
-        </p>
-      )}
-      {refs.length > 0 && (
-        <table className="records">
-          <thead>
-            <tr>
-              <th>SAP Incident</th>
-              <th>Description</th>
-              <th>Status</th>
-              <th>Created</th>
-              <th>Source</th>
-            </tr>
-          </thead>
-          <tbody>
-            {refs.map((r) => (
-              <tr key={r.sapId}>
-                <td>
-                  <strong>{r.sapId}</strong>
-                  {r.title && <div className="muted small">{r.title}</div>}
-                </td>
-                <td>{r.description ?? '—'}</td>
-                <td>{r.status ?? '—'}</td>
-                <td>{r.createdAt ?? '—'}</td>
-                <td>
-                  <span className="badge tg-idle">SAP</span>{' '}
-                  <details className="sap-details">
-                    <summary>View SAP Details</summary>
-                    <dl className="facts">
-                      <dt>Title</dt>
-                      <dd>{r.title ?? 'Unavailable'}</dd>
-                      <dt>Description</dt>
-                      <dd>{r.description ?? 'Unavailable'}</dd>
-                      <dt>Status</dt>
-                      <dd>{r.status ?? 'Unavailable'}</dd>
-                      <dt>Created</dt>
-                      <dd>{r.createdAt ?? 'Unavailable'}</dd>
-                      <dt>Updated</dt>
-                      <dd>{r.updatedAt ?? 'Unavailable'}</dd>
-                    </dl>
-                  </details>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <DataTable<SapCandidate>
+        rows={state.sapCandidates}
+        columns={columns}
+        rowKey={(r) => r.sapId}
+        searchText={(r) => `${r.sapId} ${r.title} ${r.description} ${r.sapStatus} ${r.category}`}
+        searchPlaceholder="Search SAP incidents"
+        pageSize={8}
+        emptyTitle="No SAP records"
+        emptyDescription="Open the Incoming worklist to load SAP incident candidates."
+      />
       <div className="note">
-        Sandbox records are SAP EHS references only — not Auckland Transport
-        operational incidents. Sync never modifies the shared AT incident record.
+        SAP records are references only. Records that should enter the AT workflow are reviewed as intake candidates in Incoming.
       </div>
     </Section>
   );

@@ -1,39 +1,18 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { CommsTargetBadge, OpStatusBadge, SeverityBadge } from '../../components/badges.js';
 import { Crumbs, Section } from '../../components/chrome.js';
-import { SapStatus } from '../../components/SapStatus.js';
-import { firstCommunicationKpi, formatNzdtTime } from '../../domain/kpi.js';
-import type { Incident, OperationalStatus, Severity } from '../../domain/types.js';
+import { FioriButton } from '../../components/Button.js';
+import { DataTable, type DataColumn } from '../../components/DataTable.js';
+import { formatNzdtShort } from '../../domain/kpi.js';
+import { operationalStatusLabel } from '../../domain/operations.js';
+import type { Incident } from '../../domain/types.js';
 import { useAppStore } from '../../state/AppStore.js';
-import { OpsNav } from './OpsNav.js';
 
-type TargetFilter = 'all' | 'breached' | 'due' | 'achieved' | 'not';
-
-function targetOf(incident: Incident): TargetFilter {
-  const kpi = firstCommunicationKpi(incident);
-  if (kpi.state === 'MET') return 'achieved';
-  if (kpi.state === 'EXCEEDED') return 'breached';
-  if (kpi.state === 'COUNTING') {
-    const remaining = kpi.remainingMs ?? 0;
-    if (remaining <= 0) return 'breached';
-    if (remaining <= 3 * 60 * 1000) return 'due';
-    return 'not';
-  }
-  return 'not';
-}
-
-/** Riskiest first: breached, due soon, counting, awaiting, then the rest. */
-function riskRank(incident: Incident): number {
-  const t = targetOf(incident);
-  if (t === 'breached') return 0;
-  if (t === 'due') return 1;
-  if (firstCommunicationKpi(incident).state === 'COUNTING') return 2;
-  if (incident.operationalStatus === 'REPORTED') return 3;
-  return 4;
-}
-
-/** Incidents — every shared record, filterable and risk-sorted. */
+/**
+ * Incidents — Figma "03 AT Operations" worklist. Status and ownership
+ * overview with drill-through to the workspace; no inline editing here.
+ */
 export function Incidents(): React.JSX.Element {
   const { state, setRole } = useAppStore();
 
@@ -41,143 +20,157 @@ export function Incidents(): React.JSX.Element {
     setRole('OPERATIONS');
   }, [setRole]);
 
-  const [query, setQuery] = useState('');
-  const [status, setStatus] = useState<'all' | OperationalStatus>('all');
-  const [severity, setSeverity] = useState<'all' | Severity | 'none'>('all');
-  const [target, setTarget] = useState<TargetFilter>('all');
-  const [owner, setOwner] = useState('all');
+  const rows: Incident[] = state.incidents;
 
-  const owners = useMemo(
-    () => [...new Set(state.incidents.map((i) => i.owner ?? 'Unassigned'))],
-    [state.incidents],
-  );
+  const selected = rows[0] ?? null;
 
-  const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return state.incidents
-      .filter((i) => {
-        if (q && !`${i.id} ${i.route} ${i.location}`.toLowerCase().includes(q)) return false;
-        if (status !== 'all' && i.operationalStatus !== status) return false;
-        if (severity === 'none' ? i.severity !== null : severity !== 'all' && i.severity !== severity) return false;
-        if (target !== 'all' && targetOf(i) !== target) return false;
-        if (owner !== 'all' && (i.owner ?? 'Unassigned') !== owner) return false;
-        return true;
-      })
-      .sort((a, b) => riskRank(a) - riskRank(b));
-  }, [state.incidents, query, status, severity, target, owner]);
-
-  function resetFilters(): void {
-    setQuery('');
-    setStatus('all');
-    setSeverity('all');
-    setTarget('all');
-    setOwner('all');
-  }
+  const columns: Array<DataColumn<Incident>> = [
+    {
+      key: 'incident',
+      label: 'Incident',
+      sortable: true,
+      sortValue: (i) => i.id,
+      render: (i) => <Link to={`/operations/incident/${i.id}`}>{i.id}</Link>,
+    },
+    {
+      key: 'route',
+      label: 'Route',
+      sortable: true,
+      filter: 'select',
+      filterValue: (i) => `Route ${i.route}`,
+      sortValue: (i) => i.route,
+      render: (i) => i.route,
+    },
+    {
+      key: 'location',
+      label: 'Location',
+      sortable: true,
+      sortValue: (i) => i.location,
+      render: (i) => i.location,
+    },
+    {
+      key: 'severity',
+      label: 'Severity',
+      sortable: true,
+      filter: 'select',
+      filterValue: (i) => i.severity ?? 'Not assessed',
+      sortValue: (i) => i.severity ?? '',
+      render: (i) => <SeverityBadge level={i.severity} />,
+    },
+    {
+      key: 'status',
+      label: 'Operational Status',
+      sortable: true,
+      filter: 'select',
+      filterValue: (i) => operationalStatusLabel(i.operationalStatus),
+      sortValue: (i) => i.operationalStatus,
+      render: (i) => <OpStatusBadge status={i.operationalStatus} />,
+    },
+    {
+      key: 'comms',
+      label: 'Communication',
+      sortable: true,
+      sortValue: (i) => i.communicationStatus,
+      render: (i) =>
+        i.communicationStatus === 'PUBLISHED' ? (
+          <CommsTargetBadge incident={i} />
+        ) : (
+          <span className="muted">
+            {i.communicationStatus.charAt(0) +
+              i.communicationStatus
+                .slice(1)
+                .toLowerCase()
+                .replace(/_/g, ' ')}
+          </span>
+        ),
+    },
+    {
+      key: 'owner',
+      label: 'Owner',
+      sortable: true,
+      sortValue: (i) => i.owner ?? '',
+      render: (i) => i.owner ?? 'Unassigned',
+    },
+    {
+      key: 'action',
+      label: 'Action',
+      render: (i) => (
+        <FioriButton small icon="view" to={`/operations/incident/${i.id}`}>
+          View Incident
+        </FioriButton>
+      ),
+    },
+  ];
 
   return (
     <div>
       <div className="pagehead">
         <Crumbs trail={['Operations', 'Incidents']} />
-        <span className="eyebrow">AT Operations</span>
         <h1>Incidents</h1>
-        <p className="lede">Every shared incident record, sorted by communication risk.</p>
+        <p className="lede">Manage shared disruption records and operational ownership.</p>
       </div>
 
-      <OpsNav />
-
-      <Section title={`Incident queue (${rows.length} of ${state.incidents.length})`}>
-        <div className="filters">
-          <input
-            className="input"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search ID, route or location"
-            aria-label="Search ID, route or location"
-          />
-          <select className="input" value={status} onChange={(e) => setStatus(e.target.value as 'all' | OperationalStatus)} aria-label="Status filter">
-            <option value="all">Status: All</option>
-            <option value="REPORTED">Reported</option>
-            <option value="VALIDATED">Validated</option>
-            <option value="ACTIVE">Active</option>
-            <option value="RECOVERY_IN_PROGRESS">Recovering</option>
-            <option value="RESTORED">Restored</option>
-            <option value="CLOSED">Closed</option>
-          </select>
-          <select className="input" value={severity} onChange={(e) => setSeverity(e.target.value as 'all' | Severity | 'none')} aria-label="Severity filter">
-            <option value="all">Severity: All</option>
-            <option value="CRITICAL">Critical</option>
-            <option value="HIGH">High</option>
-            <option value="MEDIUM">Medium</option>
-            <option value="LOW">Low</option>
-            <option value="none">Not assessed</option>
-          </select>
-          <select className="input" value={target} onChange={(e) => setTarget(e.target.value as TargetFilter)} aria-label="Target filter">
-            <option value="all">Target: All</option>
-            <option value="breached">Breached</option>
-            <option value="due">Due soon</option>
-            <option value="achieved">Achieved</option>
-            <option value="not">Not published</option>
-          </select>
-          <select className="input" value={owner} onChange={(e) => setOwner(e.target.value)} aria-label="Owner filter">
-            <option value="all">Owner: All</option>
-            {owners.map((o) => (
-              <option key={o}>{o}</option>
-            ))}
-          </select>
-          <button className="btn" type="button" onClick={resetFilters}>
-            ↺ Reset
-          </button>
-        </div>
-        {rows.length === 0 ? (
-          <p className="muted">No incidents match these filters.</p>
-        ) : (
-          <table className="records">
-            <thead>
-              <tr>
-                <th>Incident</th>
-                <th>Route</th>
-                <th>Detected</th>
-                <th>Severity</th>
-                <th>Status</th>
-                <th>Owner</th>
-                <th>Update target</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((i) => (
-                <tr key={i.id}>
-                  <td>
-                    <strong>{i.id}</strong>
-                    <div className="muted small">
-                      {i.disruptionType} · {i.location}
-                    </div>
-                  </td>
-                  <td>{i.route}</td>
-                  <td>{formatNzdtTime(i.detectedAt)}</td>
-                  <td>
-                    <SeverityBadge level={i.severity} />
-                  </td>
-                  <td>
-                    <OpStatusBadge status={i.operationalStatus} />
-                  </td>
-                  <td>{i.owner ?? 'Unassigned'}</td>
-                  <td>
-                    <CommsTargetBadge incident={i} />
-                  </td>
-                  <td>
-                    <Link to={`/operations/incident/${i.id}`}>Open →</Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+      <Section
+        title="Incidents"
+        count={`${rows.length} record${rows.length === 1 ? '' : 's'}`}
+      >
+        <DataTable<Incident>
+          rows={rows}
+          columns={columns}
+          rowKey={(i) => i.id}
+          searchText={(i) => `${i.id} ${i.route} ${i.location} ${i.owner ?? ''} ${i.disruptionType}`}
+          searchPlaceholder="Search incidents"
+          pageSize={10}
+          emptyTitle="No incidents match"
+          emptyDescription="Try changing the filter criteria."
+        />
+        <p className="table-foot">Showing all records</p>
       </Section>
 
-      <Section title="Data source">
-        <SapStatus />
-      </Section>
+      {selected && (
+        <Section title={`Selected incident · ${selected.id}`}>
+          <dl className="facts-grid">
+            <div className="fact">
+              <dt>Disruption Type</dt>
+              <dd>{selected.disruptionType}</dd>
+            </div>
+            <div className="fact">
+              <dt>Estimated Delay</dt>
+              <dd>{selected.estimatedDelayMinutes} min</dd>
+            </div>
+            <div className="fact">
+              <dt>Estimated Restoration</dt>
+              <dd>
+                {selected.estimatedRestorationAt
+                  ? formatNzdtShort(selected.estimatedRestorationAt)
+                  : 'Not yet confirmed'}
+              </dd>
+            </div>
+            <div className="fact">
+              <dt>First Communication</dt>
+              <dd>
+                {selected.firstPublishedAt ? (
+                  <CommsTargetBadge incident={selected} />
+                ) : (
+                  <span className="muted">Not yet published</span>
+                )}
+              </dd>
+            </div>
+          </dl>
+          <p className="muted small">
+            Operational status: {operationalStatusLabel(selected.operationalStatus)} ·
+            Owner: {selected.owner ?? 'Unassigned'}
+          </p>
+          <div className="actions-bar">
+            <FioriButton design="emphasized" icon="view" to={`/operations/incident/${selected.id}`}>
+              View Incident
+            </FioriButton>
+            <FioriButton icon="wrench" to="/operations/recovery">
+              Update Recovery
+            </FioriButton>
+          </div>
+        </Section>
+      )}
     </div>
   );
 }

@@ -12,8 +12,8 @@ export const OWNER_ROSTER = ['Sarah Chen', 'James Wilson', 'Mia Roberts'];
 /** Display titles for the demo roster (prototype labels). */
 export const OWNER_TITLES: Record<string, string> = {
   'Sarah Chen': 'Duty Operations Manager',
-  'James Wilson': 'Operations Controller',
-  'Mia Roberts': 'Operations Controller',
+  'James Wilson': 'Operations Coordinator',
+  'Mia Roberts': 'Operations Coordinator',
 };
 
 export function defaultRecoveryTasks(): RecoveryTask[] {
@@ -37,6 +37,18 @@ export function normalizeIncident(incident: Incident): Incident {
   }
   if (typeof (next as { infoRequested?: unknown }).infoRequested !== 'boolean') {
     next = { ...next, infoRequested: false };
+  }
+  if (!('sapLink' in next) || next.sapLink === undefined) {
+    next = { ...next, sapLink: null };
+  }
+  if (!('serviceContinues' in next) || next.serviceContinues === undefined) {
+    next = { ...next, serviceContinues: null };
+  }
+  if (next.reviewStatus !== 'OPEN' && next.reviewStatus !== 'IN_PROGRESS') {
+    next = { ...next, reviewStatus: 'OPEN' };
+  }
+  if (!('closureNotes' in next) || next.closureNotes === undefined) {
+    next = { ...next, closureNotes: null };
   }
   // Rename legacy prototype channel labels on load (demo convenience).
   const renameChannel = (c: string): string => (c === 'AT website' ? 'Website' : c);
@@ -79,14 +91,6 @@ export function canAssess(incident: Incident): boolean {
     incident.operationalStatus !== 'REPORTED' &&
     incident.operationalStatus !== 'CLOSED' &&
     incident.operationalStatus !== 'RESTORED'
-  );
-}
-
-export function canMarkActive(incident: Incident): boolean {
-  return (
-    incident.operationalStatus === 'VALIDATED' &&
-    incident.severity !== null &&
-    incident.owner !== null
   );
 }
 

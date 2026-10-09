@@ -81,14 +81,47 @@ export function formatMmSs(ms: number): string {
 }
 
 /** Format an ISO timestamp for NZDT display, e.g. "09:08 NZDT". */
+/** Parse guard: an Invalid Date throws inside Intl formatting and would
+ * blank the whole view — return null so callers can render a placeholder. */
+function safeDate(iso: string): Date | null {
+  const d = new Date(iso);
+  return Number.isFinite(d.getTime()) ? d : null;
+}
+
 export function formatNzdtTime(iso: string): string {
+  const at = safeDate(iso);
+  if (!at) return '—';
   const parts = new Intl.DateTimeFormat('en-NZ', {
     timeZone: 'Pacific/Auckland',
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
-  }).format(new Date(iso));
+  }).format(at);
   return `${parts} NZDT`;
+}
+
+/** Short NZDT time, e.g. "09:08" (the footer carries the NZDT disclaimer). */
+export function formatNzdtShort(iso: string): string {
+  const at = safeDate(iso);
+  if (!at) return '—';
+  return new Intl.DateTimeFormat('en-NZ', {
+    timeZone: 'Pacific/Auckland',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(at);
+}
+
+/** Short NZDT date, e.g. "07 Oct 2026". */
+export function formatNzdtDate(iso: string): string {
+  const at = safeDate(iso);
+  if (!at) return '—';
+  return new Intl.DateTimeFormat('en-NZ', {
+    timeZone: 'Pacific/Auckland',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(at);
 }
 
 /** Remaining ms under 3 minutes counts as "due soon" (UI-kit convention). */

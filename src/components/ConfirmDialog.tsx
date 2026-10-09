@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { FioriButton } from './Button.js';
+import { Icon } from './icons.js';
 
 /**
  * Confirmation dialog per the UI kit: states consequences, requires an
@@ -7,21 +9,27 @@ import { useState } from 'react';
  */
 export function ConfirmDialog({
   title,
+  subtitle,
   summary,
   checkLabel = '',
   requireCheck = true,
   disclaimer,
   confirmLabel,
+  tone = 'primary',
   onConfirm,
   onCancel,
 }: {
   title: string;
+  /** Small caption under the title (Figma dialog header). */
+  subtitle?: string;
   summary: string[];
   checkLabel?: string;
   /** When false, no acknowledgement checkbox is shown and confirm is immediate. */
   requireCheck?: boolean;
   disclaimer: string;
   confirmLabel: string;
+  /** Figma buttons: Emphasized (default) or Negative (destructive). */
+  tone?: 'primary' | 'negative';
   onConfirm: () => void;
   onCancel: () => void;
 }): React.JSX.Element {
@@ -36,7 +44,16 @@ export function ConfirmDialog({
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2>{title}</h2>
+        <h2>
+          <span className="dialog-icon" aria-hidden="true">
+            ⚠
+          </span>{' '}
+          {title}
+        </h2>
+        {subtitle && <p className="muted small">{subtitle}</p>}
+        <button className="dialog-close" type="button" onClick={onCancel} aria-label="Close dialog">
+          <Icon name="decline" size={16} />
+        </button>
         <ul>
           {summary.map((line) => (
             <li key={line}>{line}</li>
@@ -50,17 +67,17 @@ export function ConfirmDialog({
         )}
         <div className="note">{disclaimer}</div>
         <div className="dialog-actions">
-          <button className="btn" type="button" onClick={onCancel}>
-            × Cancel
-          </button>
-          <button
-            className="btn btn-primary"
-            type="button"
+          <FioriButton icon="decline" onClick={onCancel}>
+            Cancel
+          </FioriButton>
+          <FioriButton
+            design={tone === 'negative' ? 'negative' : 'emphasized'}
+            icon="check"
             disabled={requireCheck && !checked}
             onClick={onConfirm}
           >
-            ➤ {confirmLabel}
-          </button>
+            {confirmLabel}
+          </FioriButton>
         </div>
       </div>
     </div>

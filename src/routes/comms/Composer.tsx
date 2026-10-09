@@ -1,28 +1,27 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { CommsTargetBadge, OpStatusBadge, SeverityBadge } from '../../components/badges.js';
-import { Section } from '../../components/chrome.js';
-import { ConfirmDialog } from '../../components/ConfirmDialog.js';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { OpStatusBadge, SeverityBadge } from '../../components/badges.js';
+import { FioriButton } from '../../components/Button.js';
+import { Crumbs, Section } from '../../components/chrome.js';
 import { Field } from '../../components/forms.js';
 import {
-  buildMessageTemplate,
-  buildTitle,
+  buildTemplateMessage,
+  buildTemplateTitle,
   CHANNELS,
-  targetProgress,
   validateDraft,
   type DraftErrors,
   type DraftInput,
+  type TemplateKind,
 } from '../../domain/comms.js';
-import { lastOperatorUpdateAt } from '../../domain/contractor.js';
 import {
-  FIRST_COMM_TARGET_MS,
   firstCommunicationKpi,
   formatMmSs,
+  formatNzdtShort,
   formatNzdtTime,
 } from '../../domain/kpi.js';
-import { operationalStatusLabel } from '../../domain/operations.js';
-import type { Incident } from '../../domain/types.js';
 import { useAppStore } from '../../state/AppStore.js';
+
+const TEMPLATE_KINDS: TemplateKind[] = ['breakdown', 'recovery', 'restored'];
 
 function useNowTick(active: boolean): string {
   const [now, setNow] = useState(() => new Date().toISOString());
@@ -35,13 +34,21 @@ function useNowTick(active: boolean): string {
 }
 
 /**
- * Prepare Passenger Update — read-only operational summary, editable
- * passenger message, channel selection, preview, live 10-minute timer and
- * Approve & Publish. First publication stops the KPI clock; follow-up
- * publications never reset firstPublishedAt.
+ * Passenger Message Workspace — Figma "04 Customer Information".
+ * Editable title/message (500 chars), next-update time, channels
+ * (Mobile App + Website pre-selected), live target strip, read-only
+ * incident context, sticky footer actions, preview dialog, publish
+  * confirmation. First publication stops the response timer and opens the
+ * publication success page; follow-ups never reset firstPublishedAt.
  */
 export function Composer(): React.JSX.Element {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const locationState = (location.state ?? {}) as {
+    template?: TemplateKind;
+    followUp?: boolean;
+  };
   const { setRole, getIncident, saveDraft, publishComms } = useAppStore();
 
   useEffect(() => {
@@ -49,21 +56,28 @@ export function Composer(): React.JSX.Element {
   }, [setRole]);
 
   const incident = id ? getIncident(id) : undefined;
-
   const existing = incident?.commsDraft;
+
   const [form, setForm] = useState<DraftInput | null>(null);
   const [errors, setErrors] = useState<DraftErrors>({});
+  const [previewing, setPreviewing] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [followUp, setFollowUp] = useState(false);
+  const [followUp, setFollowUp] = useState(locationState.followUp === true);
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
 
   useEffect(() => {
     setForm(null);
     setErrors({});
+    setPreviewing(false);
     setConfirming(false);
-    setFollowUp(false);
+    setFollowUp(locationState.followUp === true);
     setDraftSavedAt(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const templateKind: TemplateKind = TEMPLATE_KINDS.includes(locationState.template ?? 'breakdown')
+    ? (locationState.template ?? 'breakdown')
+    : 'breakdown';
 
   const draft: DraftInput =
     form ??
@@ -73,18 +87,16 @@ export function Composer(): React.JSX.Element {
           message: existing.message,
           channels: [...existing.channels],
           nextUpdateBy: existing.nextUpdateBy,
-          commitmentOwner: existing.commitmentOwner,
         }
       : null) ??
     (incident
       ? {
-          title: buildTitle(incident),
-          message: buildMessageTemplate(incident),
+          title: buildTemplateTitle(incident, templateKind),
+          message: buildTemplateMessage(incident, templateKind),
           channels: ['AT Mobile App', 'Website'],
           nextUpdateBy: '',
-          commitmentOwner: 'Talia Reed',
         }
-      : { title: '', message: '', channels: [], nextUpdateBy: '', commitmentOwner: '' });
+      : { title: '', message: '', channels: [], nextUpdateBy: '' });
 
   const counting = incident !== undefined && incident.firstPublishedAt === null;
   const nowIso = useNowTick(counting);
@@ -92,11 +104,16 @@ export function Composer(): React.JSX.Element {
   if (!incident) {
     return (
       <div>
-        <h1>Incident not found</h1>
-        <p className="muted">No shared record with ID {id ?? '(unknown)'} in this demo state.</p>
-        <Link className="btn btn-link" to="/comms">
-          Back to overview
-        </Link>
+        <div className="pagehead">
+          <Crumbs trail={['Customer Information', 'Passenger Message Workspace']} />
+          <h1>Incident not found</h1>
+          <p className="lede">No record found with ID {id ?? '(unknown)'}.</p>
+        </div>
+        <div className="actions-bar">
+          <FioriButton icon="back" to="/comms">
+            Back to overview
+          </FioriButton>
+        </div>
       </div>
     );
   }
@@ -105,10 +122,10 @@ export function Composer(): React.JSX.Element {
     return (
       <div>
         <div className="pagehead">
-          <span className="eyebrow">AT Customer Information</span>
-          <h1>Prepare Passenger Update</h1>
-          <p>
-            <Link to="/comms/queue">← Back to queue</Link>
+          <Crumbs trail={['Customer Information', 'Communication Queue', incident.id]} />
+          <h1>Passenger Message Workspace</h1>
+          <p className="lede">
+            Incident {incident.id} · Route {incident.route} · awaiting validation.
           </p>
         </div>
         <Section title={`${incident.id} — awaiting validation`}>
@@ -122,11 +139,13 @@ export function Composer(): React.JSX.Element {
     );
   }
 
-  // Narrowed once for handlers below (direct code after the guards is fine).
-  const record: Incident = incident;
+  const record = incident;
+  const published = record.communicationStatus === 'PUBLISHED';
+  const editable = !published || followUp;
+  const kpi = firstCommunicationKpi(record, nowIso);
 
   const set =
-    (key: 'title' | 'message' | 'nextUpdateBy' | 'commitmentOwner') =>
+    (key: 'title' | 'message' | 'nextUpdateBy') =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setForm({ ...draft, [key]: e.target.value });
 
@@ -148,131 +167,58 @@ export function Composer(): React.JSX.Element {
     setDraftSavedAt(new Date().toISOString());
   }
 
-  function onPublishStart(): void {
+  function onPreview(): void {
     const found = validateDraft(draft);
     setErrors(found);
     if (Object.keys(found).length > 0) return;
+    setPreviewing(true);
+  }
+
+  function onPublishStart(): void {
+    const found = validateDraft(draft);
+    setErrors(found);
+    if (Object.keys(found).length > 0) {
+      setPreviewing(false);
+      return;
+    }
+    setPreviewing(false);
     setConfirming(true);
   }
 
   function onPublishConfirm(): void {
     publishComms(record.id, draft);
-    setForm({ ...draft });
     setConfirming(false);
     setFollowUp(false);
+    navigate(`/comms/published/${record.id}`);
   }
-
-  const kpi = firstCommunicationKpi(incident, nowIso);
-  const deadline =
-    incident.confirmedAt === null
-      ? null
-      : new Date(Date.parse(incident.confirmedAt) + FIRST_COMM_TARGET_MS).toISOString();
-  const published = incident.communicationStatus === 'PUBLISHED';
-  const editable = !published || followUp;
-  const timeline = [...incident.timeline].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
-  const tasksDone = incident.recoveryTasks.filter((t) => t.doneAt !== null).length;
-  const lastUpdate = lastOperatorUpdateAt(incident);
-  const progress = targetProgress(kpi.elapsedMs);
-  const firstMinutes = kpi.elapsedMs === null ? '–' : `${Math.round(kpi.elapsedMs / 60000)} min`;
 
   return (
     <div>
       <div className="pagehead">
-        <span className="eyebrow">AT Customer Information</span>
-        <h1>Prepare Passenger Update</h1>
+        <Crumbs trail={['Customer Information', 'Communication Queue', record.id]} />
+        <h1>Passenger Message Workspace</h1>
         <p className="lede">
-          Incident {incident.id} · Route {incident.route} ·{' '}
-          {incident.severity ?? 'Severity not yet assessed'}
-        </p>
-        <p>
-          <Link to="/comms/queue">← Back to queue</Link>{' '}
-          {!published && (
-            <button className="btn btn-primary" type="button" onClick={onPublishStart}>
-              Approve &amp; Publish
-            </button>
-          )}
+          {record.id} · Prepare Passenger Update
         </p>
       </div>
 
-      {published && !followUp && (
+      {!published ? (
+        <div className="note warn" role="note">
+          {kpi.elapsedMs === null ? '—' : `${formatMmSs(kpi.elapsedMs)} elapsed`} ·{' '}
+          {kpi.remainingMs === null ? 'Target: ≤10 minutes' : `${formatMmSs(Math.max(0, kpi.remainingMs))} remaining · Target: ≤10 minutes`} ·{' '}
+          Not yet published
+        </div>
+      ) : (
         <div className="success" role="status">
-          <strong>
-            Passenger update published —{' '}
-            {kpi.targetMet ? 'TARGET MET' : kpi.targetMet === false ? 'TARGET EXCEEDED' : ''}
-          </strong>
-          <div>Published: {incident.firstPublishedAt ? formatNzdtTime(incident.firstPublishedAt) : '–'}</div>
-          <div>
-            First Communication Time: {firstMinutes}
-            {kpi.targetMet ? ' — published within the 10-minute communication target.' : ''}
-          </div>
-          <div>
-            Channels:{' '}
-            {incident.selectedChannels.length > 0
-              ? incident.selectedChannels.map((c) => `✓ ${c}`).join(' · ')
-              : '—'}
-          </div>
-          <p>
-            <a className="btn" href="#incident-summary">
-              View Incident
-            </a>{' '}
-            <button className="btn btn-primary" type="button" onClick={() => setFollowUp(true)}>
-              ➤ Publish Follow-Up Update
-            </button>
-          </p>
+          Published{kpi.targetMet ? ' within the 10-minute communication target' : ''} · First
+          communication {kpi.elapsedMs === null ? '—' : formatMmSs(kpi.elapsedMs)}.
         </div>
       )}
 
-      {followUp && (
-        <div className="note" role="status">
-          Preparing a follow-up update. Publishing it adds a new timeline event but never
-          resets the first-publication time ({firstMinutes}).
-        </div>
-      )}
-
-      <Section id="incident-summary" title="Operational summary (read-only)">
-        <p className="muted small">
-          <SeverityBadge level={incident.severity} />{' '}
-          <OpStatusBadge status={incident.operationalStatus} /> Recovery:{' '}
-          {tasksDone}/{incident.recoveryTasks.length} tasks complete
-        </p>
-        <dl className="facts">
-          <dt>Incident ID</dt>
-          <dd>{incident.id}</dd>
-          <dt>Route</dt>
-          <dd>{incident.route}</dd>
-          <dt>Location</dt>
-          <dd>{incident.location}</dd>
-          <dt>Operator</dt>
-          <dd>{incident.operator}</dd>
-          <dt>Disruption type</dt>
-          <dd>{incident.disruptionType}</dd>
-          <dt>AT Severity</dt>
-          <dd>{incident.severity ?? 'Not yet assessed'}</dd>
-          <dt>Operational status</dt>
-          <dd>{operationalStatusLabel(incident.operationalStatus)}</dd>
-          <dt>Estimated delay</dt>
-          <dd>{incident.estimatedDelayMinutes} minutes</dd>
-          <dt>Estimated restoration</dt>
-          <dd>
-            {incident.estimatedRestorationAt
-              ? formatNzdtTime(incident.estimatedRestorationAt)
-              : 'Not confirmed · do not promise'}
-          </dd>
-          <dt>Incident owner</dt>
-          <dd>{incident.owner ?? '— unassigned'}</dd>
-          <dt>Latest operator update</dt>
-          <dd>{lastUpdate ? formatNzdtTime(lastUpdate) : '— initial notification only'}</dd>
-        </dl>
-        <div className="note">
-          Severity, ownership and recovery decisions belong to AT Operations and cannot
-          be changed here.
-        </div>
-      </Section>
-
-      <div className="form-layout">
+      <div className="form-layout composer-layout">
         <div>
-          <Section title={published ? 'Passenger update' : 'Initial passenger update'}>
-            <Field id="c-title" label="Message title" required error={errors.title}>
+          <Section title="Prepare Passenger Update">
+            <Field id="c-title" label="Message Title" required error={errors.title}>
               <input
                 id="c-title"
                 className="input"
@@ -284,76 +230,35 @@ export function Composer(): React.JSX.Element {
             </Field>
             <Field
               id="c-message"
-              label="Passenger message"
+              label="Passenger Message"
               required
               error={errors.message}
-              hint="Plain language. No internal references, unverified detours or unsupported recovery estimates."
             >
               <textarea
                 id="c-message"
                 className="input"
                 rows={6}
+                maxLength={500}
                 value={draft.message}
                 disabled={!editable}
                 onChange={set('message')}
                 aria-invalid={Boolean(errors.message)}
               />
             </Field>
-            <p className="muted small">{draft.message.trim().length} characters</p>
-            <div className="form-grid">
-              <Field
+            <p className="muted small">{draft.message.trim().length} / 500 characters</p>
+            <Field id="c-next" label="Next Update Time" error={errors.nextUpdateBy}>
+              <input
                 id="c-next"
-                label="Next update time (NZDT, optional)"
-                error={errors.nextUpdateBy}
-                hint="Leave blank when no commitment can be made yet."
-              >
-                <input
-                  id="c-next"
-                  className="input"
-                  placeholder="HH:MM"
-                  value={draft.nextUpdateBy}
-                  disabled={!editable}
-                  onChange={set('nextUpdateBy')}
-                  aria-invalid={Boolean(errors.nextUpdateBy)}
-                />
-              </Field>
-              <Field
-                id="c-owner"
-                label="Commitment owner"
-                required
-                error={errors.commitmentOwner}
-              >
-                <input
-                  id="c-owner"
-                  className="input"
-                  value={draft.commitmentOwner}
-                  disabled={!editable}
-                  onChange={set('commitmentOwner')}
-                  aria-invalid={Boolean(errors.commitmentOwner)}
-                />
-              </Field>
-            </div>
-            {draftSavedAt && (
-              <p className="muted small">
-                Draft saved {formatNzdtTime(draftSavedAt)} — saving a draft does not stop the
-                clock.
-              </p>
-            )}
-            {editable && (
-              <p>
-                <button className="btn" type="button" onClick={onSaveDraft}>
-                  ✎ Save draft
-                </button>
-              </p>
-            )}
-          </Section>
-
-          <Section title="Channels & publication approval">
-            <p className="muted small">
-              Selected destinations are illustrative; no live messages will be sent.
-            </p>
+                className="input"
+                placeholder="HH:MM"
+                value={draft.nextUpdateBy}
+                disabled={!editable}
+                onChange={set('nextUpdateBy')}
+                aria-invalid={Boolean(errors.nextUpdateBy)}
+              />
+            </Field>
             <fieldset className="channels">
-              <legend className="muted small">Publication channels *</legend>
+              <legend>Channels</legend>
               {CHANNELS.map((c) => (
                 <label key={c} className="channel">
                   <input
@@ -371,121 +276,193 @@ export function Composer(): React.JSX.Element {
                 {errors.channels}
               </p>
             )}
-            <ul className="checklist">
-              <li className="ok">
-                <span aria-hidden="true">☑</span> Facts match the incident record
-              </li>
-              <li className="ok">
-                <span aria-hidden="true">☑</span> No unsupported recovery time promised
-              </li>
-              <li className="ok">
-                <span aria-hidden="true">☑</span> Next update and owner confirmed
-              </li>
-            </ul>
-            {editable && (
-              <p>
-                <button className="btn btn-primary" type="button" onClick={onPublishStart}>
-                  {published ? '➤ Publish follow-up update' : '➤ Approve & Publish'}
-                </button>
+            <div className="note" role="note">
+              Use validated disruption information. Keep the notice concise and
+              passenger-focused.
+            </div>
+            {draftSavedAt && (
+              <p className="muted small">
+                Draft saved {formatNzdtTime(draftSavedAt)} — saving a draft does not stop the
+                clock.
               </p>
             )}
-          </Section>
-
-          <Section title="Audit timeline (newest first)">
-            <ul className="timeline">
-              {timeline.map((e) => (
-                <li key={e.id}>
-                  <span className="t-at">{formatNzdtTime(e.at)}</span>
-                  <span className="t-action">{e.action}</span>
-                  <div className="t-detail">
-                    {e.actorRole} · {e.detail}
-                  </div>
-                </li>
-              ))}
-            </ul>
           </Section>
         </div>
 
         <aside>
-          <div className={`countcard${published ? (kpi.targetMet ? ' good' : ' bad') : ''}`}>
-            <h3>First Communication Target</h3>
-            {published ? (
-              <>
-                <div className="count-big">
-                  {kpi.elapsedMs === null ? '–' : formatMmSs(kpi.elapsedMs)}
-                </div>
-                <p>
-                  <CommsTargetBadge incident={incident} />
-                </p>
-                <p className="muted small">
-                  Published{' '}
-                  {incident.firstPublishedAt ? formatNzdtTime(incident.firstPublishedAt) : '–'} ·
-                  target ≤10:00
-                </p>
-              </>
-            ) : (
-              <>
-                <div className="count-big">
-                  {kpi.elapsedMs === null ? '–' : `${formatMmSs(kpi.elapsedMs)} elapsed`}
-                </div>
-                <p className="muted small">
-                  {kpi.remainingMs === null
-                    ? 'Target: ≤10:00'
-                    : `${formatMmSs(Math.max(0, kpi.remainingMs))} remaining · target ≤10:00`}
-                </p>
-                <div className="progress" role="progressbar" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100}>
-                  <div className="progress-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
-                </div>
-                <p>
-                  <CommsTargetBadge incident={incident} />
-                </p>
-                <p className="muted small">
-                  Elapsed {kpi.elapsedMs === null ? '–' : formatMmSs(kpi.elapsedMs)} · deadline{' '}
-                  {deadline ? formatNzdtTime(deadline) : '–'}
-                </p>
-              </>
-            )}
-            <div className="note">
-              Publishing records the first-update time. The target is measured when the
-              initial update is published, not when the draft is saved.
-            </div>
-          </div>
-
-          <Section title="Passenger preview">
-            <div className="preview">
-              <p className="muted small">BUS SERVICE ALERT · DEMO · {draft.channels.join(' + ') || 'No channel selected'}</p>
-              <h3>{draft.title || '(untitled)'}</h3>
-              <p>{draft.message || '(no message)'}</p>
-              <p className="muted small">
-                {published
-                  ? `Updated ${incident.firstPublishedAt ? formatNzdtTime(incident.firstPublishedAt) : ''}.`
-                  : 'Updated time will be added when published.'}
-              </p>
-            </div>
-            <p className="muted small">Preview only — same message is used for all selected channels.</p>
+          <Section title="Incident Context">
+            <p className="muted small">Read-only operational context</p>
+            <p>
+              <SeverityBadge level={record.severity} />{' '}
+              <OpStatusBadge status={record.operationalStatus} />
+            </p>
+            <dl className="facts-grid">
+              <div className="fact">
+                <dt>Incident</dt>
+                <dd>{record.id}</dd>
+              </div>
+              <div className="fact">
+                <dt>Route</dt>
+                <dd>{record.route}</dd>
+              </div>
+              <div className="fact">
+                <dt>Location</dt>
+                <dd>{record.location}</dd>
+              </div>
+              <div className="fact">
+                <dt>Operator</dt>
+                <dd>{record.operator}</dd>
+              </div>
+              <div className="fact">
+                <dt>Estimated Delay</dt>
+                <dd>{record.estimatedDelayMinutes} min</dd>
+              </div>
+              <div className="fact">
+                <dt>Estimated Restoration</dt>
+                <dd>
+                  {record.estimatedRestorationAt
+                    ? formatNzdtShort(record.estimatedRestorationAt)
+                    : 'Not confirmed'}
+                </dd>
+              </div>
+              <div className="fact">
+                <dt>Owner</dt>
+                <dd>{record.owner ?? '— unassigned'}</dd>
+              </div>
+            </dl>
+            <p className="muted small">
+              AT Operations owns service recovery. This workspace contains no recovery
+              controls.
+            </p>
           </Section>
         </aside>
       </div>
 
+      {editable && (
+        <div className="page-actions">
+          <div className="actions-bar">
+            <FioriButton icon="save" onClick={onSaveDraft}>
+              Save Draft
+            </FioriButton>
+            <FioriButton icon="view" onClick={onPreview}>
+              Preview
+            </FioriButton>
+            <FioriButton design="emphasized" icon="send" onClick={onPublishStart}>
+              Approve &amp; Publish
+            </FioriButton>
+          </div>
+        </div>
+      )}
+
+      {previewing && (
+        <div className="dialog-backdrop" role="presentation" onClick={() => setPreviewing(false)}>
+          <div
+            className="dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Passenger update preview"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2>
+              <span className="dialog-icon info" aria-hidden="true">
+                ℹ
+              </span>{' '}
+              Passenger Update Preview
+            </h2>
+            <p className="muted small">{record.id} · Preview only — not yet published</p>
+            <button
+              className="dialog-close"
+              type="button"
+              onClick={() => setPreviewing(false)}
+              aria-label="Close dialog"
+            >
+              ×
+            </button>
+            <Section title={draft.title || 'Untitled notice'}>
+              <p>
+                <span className="badge tg-warn">▲ Service Disruption</span>
+              </p>
+              <p>{draft.message}</p>
+              <dl className="facts-grid">
+                <div className="fact">
+                  <dt>Next Update</dt>
+                  <dd>{draft.nextUpdateBy || '—'}</dd>
+                </div>
+                <div className="fact">
+                  <dt>Channels</dt>
+                  <dd>{draft.channels.join(' · ') || '—'}</dd>
+                </div>
+              </dl>
+              <p className="muted small">
+                This is a preview of the passenger notice, not a separate passenger
+                application.
+              </p>
+            </Section>
+            <div className="dialog-actions">
+              <FioriButton icon="back" onClick={() => setPreviewing(false)}>
+                Back to Edit
+              </FioriButton>
+              <FioriButton design="emphasized" icon="send" onClick={onPublishStart}>
+                Approve &amp; Publish
+              </FioriButton>
+            </div>
+          </div>
+        </div>
+      )}
+
       {confirming && (
-        <ConfirmDialog
-          title={published ? 'Publish follow-up passenger update?' : 'Publish passenger update?'}
-          summary={[
-            `Incident: ${record.id}`,
-            `Channels: ${draft.channels.join(' + ') || 'none'}`,
-            ...(draft.nextUpdateBy.trim() !== ''
-              ? [`Next update commitment: ${draft.nextUpdateBy.trim()} NZDT · ${draft.commitmentOwner.trim() || '—'}`]
-              : []),
-            published
-              ? 'This is a follow-up — the first-publication time stays unchanged.'
-              : `This records the first-update time (${kpi.elapsedMs === null ? '–' : formatMmSs(kpi.elapsedMs)} elapsed).`,
-          ]}
-          checkLabel="I have checked the facts and the selected channels"
-          disclaimer="Demo publication only. No live channel is connected. The publication result is synthetic."
-          confirmLabel="Approve & Publish"
-          onConfirm={onPublishConfirm}
-          onCancel={() => setConfirming(false)}
-        />
+        <div className="dialog-backdrop" role="presentation" onClick={() => setConfirming(false)}>
+          <div
+            className="dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Publish passenger update"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2>
+              <span className="dialog-icon" aria-hidden="true">
+                ⚠
+              </span>{' '}
+              Publish Passenger Update?
+            </h2>
+            <p className="muted small">Confirm the notice and selected channels.</p>
+            <button
+              className="dialog-close"
+              type="button"
+              onClick={() => setConfirming(false)}
+              aria-label="Close dialog"
+            >
+              ×
+            </button>
+            <dl className="facts-grid">
+              <div className="fact">
+                <dt>Incident</dt>
+                <dd>{record.id}</dd>
+              </div>
+            </dl>
+            <p>
+              <strong>{draft.title}</strong>
+            </p>
+            <p className="muted small">Channels</p>
+            {CHANNELS.map((c) => (
+              <label key={c} className="channel">
+                <input type="checkbox" checked={draft.channels.includes(c)} disabled /> {c}
+              </label>
+            ))}
+            <div className="note" role="note">
+              This publishes the passenger update and records the first communication time
+              on the shared incident.
+            </div>
+            <div className="dialog-actions">
+              <FioriButton icon="decline" onClick={() => setConfirming(false)}>
+                Cancel
+              </FioriButton>
+              <FioriButton design="emphasized" icon="send" onClick={onPublishConfirm}>
+                Approve &amp; Publish
+              </FioriButton>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

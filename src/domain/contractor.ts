@@ -44,6 +44,11 @@ export function lastOperatorUpdateAt(incident: Incident): string | null {
   return mine.length === 0 ? null : mine[mine.length - 1];
 }
 
+/** True once the operator sent at least one confirmed update (not just the submit). */
+export function hasOperatorUpdates(incident: Incident): boolean {
+  return incident.timeline.some((e) => e.action === 'Operator sent confirmed update');
+}
+
 /**
  * Whether the operator should send a follow-up. True only when the shared
  * state indicates a follow-up is required:
@@ -68,7 +73,7 @@ export function contractorIncidents(incidents: Incident[]): Incident[] {
   return incidents
     .filter(
       (i) =>
-        i.operator === 'Demo Bus Operator' ||
+        i.operator === 'City Bus Operator' ||
         i.timeline.some((e) => e.action === 'Operator submitted initial disruption notification'),
     )
     .sort((a, b) => Date.parse(b.detectedAt) - Date.parse(a.detectedAt));

@@ -1,68 +1,214 @@
 /**
- * Design tokens derived from design/AT Disruption Hub UI kit.png.
- * Single source of visual truth — no component framework.
- * Desktop-first enterprise operations interface. All times NZDT.
+ * Design tokens — SAP Fiori Horizon (Morning Horizon, sap_horizon).
+ * Grounded in:
+ *  - SAP Design System for Web v1-151, Foundations / Visual / Morning
+ *    Horizon Colors (brand, grayscale, semantic palettes)
+ *  - SAP Design System for Web v1-151, Foundations / Visual / Shadow
+ *    Concept (content shadow levels 0–3)
+ *  - SAP Design System for Web v1-151, Foundations / Visual / Design
+ *    Tokens (sap token naming: sap + Component + State + Usage)
+ *  - Exact sap_horizon control-parameter values verified against the
+ *    OpenUI5 sap_horizon theme (library.css): brand, background, text,
+ *    field, button, list, shell, focus, font, radius and shadow values.
+ *
+ * Single source of visual truth — no component framework; the :root
+ * block exposes the sap_* parameters verbatim plus the app's short
+ * aliases. Domain logic untouched. All times NZDT.
  */
 
+/**
+ * SAP 72 typeface (Fiori) via the official SAPUI5 CDN, with the system
+ * sans stack as fallback when offline. Prototype demo use only.
+ */
+@font-face {
+  font-family: "72";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("https://sapui5.hana.ondemand.com/resources/sap/ui/core/themes/sap_horizon/fonts/72-Regular.woff2")
+    format("woff2");
+}
+
+@font-face {
+  font-family: "72";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("https://sapui5.hana.ondemand.com/resources/sap/ui/core/themes/sap_horizon/fonts/72-Bold.woff2")
+    format("woff2");
+}
+
 :root {
-  /* Brand / navigation */
-  --nav: #0e2a3e;
-  --nav-ink: #ffffff;
-  --nav-muted: #9db4c2;
+  /* ===== SAP Horizon theme parameters (sap_horizon, Morning Horizon) ===== */
+  --sapBrandColor: #0070f2;
+  --sapHighlightColor: #0064d9;
+  --sapSelectedColor: #0064d9;
+  --sapActiveColor: #dee2e5;
+  --sapBaseColor: #ffffff;
+  --sapBackgroundColor: #f5f6f7;
+  --sapTextColor: #131e29;
+  --sapTitleColor: #131e29;
+  --sapContent_LabelColor: #556b82;
+  --sapContent_IconColor: #131e29;
+  --sapContent_NonInteractiveIconColor: #758ca4;
+  --sapContent_ForegroundBorderColor: #758ca4;
+  --sapContent_ContrastTextColor: #ffffff;
+  --sapContent_DisabledTextColor: rgba(19, 30, 41, 0.6);
+  --sapContent_PlaceholderColor: #556b82;
+  --sapContent_LineHeight: 1.5;
 
-  /* Actions */
-  --teal: #0e7c74;
-  --teal-dark: #0a5f59;
-  --teal-tint: #e6f3f1;
+  /* Field (sapField_*) */
+  --sapField_Background: #ffffff;
+  --sapField_BorderColor: #556b81;
+  --sapField_Hover_BorderColor: #0064d9;
+  --sapField_Focus_BorderColor: #0032a5;
+  --sapField_ReadOnly_Background: #eaecee;
+  --sapField_BorderCornerRadius: 0.25rem;
 
-  /* Secondary buttons: visibly filled so they read as buttons */
-  --btn-bg: #e9eef1;
-  --btn-border: #c3cfd5;
-  --btn-hover-bg: #dde5ea;
+  /* Button (sapButton_*) */
+  --sapButton_Background: #ffffff;
+  --sapButton_BorderColor: #bcc3ca;
+  --sapButton_Hover_Background: #eaecee;
+  --sapButton_Hover_BorderColor: #bcc3ca;
+  --sapButton_Active_Background: #ffffff;
+  --sapButton_Emphasized_Background: #0070f2;
+  --sapButton_Emphasized_Hover_Background: #0064d9;
+  --sapButton_Emphasized_Active_Background: #0057d2;
+  --sapButton_Emphasized_BorderColor: #0070f2;
+  --sapButton_Emphasized_TextColor: #ffffff;
+  --sapButton_BorderCornerRadius: 0.5rem;
 
-  /* Page */
-  --bg: #f3f5f6;
-  --card: #ffffff;
-  --border: #dfe6e9;
-  --ink: #1c2b33;
-  --muted: #5d6f79;
-  --faint: #47616d;
+  /* List / table (sapList_*) */
+  --sapList_Background: #ffffff;
+  --sapList_BorderColor: #e5e5e5;
+  --sapList_HeaderBackground: #ffffff;
+  --sapList_Hover_Background: #eaecee;
+  --sapList_SelectionBackgroundColor: #ebf8ff;
+  --sapList_GroupHeaderBackground: #eff1f2;
 
-  /* Severity (always paired with a text label — never colour-alone) */
-  --sev-critical-fg: #b42318;
-  --sev-critical-bg: #fdecea;
-  --sev-high-fg: #b54708;
-  --sev-high-bg: #fef1e2;
-  --sev-medium-fg: #7a5c00;
-  --sev-medium-bg: #fdf3d7;
-  --sev-low-fg: #1c6b3a;
-  --sev-low-bg: #e7f4ec;
+  /* Group / shell */
+  --sapGroup_TitleBorderColor: #a8b3bd;
+  --sapShell_Background: #eff1f2;
+  --sapShell_BorderColor: #d9d9d9;
+  --sapShell_TextColor: #131e29;
+
+  /* Semantic foregrounds (sapNegativeColor et al.) */
+  --sapNegativeColor: #aa0808;
+  --sapCriticalColor: #e76500;
+  --sapPositiveColor: #256f3a;
+  --sapNeutralColor: #788fa6;
+  --sapInformativeColor: #0070f2;
+
+  /* Semantic backgrounds (sapErrorBackground et al.) */
+  --sapErrorBackground: #ffeaf4;
+  --sapWarningBackground: #fff8d6;
+  --sapSuccessBackground: #f5fae5;
+  --sapInformationBackground: #e1f4ff;
+  --sapNeutralBackground: #eff1f2;
+
+  /* Link */
+  --sapLinkColor: #0064d9;
+  --sapLink_HoverColor: #0057d2;
+
+  /* Focus */
+  --sapContent_FocusColor: #0032a5;
+  --sapContent_FocusWidth: 0.125rem;
+  --sapContent_FocusStyle: solid;
+
+  /* Typography (sapFont_*) */
+  --sapFontFamily: "72", "72full", Arial, Helvetica, sans-serif;
+  --sapFontSize: 0.875rem;
+  --sapFontSmallSize: 0.75rem;
+  --sapFontLargeSize: 1rem;
+  --sapFontHeader1Size: 3rem;
+  --sapFontHeader2Size: 2rem;
+  --sapFontHeader3Size: 1.5rem;
+  --sapFontHeader4Size: 1.25rem;
+  --sapFontHeader5Size: 1rem;
+  --sapFontHeader6Size: 0.875rem;
+
+  /* Metrics */
+  --sapElement_Height: 2.25rem;
+  --sapElement_BorderCornerRadius: 0.75rem;
+  --sapTile_BorderCornerRadius: 1rem;
+
+  /* Content shadows (Horizon levels 0–3) */
+  --sapContent_Shadow0:
+    0 0 0.125rem 0 rgba(34, 53, 72, 0.2),
+    0 0.125rem 0.25rem 0 rgba(34, 53, 72, 0.2);
+  --sapContent_Shadow1:
+    0 0 0 0.0625rem rgba(34, 53, 72, 0.48),
+    0 0.125rem 0.5rem 0 rgba(34, 53, 72, 0.3);
+  --sapContent_Shadow2:
+    0 0 0 0.0625rem rgba(34, 53, 72, 0.48),
+    0 0.625rem 1.875rem 0 rgba(34, 53, 72, 0.25);
+  --sapContent_Shadow3:
+    0 0 0 0.0625rem rgba(34, 53, 72, 0.48),
+    0 1.25rem 5rem 0 rgba(34, 53, 72, 0.25);
+
+  /* ===== App aliases (map to the sap_* parameters above) ===== */
+  --brand: var(--sapBrandColor);
+  --brand-dark: var(--sapButton_Emphasized_Hover_Background);
+  --brand-active: var(--sapButton_Emphasized_Active_Background);
+  --brand-tint: var(--sapList_SelectionBackgroundColor);
+  --focus: var(--sapContent_FocusColor);
+  --teal: var(--brand);
+  --teal-dark: var(--brand-dark);
+  --teal-tint: var(--brand-tint);
+
+  --btn-bg: var(--sapButton_Background);
+  --btn-border: var(--sapButton_BorderColor);
+  --btn-hover-bg: var(--sapButton_Hover_Background);
+
+  --bg: var(--sapBackgroundColor);
+  --card: var(--sapBaseColor);
+  --border: var(--sapShell_BorderColor);
+  --table-head-bg: var(--sapList_HeaderBackground);
+  --table-border: var(--sapList_BorderColor);
+  --ink: var(--sapTextColor);
+  --muted: var(--sapContent_LabelColor);
+  --faint: #415364;
+
+  /* ObjectStatus (Fiori: transparent text + icon, never colour-alone).
+     Severity maps to official Horizon value states: Negative (critical),
+     Critical (high), Information (medium), Positive (low). Tinted
+     backgrounds retained only for transient strips. */
+  --sev-critical-fg: var(--sapNegativeColor);
+  --sev-critical-bg: var(--sapErrorBackground);
+  --sev-high-fg: var(--sapCriticalColor);
+  --sev-high-bg: var(--sapWarningBackground);
+  --sev-medium-fg: var(--sapInformativeColor);
+  --sev-medium-bg: var(--sapInformationBackground);
+  --sev-low-fg: var(--sapPositiveColor);
+  --sev-low-bg: var(--sapSuccessBackground);
 
   /* Operational status */
-  --status-ops-fg: #0e7c74;
-  --status-ops-bg: #e6f3f1;
-  --status-done-fg: #1c6b3a;
-  --status-done-bg: #e7f4ec;
-  --status-idle-fg: #5d6f79;
-  --status-idle-bg: #edf1f3;
+  --status-ops-fg: var(--sapInformativeColor);
+  --status-ops-bg: var(--sapInformationBackground);
+  --status-done-fg: var(--sapPositiveColor);
+  --status-done-bg: var(--sapSuccessBackground);
+  --status-idle-fg: var(--sapNeutralColor);
+  --status-idle-bg: var(--sapNeutralBackground);
 
   /* Communication target */
-  --target-bad-fg: #b42318;
-  --target-bad-bg: #fdecea;
-  --target-warn-fg: #b54708;
-  --target-warn-bg: #fef1e2;
-  --target-good-fg: #1c6b3a;
-  --target-good-bg: #e7f4ec;
-  --target-idle-fg: #3d5a80;
-  --target-idle-bg: #e8eef5;
+  --target-bad-fg: var(--sapNegativeColor);
+  --target-bad-bg: var(--sapErrorBackground);
+  --target-warn-fg: #8d5b00;
+  --target-warn-bg: var(--sapWarningBackground);
+  --target-good-fg: var(--sapPositiveColor);
+  --target-good-bg: var(--sapSuccessBackground);
+  --target-idle-fg: #415364;
+  --target-idle-bg: var(--sapNeutralBackground);
+  --target-warn-border: #8d5b00;
 
-  /* Banners */
-  --demo-bar-bg: #eaf4f3;
-  --demo-bar-fg: #0e7c74;
-  --note-bg: #eef4fb;
-  --note-border: #3d5a80;
+  /* MessageStrip (information) */
+  --demo-bar-bg: var(--sapInformationBackground);
+  --demo-bar-fg: #0050b4;
+  --note-bg: var(--sapInformationBackground);
+  --note-border: var(--sapInformativeColor);
 
-  --radius: 12px;
-  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
-    Arial, sans-serif;
+  --radius: var(--sapTile_BorderCornerRadius);
+  --control-radius: var(--sapField_BorderCornerRadius);
+  --btn-radius: var(--sapButton_BorderCornerRadius);
+  --font: var(--sapFontFamily);
 }

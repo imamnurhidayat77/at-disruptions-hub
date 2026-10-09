@@ -1,12 +1,21 @@
 import { useEffect } from 'react';
-import { Section } from '../../components/chrome.js';
+import { Crumbs, Section } from '../../components/chrome.js';
+import { EmptyState } from '../../components/EmptyState.js';
+import { KpiCard } from '../../components/KpiCard.js';
+import { SeverityBadge } from '../../components/badges.js';
+import { DataTable, type DataColumn } from '../../components/DataTable.js';
 import { formatMmSs, queueKpis } from '../../domain/kpi.js';
 import type { Severity } from '../../domain/types.js';
 import { useAppStore } from '../../state/AppStore.js';
-import { OpsNav } from './OpsNav.js';
 import { SapIntegrationPanel } from './SapIntegrationPanel.js';
 
 const LEVELS: Severity[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+
+interface SeverityPerfRow {
+  level: Severity;
+  published: number;
+  met: number;
+}
 
 /** Analytics — prototype communication performance, derived from records. */
 export function Analytics(): React.JSX.Element {
@@ -19,85 +28,96 @@ export function Analytics(): React.JSX.Element {
   const kpis = queueKpis(state.incidents);
   const published = state.incidents.filter((i) => i.firstPublishedAt !== null);
 
+  const perfRows: SeverityPerfRow[] = LEVELS.flatMap((level) => {
+    const levelRows = published.filter((i) => i.severity === level);
+    if (levelRows.length === 0) return [];
+    const met = levelRows.filter((i) => {
+      if (!i.confirmedAt || !i.firstPublishedAt) return false;
+      return Date.parse(i.firstPublishedAt) - Date.parse(i.confirmedAt) <= 10 * 60 * 1000;
+    }).length;
+    return [{ level, published: levelRows.length, met }];
+  });
+
+  const perfColumns: Array<DataColumn<SeverityPerfRow>> = [
+    {
+      key: 'severity',
+      label: 'Severity',
+      sortable: true,
+      filter: 'select',
+      filterValue: (r) => r.level.charAt(0) + r.level.slice(1).toLowerCase(),
+      sortValue: (r) => r.level,
+      render: (r) => <SeverityBadge level={r.level} />,
+    },
+    {
+      key: 'published',
+      label: 'Published',
+      sortable: true,
+      sortValue: (r) => r.published,
+      render: (r) => r.published,
+    },
+    {
+      key: 'within',
+      label: 'Within target',
+      sortable: true,
+      sortValue: (r) => (r.published === 0 ? 0 : r.met / r.published),
+      render: (r) => `${r.met} of ${r.published}`,
+    },
+  ];
+
   return (
     <div>
       <div className="pagehead">
-        <span className="eyebrow">AT Operations</span>
+        <Crumbs trail={['Operations', 'Analytics']} />
         <h1>Analytics</h1>
         <p className="lede">
-          Prototype communication performance — derived from confirmation and
-          publication timestamps, not official AT reporting.
+          Communication performance — derived from confirmation and
+          publication timestamps.
         </p>
       </div>
 
-      <OpsNav />
-
       <div className="kpi-grid">
-        <div className="kpi-card">
-          <h3>Average First Communication</h3>
-          <div className="kpi-value">
-            {kpis.averageFirstCommMs === null ? '—' : formatMmSs(kpis.averageFirstCommMs)}
-          </div>
-          <p className="muted small">Across {kpis.publishedCount} published updates</p>
-        </div>
-        <div className="kpi-card">
-          <h3>Within 10-Min Target</h3>
-          <div className="kpi-value good">
-            {kpis.achievedPct === null ? '—' : `${kpis.achievedPct}%`}
-          </div>
-          <p className="muted small">
-            {kpis.achievedCount} of {kpis.publishedCount} within target
-          </p>
-        </div>
-        <div className="kpi-card">
-          <h3>Active Incidents</h3>
-          <div className="kpi-value">{kpis.active}</div>
-          <p className="muted small">Not closed or restored</p>
-        </div>
-        <div className="kpi-card">
-          <h3>Awaiting Initial Update</h3>
-          <div className="kpi-value">{kpis.awaiting}</div>
-          <p className="muted small">Not yet published</p>
-        </div>
+        <KpiCard
+          title="Average First Communication"
+          value={kpis.averageFirstCommMs === null ? '—' : formatMmSs(kpis.averageFirstCommMs)}
+          context={`Across ${kpis.publishedCount} published updates`}
+        />
+        <KpiCard
+          title="Within 10-Min Target"
+          value={kpis.achievedPct === null ? '—' : `${kpis.achievedPct}%`}
+          tone="good"
+          context={`${kpis.achievedCount} of ${kpis.publishedCount} within target`}
+        />
+        <KpiCard
+          title="Active Incidents"
+          value={kpis.active}
+          context="Not closed or restored"
+        />
+        <KpiCard
+          title="Awaiting Initial Update"
+          value={kpis.awaiting}
+          context="Not yet published"
+        />
       </div>
 
       <Section title="Performance by severity">
         {published.length === 0 ? (
-          <p className="muted">No publications yet.</p>
+          <EmptyState
+            illustration="✓"
+            title="No publications yet"
+            description="Figures appear here after the first passenger publication."
+          />
         ) : (
-          <table className="records">
-            <thead>
-              <tr>
-                <th>Severity</th>
-                <th>Published</th>
-                <th>Within target</th>
-              </tr>
-            </thead>
-            <tbody>
-              {LEVELS.map((level) => {
-                const rows = published.filter((i) => i.severity === level);
-                if (rows.length === 0) return null;
-                const met = rows.filter((i) => {
-                  if (!i.confirmedAt || !i.firstPublishedAt) return false;
-                  return Date.parse(i.firstPublishedAt) - Date.parse(i.confirmedAt) <= 10 * 60 * 1000;
-                }).length;
-                return (
-                  <tr key={level}>
-                    <td>{level}</td>
-                    <td>{rows.length}</td>
-                    <td>
-                      {met} of {rows.length}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <DataTable<SeverityPerfRow>
+            rows={perfRows}
+            columns={perfColumns}
+            rowKey={(r) => r.level}
+            searchText={(r) => r.level}
+            searchPlaceholder="Search severities"
+            pageSize={8}
+            emptyTitle="No publications yet"
+            emptyDescription="Figures appear here after the first passenger publication."
+          />
         )}
-        <div className="note">
-          Demonstration figures only — severity rules and targets are prototype
-          assumptions, not official Auckland Transport policy.
-        </div>
       </Section>
 
       <SapIntegrationPanel />

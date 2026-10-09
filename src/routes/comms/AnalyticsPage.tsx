@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
-import { Section } from '../../components/chrome.js';
+import { Crumbs, Section } from '../../components/chrome.js';
+import { DataTable, type DataColumn } from '../../components/DataTable.js';
+import { KpiCard } from '../../components/KpiCard.js';
 import { CommsTargetBadge } from '../../components/badges.js';
 import { communicationCoverage } from '../../domain/comms.js';
 import { firstCommunicationKpi, formatMmSs, queueKpis } from '../../domain/kpi.js';
+import type { Incident } from '../../domain/types.js';
 import { useAppStore } from '../../state/AppStore.js';
-import { CommsNav } from './CommsNav.js';
 
 /** Analytics — communication performance derived from shared timestamps. */
 export function AnalyticsPage(): React.JSX.Element {
@@ -18,10 +20,51 @@ export function AnalyticsPage(): React.JSX.Element {
   const coverage = communicationCoverage(state.incidents);
   const published = state.incidents.filter((i) => i.communicationStatus === 'PUBLISHED');
 
+  const columns: Array<DataColumn<Incident>> = [
+    {
+      key: 'incident',
+      label: 'Incident',
+      sortable: true,
+      sortValue: (i) => i.id,
+      render: (i) => <strong>{i.id}</strong>,
+    },
+    {
+      key: 'confirmed',
+      label: 'Confirmed',
+      sortable: true,
+      sortValue: (i) => i.confirmedAt ?? '',
+      render: (i) => i.confirmedAt ?? '—',
+    },
+    {
+      key: 'firstPublished',
+      label: 'First published',
+      sortable: true,
+      sortValue: (i) => i.firstPublishedAt ?? '',
+      render: (i) => i.firstPublishedAt ?? '—',
+    },
+    {
+      key: 'firstComm',
+      label: 'First communication',
+      sortable: true,
+      sortValue: (i) => firstCommunicationKpi(i).elapsedMs,
+      render: (i) => {
+        const elapsed = firstCommunicationKpi(i).elapsedMs;
+        return elapsed === null ? '—' : formatMmSs(elapsed);
+      },
+    },
+    {
+      key: 'target',
+      label: 'Target',
+      filter: 'select',
+      filterValue: (i) => (firstCommunicationKpi(i).targetMet ? 'Achieved' : 'Breached'),
+      render: (i) => <CommsTargetBadge incident={i} />,
+    },
+  ];
+
   return (
     <div>
       <div className="pagehead">
-        <span className="eyebrow">AT Customer Information</span>
+        <Crumbs trail={['Customer Information', 'Analytics']} />
         <h1>Analytics</h1>
         <p className="lede">
           Communication performance derived from confirmation and publication
@@ -29,77 +72,42 @@ export function AnalyticsPage(): React.JSX.Element {
         </p>
       </div>
 
-      <CommsNav />
 
       <div className="kpi-grid">
-        <div className="kpi-card">
-          <h3>Average First Publication</h3>
-          <div className="kpi-value">
-            {kpis.averageFirstCommMs === null ? '—' : formatMmSs(kpis.averageFirstCommMs)}
-          </div>
-          <p className="muted small">
-            Confirmation → first publication ({kpis.publishedCount} published)
-          </p>
-        </div>
-        <div className="kpi-card">
-          <h3>Communication Coverage</h3>
-          <div className="kpi-value">{coverage.pct === null ? '—' : `${coverage.pct}%`}</div>
-          <p className="muted small">
-            {coverage.published} of {coverage.inScope} updates published
-          </p>
-        </div>
-        <div className="kpi-card">
-          <h3>Within 10-Minute Target</h3>
-          <div className="kpi-value good">
-            {kpis.achievedPct === null ? '—' : `${kpis.achievedPct}%`}
-          </div>
-          <p className="muted small">
-            {kpis.achievedCount} of {kpis.publishedCount} initial updates within 10 min
-          </p>
-        </div>
-        <div className="kpi-card">
-          <h3>Awaiting Initial Update</h3>
-          <div className="kpi-value">{kpis.awaiting}</div>
-          <p className="muted small">Initial passenger update not published</p>
-        </div>
+        <KpiCard
+          title="Average First Publication"
+          value={kpis.averageFirstCommMs === null ? '—' : formatMmSs(kpis.averageFirstCommMs)}
+          context={`Confirmation → first publication (${kpis.publishedCount} published)`}
+        />
+        <KpiCard
+          title="Communication Coverage"
+          value={coverage.pct === null ? '—' : `${coverage.pct}%`}
+          context={`${coverage.published} of ${coverage.inScope} updates published`}
+        />
+        <KpiCard
+          title="Within 10-Minute Target"
+          value={kpis.achievedPct === null ? '—' : `${kpis.achievedPct}%`}
+          tone={kpis.achievedPct !== null && kpis.achievedPct >= 100 ? 'good' : undefined}
+          context={`${kpis.achievedCount} of ${kpis.publishedCount} initial updates within 10 min`}
+        />
+        <KpiCard
+          title="Awaiting Initial Update"
+          value={kpis.awaiting}
+          context="Initial passenger update not published"
+        />
       </div>
 
       <Section title={`First-publication record (${published.length})`}>
-        {published.length === 0 ? (
-          <p className="muted">No publications yet — figures above show “—” until the first publish.</p>
-        ) : (
-          <table className="records">
-            <thead>
-              <tr>
-                <th>Incident</th>
-                <th>Confirmed</th>
-                <th>First published</th>
-                <th>First communication</th>
-                <th>Target</th>
-              </tr>
-            </thead>
-            <tbody>
-              {published.map((i) => (
-                <tr key={i.id}>
-                  <td>
-                    <strong>{i.id}</strong>
-                  </td>
-                  <td>{i.confirmedAt ?? '—'}</td>
-                  <td>{i.firstPublishedAt ?? '—'}</td>
-                  <td>
-                    {(() => {
-                      const elapsed = firstCommunicationKpi(i).elapsedMs;
-                      return elapsed === null ? '—' : formatMmSs(elapsed);
-                    })()}
-                  </td>
-                  <td>
-                    <CommsTargetBadge incident={i} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <DataTable<Incident>
+          rows={published}
+          columns={columns}
+          rowKey={(i) => i.id}
+          searchText={(i) => `${i.id} ${i.route}`}
+          searchPlaceholder="Search records"
+          pageSize={10}
+          emptyTitle="No publications yet"
+          emptyDescription="Figures above show — until the first publish."
+        />
         <div className="note">
           The first-communication clock stops at first publication; follow-up
           publications never reset it.

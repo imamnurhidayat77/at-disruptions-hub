@@ -1,0 +1,23 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "fiori": {
+      "type": "local",
+      "command": ["npx", "-y", "@sap-ux/fiori-mcp-server"],
+      "enabled": true
+    },
+    "ui5": {
+      "type": "local",
+      "command": ["npx", "-y", "@ui5/mcp-server"],
+      "enabled": true,
+      "environment": {
+        "UI5_MCP_SERVER_ALLOWED_DOMAINS": "localhost,services.odata.org,sandbox.api.sap.com"
+      }
+    },
+    "figma": {
+      "type": "local",
+      "command": ["/Users/pusdatin06/.bun/bin/bunx", "cursor-talk-to-figma-mcp@latest"],
+      "enabled": true
+    }
+  }
+}

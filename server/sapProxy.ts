@@ -9,16 +9,34 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
  * or sent to the client. This module runs in Node (via vite.config.ts)
  * and is never imported by frontend code.
  *
- * Evidence base (no guessed shapes):
- * - Service path pattern `<host>/sap/opu/odata/sap/API_EHS_REPORT_INCIDENT_SRV/`
- *   from SAP's official EHS incident integration guide.
- * - Entity set `A_Incident` with navigation `to_Persons` / `to_Attachments`
- *   from the same guide. Exact properties are NOT assumed — the frontend
- *   mapper normalises whatever the sandbox actually returns.
+ * Grounded on the supplied API_EHS_REPORT_INCIDENT_SRV OpenAPI spec
+ * (v1.0.0, SAP_COM_0369):
+ * - Service path `<host>/sap/opu/odata/sap/API_EHS_REPORT_INCIDENT_SRV/`
+ * - Entity set `A_Incident` (GET list + POST create; key IncidentUUID)
+ * - Incident fields: IncidentID, IncidentUUID, IncidentUTCDateTime,
+ *   IncidentTitle, IncidentStatus, IncidentLocationDescription,
+ *   IncidentDescriptionOfEvents, IncidentCategory, EHSLocationUUID
+ *   (+ navigation to_Persons / to_Attachments / to_Location)
+ * - Value helps: C_EHSLocationValueHelp, C_EHSPersonValueHelp
+ * - Sandbox server: https://sandbox.api.sap.com/s4hanacloud/sap/opu/odata/sap/API_EHS_REPORT_INCIDENT_SRV
+ * Exact sandbox VALUES are still unconfirmed (no live response yet) —
+ * the frontend mapper normalises whatever the sandbox returns.
  */
 
 const SERVICE_PATH = '/sap/opu/odata/sap/API_EHS_REPORT_INCIDENT_SRV';
 const DEMO_MAX_RECORDS = 5;
+/** Spec-exact A_Incident fields requested from the sandbox. */
+const INCIDENT_SELECT = [
+  'IncidentID',
+  'IncidentUUID',
+  'IncidentUTCDateTime',
+  'IncidentTitle',
+  'IncidentStatus',
+  'IncidentLocationDescription',
+  'IncidentDescriptionOfEvents',
+  'IncidentCategory',
+  'EHSLocationUUID',
+].join(',');
 
 interface ProxyEnv {
   SAP_API_BASE_URL?: string;
@@ -82,7 +100,7 @@ export function sapProxyPlugin(env: ProxyEnv): Plugin {
           });
           return;
         }
-        const url = `${base}${SERVICE_PATH}/${entitySet}?$top=${DEMO_MAX_RECORDS}`;
+        const url = `${base}${SERVICE_PATH}/${entitySet}?$top=${DEMO_MAX_RECORDS}&$format=json&$select=${encodeURIComponent(INCIDENT_SELECT)}`;
         try {
           const upstream = await fetch(url, {
             headers: { APIKey: key, Accept: 'application/json' },
@@ -117,4 +135,4 @@ export function sapProxyPlugin(env: ProxyEnv): Plugin {
   };
 }
 
-export const SAP_PROXY_CONSTANTS = { SERVICE_PATH, DEMO_MAX_RECORDS };
+export const SAP_PROXY_CONSTANTS = { SERVICE_PATH, DEMO_MAX_RECORDS, INCIDENT_SELECT };

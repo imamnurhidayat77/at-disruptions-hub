@@ -12,6 +12,7 @@
     "test:sap": "node --test scripts/sap-integration.test.ts"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.3.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.7.0"

@@ -1,592 +1,387 @@
-import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { CommsTargetBadge, OpStatusBadge, SeverityBadge } from '../../components/badges.js';
+import { useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { OpStatusBadge, SeverityBadge } from '../../components/badges.js';
 import { Crumbs, Section } from '../../components/chrome.js';
-import { Field } from '../../components/forms.js';
-import { lastOperatorUpdateAt } from '../../domain/contractor.js';
-import { firstCommunicationKpi, formatMmSs, formatNzdtTime } from '../../domain/kpi.js';
-import {
-  OWNER_ROSTER,
-  OWNER_TITLES,
-  canAssess,
-  canMarkActive,
-  canValidate,
-  operationalStatusLabel,
-  recoveryOpen,
-  workflowStage,
-} from '../../domain/operations.js';
-import { assessSeverity, validateSeverityOverride } from '../../domain/severity.js';
-import type { Incident, Severity } from '../../domain/types.js';
+import { FioriButton } from '../../components/Button.js';
+import { Timeline } from '../../components/Timeline.js';
+import { targetProgress } from '../../domain/comms.js';
+import { firstCommunicationKpi, formatMmSs, formatNzdtShort } from '../../domain/kpi.js';
+import { lastOperatorUpdateAt, hasOperatorUpdates } from '../../domain/contractor.js';
 import { useAppStore } from '../../state/AppStore.js';
-import { RecoveryPanel } from './RecoveryPanel.js';
-import { CloseReviewPanel } from './CloseReviewPanel.js';
-import { OpsNav } from './OpsNav.js';
-
-const STEPS = ['Assess & assign', 'Coordinate recovery', 'Passenger update', 'Active monitoring', 'Close & review'];
-
-const SEVERITY_DESCRIPTIONS: Record<Severity, string> = {
-  CRITICAL: 'Major network / safety impact',
-  HIGH: 'Significant service impact',
-  MEDIUM: 'Limited service impact',
-  LOW: 'Minor local impact',
-};
-
-const SEVERITY_SUPPORT: Record<Severity, string> = {
-  CRITICAL: 'This incident requires immediate operational response and passenger communication.',
-  HIGH: 'This incident requires priority operational response and passenger communication.',
-  MEDIUM: 'This incident requires close monitoring and timely passenger information.',
-  LOW: 'Routine monitoring; passenger advice as needed.',
-};
-
-function Stepper({ stage }: { stage: number }): React.JSX.Element {
-  return (
-    <ol className="steps" aria-label="Incident workflow stage">
-      {STEPS.map((label, i) => {
-        const n = i + 1;
-        const cls = n < stage ? 'step done' : n === stage ? 'step current' : 'step';
-        return (
-          <li key={label} className={cls}>
-            <span className="step-n">{n < stage ? '✓' : n}</span> {label}
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
-function IncomingDetail({ incident }: { incident: Incident }): React.JSX.Element {
-  const { requestInfo, validateIncident } = useAppStore();
-  const navigate = useNavigate();
-  const lastUpdate = lastOperatorUpdateAt(incident);
-
-  if (!canValidate(incident)) return <></>;
-
-  function onAccept(): void {
-    validateIncident(incident.id);
-    navigate(`/operations/incident/${incident.id}#severity-assessment`);
-  }
-
-  return (
-    <Section title="Incoming notification">
-      <dl className="facts">
-        <dt>Incident ID</dt>
-        <dd>{incident.id}</dd>
-        <dt>Operator</dt>
-        <dd>{incident.operator}</dd>
-        <dt>Route</dt>
-        <dd>{incident.route}</dd>
-        <dt>Vehicle / Service ID</dt>
-        <dd>{incident.vehicleOrServiceId}</dd>
-        <dt>Location</dt>
-        <dd>{incident.location}</dd>
-        <dt>Disruption Type</dt>
-        <dd>{incident.disruptionType}</dd>
-        <dt>Detection Time</dt>
-        <dd>{formatNzdtTime(incident.detectedAt)}</dd>
-        <dt>Estimated Delay</dt>
-        <dd>{incident.estimatedDelayMinutes} minutes</dd>
-        <dt>Passenger Impact</dt>
-        <dd>{incident.passengerImpact}</dd>
-        <dt>Major Interchange Affected</dt>
-        <dd>{incident.majorInterchangeAffected ? 'Yes' : 'No'}</dd>
-        <dt>Description</dt>
-        <dd>{incident.description}</dd>
-        <dt>Operator Update Status</dt>
-        <dd>{lastUpdate ? `Last operator update ${formatNzdtTime(lastUpdate)}` : 'Initial notification only'}</dd>
-      </dl>
-      <div className="note">Information provided by Bus Contractor.</div>
-      {incident.infoRequested ? (
-        <p>
-          <span className="badge tg-warn">More Information Requested</span>{' '}
-          <span className="muted">Awaiting Operator Update.</span>
-        </p>
-      ) : (
-        <p>
-          <button className="btn" type="button" onClick={() => requestInfo(incident.id)}>
-            ? Request More Information
-          </button>{' '}
-          <button
-            className="btn btn-primary"
-            type="button"
-            onClick={() => {
-              onAccept();
-            }}
-          >
-            ✓ Accept & Assess
-          </button>
-        </p>
-      )}
-    </Section>
-  );
-}
-
-function OverrideModal({
-  incident,
-  calculated,
-  initialLevel,
-  initialReason,
-  onConfirm,
-  onCancel,
-}: {
-  incident: Incident;
-  calculated: Severity;
-  initialLevel: Severity;
-  initialReason: string;
-  onConfirm: (level: Severity, reason: string) => void;
-  onCancel: () => void;
-}): React.JSX.Element {
-  const [level, setLevel] = useState<Severity>(initialLevel);
-  const [reason, setReason] = useState(initialReason);
-  const [error, setError] = useState<string | undefined>(undefined);
-
-  function onSubmit(): void {
-    const err = validateSeverityOverride(reason);
-    if (err) {
-      setError(err);
-      return;
-    }
-    onConfirm(level, reason.trim());
-  }
-
-  return (
-    <div className="dialog-backdrop" role="presentation" onClick={onCancel}>
-      <div
-        className="dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Override severity"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2>Override Severity</h2>
-        <p className="muted small">
-          Calculated severity for {incident.id} is {calculated}. Overriding records the
-          reason and an AT Operations audit event.
-        </p>
-        <Field id="ov-level" label="New Severity" required>
-          <select
-            id="ov-level"
-            className="input"
-            value={level}
-            onChange={(e) => setLevel(e.target.value as Severity)}
-          >
-            {(Object.keys(SEVERITY_DESCRIPTIONS) as Severity[]).map((l) => (
-              <option key={l} value={l}>
-                {l}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field id="ov-reason" label="Reason for Override" required error={error}>
-          <textarea
-            id="ov-reason"
-            className="input"
-            rows={3}
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-          />
-        </Field>
-        <div className="note">Severity rules are a prototype assumption, not official Auckland Transport policy.</div>
-        <div className="dialog-actions">
-          <button className="btn" type="button" onClick={onCancel}>
-            × Cancel
-          </button>
-          <button className="btn btn-primary" type="button" onClick={onSubmit}>
-            ⚠ Confirm Override
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SeveritySection({ incident }: { incident: Incident }): React.JSX.Element {
-  const { confirmSeverity } = useAppStore();
-  const recommendation = assessSeverity({
-    estimatedDelayMinutes: incident.estimatedDelayMinutes,
-    passengerImpact: incident.passengerImpact,
-    majorInterchangeAffected: incident.majorInterchangeAffected,
-    disruptionType: incident.disruptionType,
-  });
-  const [selected, setSelected] = useState<Severity>(incident.severity ?? recommendation.level);
-  const [rationale, setRationale] = useState('');
-  const [error, setError] = useState<string | undefined>(undefined);
-  const [overriding, setOverriding] = useState(false);
-
-  if (!canAssess(incident)) {
-    return (
-      <Section title="Severity assessment">
-        {incident.severity ? (
-          <p>
-            Final severity: <SeverityBadge level={incident.severity} />{' '}
-            <span className="muted small">{incident.severityReason}</span>
-          </p>
-        ) : (
-          <p className="muted">Validate the notification to open severity assessment.</p>
-        )}
-      </Section>
-    );
-  }
-
-  const isOverride = selected !== recommendation.level;
-
-  function onConfirm(): void {
-    if (isOverride) {
-      setOverriding(true);
-      return;
-    }
-    if (rationale.trim().length < 10) {
-      setError('Severity rationale needs at least 10 characters.');
-      return;
-    }
-    setError(undefined);
-    confirmSeverity(incident.id, selected, rationale.trim(), null);
-    setRationale('');
-  }
-
-  const severityBadgeClass =
-    recommendation.level === 'CRITICAL'
-      ? 'sev-critical'
-      : recommendation.level === 'HIGH'
-        ? 'sev-high'
-        : recommendation.level === 'MEDIUM'
-          ? 'sev-medium'
-          : 'sev-low';
-
-  return (
-    <Section title="Severity assessment" id="severity-assessment">
-      <p>
-        <span className={`badge ${severityBadgeClass} sev-display`}>{recommendation.level} SEVERITY</span>
-      </p>
-      <p>
-        <strong>{SEVERITY_SUPPORT[recommendation.level]}</strong>
-      </p>
-      <h3>Why this severity?</h3>
-      <ul>
-        <li>Estimated delay: {incident.estimatedDelayMinutes} minutes</li>
-        <li>
-          Passenger impact:{' '}
-          {incident.passengerImpact.charAt(0) + incident.passengerImpact.slice(1).toLowerCase()}
-        </li>
-        <li>
-          {incident.majorInterchangeAffected
-            ? 'Major interchange affected'
-            : 'No major interchange affected'}
-        </li>
-        <li>Recovery action required</li>
-      </ul>
-      <p className="muted small">
-        Severity score: {recommendation.score}. Severity rules are a prototype
-        decision-support rule, not official Auckland Transport policy.
-      </p>
-      {incident.severity && (
-        <p>
-          Current: <SeverityBadge level={incident.severity} />{' '}
-          <span className="muted small">{incident.severityReason}</span>
-          {incident.severityOverrideReason && (
-            <span className="muted small"> Override: {incident.severityOverrideReason}</span>
-          )}
-        </p>
-      )}
-      <div className="sev-cards" role="radiogroup" aria-label="Severity level">
-        {(Object.keys(SEVERITY_DESCRIPTIONS) as Severity[]).map((level) => (
-          <label key={level} className={`sev-card${selected === level ? ' selected' : ''}`}>
-            <input
-              type="radio"
-              name={`severity-${incident.id}`}
-              checked={selected === level}
-              onChange={() => setSelected(level)}
-            />
-            <SeverityBadge level={level} />
-            <span className="muted small">{SEVERITY_DESCRIPTIONS[level]}</span>
-          </label>
-        ))}
-      </div>
-      <Field
-        id={`rationale-${incident.id}`}
-        label="Severity rationale"
-        required
-        error={error}
-        hint="Assessment notes (required). Differing from the recommendation opens the override dialog."
-      >
-        <textarea
-          id={`rationale-${incident.id}`}
-          className="input"
-          rows={3}
-          value={rationale}
-          onChange={(e) => setRationale(e.target.value)}
-        />
-      </Field>
-      <p>
-        <button className="btn btn-primary" type="button" onClick={onConfirm}>
-          ✓ Confirm Severity
-        </button>{' '}
-        <button className="btn" type="button" onClick={() => setOverriding(true)}>
-          ⚠ Override Severity
-        </button>
-      </p>
-      <div className="note">{recommendation.prototypeNote}</div>
-      {overriding && (
-        <OverrideModal
-          incident={incident}
-          calculated={recommendation.level}
-          initialLevel={selected}
-          initialReason={rationale}
-          onConfirm={(level, reason) => {
-            confirmSeverity(incident.id, level, reason, reason);
-            setRationale('');
-            setError(undefined);
-            setOverriding(false);
-          }}
-          onCancel={() => setOverriding(false)}
-        />
-      )}
-    </Section>
-  );
-}
-
-function OwnerSection({ incident }: { incident: Incident }): React.JSX.Element {
-  const { assignOwner } = useAppStore();
-  const [name, setName] = useState(incident.owner ?? 'Sarah Chen');
-  const options = incident.owner && !OWNER_ROSTER.includes(incident.owner)
-    ? [incident.owner, ...OWNER_ROSTER]
-    : OWNER_ROSTER;
-
-  if (incident.operationalStatus === 'REPORTED') {
-    return (
-      <Section title="Accountable ownership">
-        <p className="muted">Validate the notification before assigning an owner.</p>
-      </Section>
-    );
-  }
-
-  return (
-    <Section title="Accountable ownership">
-      <p className="muted small">
-        The owner coordinates recovery and keeps passenger communication on track.
-      </p>
-      <div className="form-grid">
-        <Field id={`owner-${incident.id}`} label="Incident Owner" required>
-          <select
-            id={`owner-${incident.id}`}
-            className="input"
-            value={options.includes(name) ? name : options[0]}
-            onChange={(e) => setName(e.target.value)}
-          >
-            {options.map((o) => (
-              <option key={o}>{o}</option>
-            ))}
-          </select>
-        </Field>
-      </div>
-      <button
-        className="btn btn-primary"
-        type="button"
-        onClick={() => assignOwner(incident.id, name)}
-        disabled={incident.owner === name}
-      >
-        + Assign Owner
-      </button>
-      {incident.owner && (
-        <div className="success" role="status" style={{ marginTop: 12 }}>
-          <strong>Owner accepted.</strong> {incident.owner} is accountable for the incident
-          through restoration and closure.
-        </div>
-      )}
-    </Section>
-  );
-}
-
-function CommsPanel({ incident }: { incident: Incident }): React.JSX.Element {
-  const [open, setOpen] = useState(false);
-  const kpi = firstCommunicationKpi(incident);
-
-  return (
-    <Section title="Passenger Communication">
-      <p className="muted small">Operations sees communication status only — no editing or publishing here.</p>
-      <p>
-        <CommsTargetBadge incident={incident} />
-      </p>
-      <dl className="facts">
-        <dt>Passenger notice</dt>
-        <dd>{incident.communicationStatus === 'PUBLISHED' ? 'Published' : 'Required'}</dd>
-        <dt>Publication</dt>
-        <dd>{incident.firstPublishedAt ? formatNzdtTime(incident.firstPublishedAt) : 'Not yet published'}</dd>
-        <dt>First communication time</dt>
-        <dd>
-          {incident.firstPublishedAt !== null && kpi.elapsedMs !== null
-            ? `${formatMmSs(kpi.elapsedMs)} · Target ${kpi.targetMet ? 'met' : 'exceeded'}`
-            : 'Not yet published'}
-        </dd>
-        <dt>Communication timer</dt>
-        <dd>{kpi.elapsedMs === null ? '—' : `${formatMmSs(kpi.elapsedMs)} elapsed`}</dd>
-        <dt>Remaining</dt>
-        <dd>{kpi.remainingMs === null ? '—' : formatMmSs(kpi.remainingMs)}</dd>
-        <dt>Target</dt>
-        <dd>10 minutes</dd>
-      </dl>
-      <button className="btn" type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-        {open ? '▴' : '▾'} View Communication Status
-      </button>
-      {open && (
-        <dl className="facts" style={{ marginTop: 12 }}>
-          <dt>Channels</dt>
-          <dd>{incident.selectedChannels.length > 0 ? incident.selectedChannels.join(' + ') : '—'}</dd>
-          <dt>Draft</dt>
-          <dd>{incident.commsDraft ? `Saved ${formatNzdtTime(incident.commsDraft.updatedAt)}` : 'No draft yet'}</dd>
-        </dl>
-      )}
-      <div className="note">
-        Operational recovery and passenger communication are parallel workflows on
-        this shared record. Editing, approval and publishing belong to AT Customer
-        Information.
-      </div>
-    </Section>
-  );
-}
 
 /**
- * AT Operations incident workspace — validate → assess severity → assign
- * owner → coordinate recovery, with passenger communication visible as a
- * read-only parallel track.
+ * AT Operations incident workspace — Figma "03 AT Operations" frames.
+ * Title card, anchor sections, communication target, read-only recovery
+ * and passenger communication as parallel tracks, shared timeline,
+ * linked SAP context and review. Assessment lives on dedicated pages.
  */
 export function IncidentWorkspace(): React.JSX.Element {
   const { id } = useParams<{ id: string }>();
-  const { setRole, getIncident, markActive } = useAppStore();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const { setRole, getIncident } = useAppStore();
 
   useEffect(() => {
     setRole('OPERATIONS');
   }, [setRole]);
-
-  useEffect(() => {
-    if (location.hash) {
-      document.querySelector(location.hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }, [location.hash]);
 
   const incident = id ? getIncident(id) : undefined;
 
   if (!incident) {
     return (
       <div>
-        <h1>Incident not found</h1>
-        <p className="muted">No shared record with ID {id ?? '(unknown)'} in this demo state.</p>
-        <Link className="btn btn-link" to="/operations">
-          Back to dashboard
-        </Link>
+        <div className="pagehead">
+          <Crumbs trail={['Operations', 'Incidents']} />
+          <h1>Incident not found</h1>
+          <p className="lede">No record found with ID {id ?? '(unknown)'}.</p>
+        </div>
+        <div className="actions-bar">
+          <FioriButton icon="back" to="/operations/incidents">
+            Back to incidents
+          </FioriButton>
+        </div>
       </div>
     );
   }
 
-  const stage = workflowStage(incident);
+  if (incident.operationalStatus === 'REPORTED') {
+    return (
+      <div>
+        <div className="pagehead">
+          <Crumbs trail={['Operations', 'Incidents', incident.id]} />
+          <h1>{incident.id}</h1>
+          <p className="lede">
+            Route {incident.route} — {incident.disruptionType} · {incident.location}
+          </p>
+        </div>
+        <Section title="Accept the notification first">
+          <p className="muted">
+            The workspace opens after AT Operations accepts the notification and completes
+            severity assessment and owner assignment.
+          </p>
+          <div className="actions-bar">
+            <FioriButton
+              design="emphasized"
+              icon="detail"
+              to={`/operations/incoming/${incident.id}`}
+            >
+              Open incoming notification
+            </FioriButton>
+          </div>
+        </Section>
+      </div>
+    );
+  }
+
+  if (!incident.severity || !incident.owner) {
+    const next = !incident.severity
+      ? `/operations/incident/${incident.id}/severity`
+      : `/operations/incident/${incident.id}/owner`;
+    const label = !incident.severity ? 'severity assessment' : 'owner assignment';
+    return (
+      <div>
+        <div className="pagehead">
+          <Crumbs trail={['Operations', 'Incidents', incident.id]} />
+          <h1>{incident.id}</h1>
+          <p className="lede">
+            Route {incident.route} — {incident.disruptionType} · {incident.location}
+          </p>
+        </div>
+        <Section title="Continue the intake workflow">
+          <p className="muted">Complete {label} to open the incident workspace.</p>
+          <div className="actions-bar">
+            <FioriButton design="emphasized" icon="arrowRight" to={next}>
+              Continue
+            </FioriButton>
+          </div>
+        </Section>
+      </div>
+    );
+  }
+
+  const published = incident.communicationStatus === 'PUBLISHED';
+  const kpi = firstCommunicationKpi(incident);
+  const progress = targetProgress(kpi.elapsedMs);
+  const lastUpdate = lastOperatorUpdateAt(incident);
+  const doneTasks = incident.recoveryTasks.filter((t) => t.doneAt !== null).length;
   const timeline = [...incident.timeline].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
-  const showRecovery = recoveryOpen(incident) || incident.operationalStatus === 'RESTORED';
-  const ownerAssignedEvent = [...incident.timeline]
-    .reverse()
-    .find((e) => e.action === 'Incident owner assigned');
 
   return (
     <div>
       <div className="pagehead">
         <Crumbs trail={['Operations', 'Incidents', incident.id]} />
-        <span className="eyebrow">AT Operations</span>
-        <h1>{incident.id}</h1>
+        <div className="pagehead-with-action">
+          <h1>{incident.id}</h1>
+          <div className="actions-bar">
+            <FioriButton
+              design="emphasized"
+              icon="wrench"
+              to={`/operations/recovery?incident=${incident.id}`}
+            >
+              Update Recovery
+            </FioriButton>
+          </div>
+        </div>
         <p className="lede">
-          Route {incident.route} — {incident.disruptionType}
-          <br />
-          {incident.location}
-        </p>
-        <p>
-          <Link to="/operations">← Back to overview</Link>
+          Incident Workspace ·{' '}
+          {published ? 'Passenger communication published' : 'One shared incident record'}
         </p>
       </div>
 
-      <OpsNav />
+      <nav className="anchor-tabs" aria-label="Workspace sections">
+        <a href="#overview">Overview</a>
+        <a href="#recovery">Recovery</a>
+        <a href="#comms">Passenger Communication</a>
+        <a href="#timeline">Timeline</a>
+        {incident.sapLink && <a href="#source">Source context</a>}
+        <a href="#review">Review</a>
+      </nav>
 
-      <Section title="Incident summary">
+      <Section title={`Route ${incident.route} — ${incident.disruptionType}`} id="overview">
+        <p className="muted small">
+          {incident.location} · {incident.id}
+        </p>
         <p>
           <SeverityBadge level={incident.severity} />{' '}
           <OpStatusBadge status={incident.operationalStatus} />{' '}
-          <CommsTargetBadge incident={incident} />
+          {incident.recoveryStatus === 'RESTORED' ? (
+            <span className="badge tg-good">✓ Restored</span>
+          ) : incident.recoveryStatus === 'IN_PROGRESS' ? (
+            <span className="badge st-ops">◈ Recovery in Progress</span>
+          ) : (
+            <span className="badge st-idle">○ Recovery Not Started</span>
+          )}{' '}
+          {published && <span className="badge tg-good">✓ Published</span>}
         </p>
-        <dl className="facts">
-          <dt>Incident Owner</dt>
-          <dd>
-            {incident.owner
-              ? `${incident.owner}${OWNER_TITLES[incident.owner] ? ` — ${OWNER_TITLES[incident.owner]}` : ''}${
-                  ownerAssignedEvent ? ` (assigned ${formatNzdtTime(ownerAssignedEvent.at)})` : ''
-                }`
-              : '— unassigned'}
-          </dd>
-          <dt>Operational Status</dt>
-          <dd>{operationalStatusLabel(incident.operationalStatus)}</dd>
-          <dt>Detected</dt>
-          <dd>{formatNzdtTime(incident.detectedAt)}</dd>
-          <dt>Confirmed</dt>
-          <dd>{incident.confirmedAt ? formatNzdtTime(incident.confirmedAt) : '— awaiting validation'}</dd>
-          <dt>Estimated Restoration</dt>
-          <dd>
-            {incident.estimatedRestorationAt
-              ? formatNzdtTime(incident.estimatedRestorationAt)
-              : 'Not yet confirmed'}
-          </dd>
+        <dl className="facts-grid">
+          <div className="fact">
+            <dt>Owner</dt>
+            <dd>{incident.owner}</dd>
+          </div>
+          <div className="fact">
+            <dt>Operator</dt>
+            <dd>{incident.operator}</dd>
+          </div>
+          <div className="fact">
+            <dt>Estimated Delay</dt>
+            <dd>{incident.estimatedDelayMinutes} min</dd>
+          </div>
+          <div className="fact">
+            <dt>Estimated Restoration</dt>
+            <dd>
+              {incident.estimatedRestorationAt
+                ? formatNzdtShort(incident.estimatedRestorationAt)
+                : 'Not yet confirmed'}
+            </dd>
+          </div>
         </dl>
-        <Stepper stage={stage} />
       </Section>
 
-      <div className="form-layout">
-        <div>
-          <IncomingDetail incident={incident} />
-          <SeveritySection incident={incident} />
-          <OwnerSection incident={incident} />
-
-          {canMarkActive(incident) && (
-            <Section title="Begin active management">
-              <p className="muted">
-                Severity {incident.severity} confirmed and owner {incident.owner} assigned.
-              </p>
-              <button
-                className="btn btn-primary"
-                type="button"
-                onClick={() => {
-                  markActive(incident.id);
-                  navigate(`/operations/incident/${incident.id}#recovery`);
-                }}
-              >
-                → Mark active — open Incident Workspace recovery
-              </button>
-            </Section>
+      <Section title="Communication Target">
+        <p>
+          {kpi.targetMet ? (
+            <span className="badge tg-good">✓ TARGET MET</span>
+          ) : (
+            <span className="badge tg-warn">▲ Passenger Notice Required</span>
           )}
-
-          {showRecovery && (
-            <div id="recovery">
-              <RecoveryPanel incident={incident} />
-            </div>
+        </p>
+        <p>
+          {kpi.elapsedMs === null ? (
+            <span className="muted">Timer starts at validation.</span>
+          ) : (
+            <>
+              <strong>
+                {published && incident.firstPublishedAt
+                  ? `${formatMmSs(kpi.elapsedMs)} first communication`
+                  : `${formatMmSs(kpi.elapsedMs)} elapsed`}
+              </strong>{' '}
+              {kpi.remainingMs !== null && !published && (
+                <span className="muted">· {formatMmSs(kpi.remainingMs)} remaining</span>
+              )}
+              {published && incident.firstPublishedAt && (
+                <span className="muted">
+                  {' '}
+                  · Published at {formatNzdtShort(incident.firstPublishedAt)}
+                </span>
+              )}
+            </>
           )}
-
-          {(incident.operationalStatus === 'RESTORED' ||
-            incident.operationalStatus === 'CLOSED') && (
-            <CloseReviewPanel incident={incident} />
-          )}
-
-          <Section title="Audit timeline (newest first)">
-            <ul className="timeline">
-              {timeline.map((e) => (
-                <li key={e.id}>
-                  <span className="t-at">{formatNzdtTime(e.at)}</span>
-                  <span className="t-action">{e.action}</span>
-                  <div className="t-detail">
-                    {e.actorRole} · {e.detail}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </Section>
+        </p>
+        <div
+          className="progress"
+          role="progressbar"
+          aria-valuenow={Math.round(progress * 100)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Communication target progress"
+        >
+          <div
+            className={`progress-fill${kpi.targetMet ? ' good' : ''}`}
+            style={{ width: `${Math.round(progress * 100)}%` }}
+          />
         </div>
-        <aside>
-          <CommsPanel incident={incident} />
-        </aside>
+        <p className="muted small">
+          Target: ≤10 minutes · First Publication:{' '}
+          {incident.firstPublishedAt
+            ? formatNzdtShort(incident.firstPublishedAt)
+            : 'Not yet published'}
+        </p>
+        <div className="note" role="note">
+          Recovery and Passenger Communication are parallel activities.
+        </div>
+      </Section>
+
+      <Section title="Operational Recovery" id="recovery">
+        <p>
+          {incident.recoveryStatus === 'RESTORED' ? (
+            <span className="badge tg-good">✓ Complete</span>
+          ) : incident.recoveryStatus === 'IN_PROGRESS' ? (
+            <span className="badge st-ops">◈ In Progress</span>
+          ) : (
+            <span className="badge st-idle">○ Not Started</span>
+          )}
+        </p>
+        <ul className="checklist">
+          {incident.recoveryTasks.map((t) => (
+            <li key={t.id} className={t.doneAt !== null ? 'ok' : undefined}>
+              <span aria-hidden="true">{t.doneAt !== null ? '☑' : '☐'}</span> {t.label}
+              <span className="muted small"> — {t.responsible}</span>
+            </li>
+          ))}
+        </ul>
+        <dl className="facts-grid">
+          <div className="fact">
+            <dt>Estimated Restoration</dt>
+            <dd>
+              {incident.estimatedRestorationAt
+                ? formatNzdtShort(incident.estimatedRestorationAt)
+                : 'Not yet confirmed'}
+            </dd>
+          </div>
+          <div className="fact">
+            <dt>Last Operator Update</dt>
+            <dd>
+              {lastUpdate && hasOperatorUpdates(incident)
+                ? formatNzdtShort(lastUpdate)
+                : '—'}
+            </dd>
+          </div>
+        </dl>
+        <p className="muted small">
+          {doneTasks}/{incident.recoveryTasks.length} tasks complete
+        </p>
+        <div className="actions-bar">
+          <FioriButton icon="wrench" to={`/operations/recovery?incident=${incident.id}`}>
+            Update Recovery
+          </FioriButton>
+        </div>
+      </Section>
+
+      <Section title="Passenger Communication" id="comms">
+        <p>
+          {published ? (
+            <span className="badge tg-good">✓ Published</span>
+          ) : (
+            <span className="badge tg-warn">▲ Required</span>
+          )}
+        </p>
+        <dl className="facts-grid">
+          <div className="fact">
+            <dt>First Publication</dt>
+            <dd>
+              {incident.firstPublishedAt
+                ? formatNzdtShort(incident.firstPublishedAt)
+                : 'Not yet published'}
+            </dd>
+          </div>
+          <div className="fact">
+            <dt>Timer</dt>
+            <dd>{kpi.elapsedMs === null ? '—' : formatMmSs(kpi.elapsedMs)}</dd>
+          </div>
+          <div className="fact">
+            <dt>Target</dt>
+            <dd>≤10 min</dd>
+          </div>
+          <div className="fact">
+            <dt>Remaining</dt>
+            <dd>
+              {kpi.remainingMs === null || published ? '—' : formatMmSs(kpi.remainingMs)}
+            </dd>
+          </div>
+        </dl>
+        {published && incident.commsDraft && (
+          <div className="preview">
+            <p className="muted small">
+              {incident.selectedChannels.join(' · ')} · Read-only for Operations
+            </p>
+            <h3>{incident.commsDraft.title}</h3>
+            <p>{incident.commsDraft.message}</p>
+            <p>
+              <span className="badge tg-good">✓ TARGET MET</span>
+            </p>
+          </div>
+        )}
+        <div className="note" role="note">
+          Read-only for Operations. Customer Information prepares and publishes passenger
+          notices.
+        </div>
+        {!published && incident.commsDraft && (
+          <p className="muted small">
+            Message draft is in progress. Recovery can continue independently.
+          </p>
+        )}
+      </Section>
+
+      <Section title="Shared Incident Timeline" id="timeline">
+        <Timeline events={timeline} />
+      </Section>
+
+      {incident.sapLink && (
+        <Section title="SAP source context" id="source">
+          <p className="muted small">Source: SAP EHS Incident API</p>
+          <p>
+            <span className="badge tg-good">✓ Synced</span>{' '}
+            <span className="badge st-idle">○ {incident.sapLink.sapStatus}</span>
+          </p>
+          <dl className="facts-grid">
+            <div className="fact">
+              <dt>SAP Incident ID</dt>
+              <dd>{incident.sapLink.sapId}</dd>
+            </div>
+            <div className="fact">
+              <dt>SAP UUID</dt>
+              <dd>{incident.sapLink.sapUuid}</dd>
+            </div>
+            <div className="fact">
+              <dt>SAP Status</dt>
+              <dd>{incident.sapLink.sapStatus}</dd>
+            </div>
+            <div className="fact">
+              <dt>Last Sync</dt>
+              <dd>{formatNzdtShort(incident.sapLink.syncedAt)}</dd>
+            </div>
+          </dl>
+          <p className="muted small">
+            SAP Status is the source-system status. AT operational status is managed
+            separately on the shared disruption record.
+          </p>
+        </Section>
+      )}
+
+      <div id="review">
+        <Section title="Review">
+          <p className="muted">
+            {incident.operationalStatus === 'CLOSED'
+              ? 'This incident is closed — open the closed record for the review summary.'
+              : 'Close the incident to record the post-incident review.'}
+          </p>
+          <div className="actions-bar">
+            <FioriButton
+              icon="decline"
+              to={`/operations/incident/${incident.id}/close`}
+            >
+              {incident.operationalStatus === 'CLOSED' ? 'Open closed record' : 'Close Incident'}
+            </FioriButton>
+          </div>
+        </Section>
       </div>
     </div>
   );

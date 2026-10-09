@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Section } from '../../components/chrome.js';
+import { useEffect, useState } from 'react';
+import { FioriButton } from '../../components/Button.js';
+import { Crumbs, Section } from '../../components/chrome.js';
+import { KpiCard } from '../../components/KpiCard.js';
 import {
   activeForOperator,
   assessedByAT,
@@ -8,12 +9,13 @@ import {
   needsOperatorUpdate,
 } from '../../domain/contractor.js';
 import { useAppStore } from '../../state/AppStore.js';
-import { ContractorNav, ContractorIncidentTable } from './ContractorTable.js';
+import { ContractorIncidentTable } from './ContractorTable.js';
 
 /**
- * Bus Operator Portal — overview. Summary cards and recent incidents in
- * operator wording, derived from the shared record. No severity reasoning,
- * no SLA timers, no AT analytics.
+ * Bus Operator Portal — Contractor Overview (Figma "02 Bus Contractor").
+ * KPI cards, filter bar, reported-incidents table and operator actions
+ * in operator wording, derived from the shared record. No severity
+ * reasoning, no SLA timers, no AT analytics.
  */
 export function ContractorOverview(): React.JSX.Element {
   const { state, setRole } = useAppStore();
@@ -26,75 +28,48 @@ export function ContractorOverview(): React.JSX.Element {
   const active = activeForOperator(state.incidents);
   const awaiting = mine.filter((i) => !assessedByAT(i) && i.operationalStatus !== 'CLOSED');
   const updates = mine.filter(needsOperatorUpdate);
-  const closed = mine.filter((i) => i.operationalStatus === 'CLOSED');
+  const [filteredCount, setFilteredCount] = useState(mine.length);
 
   return (
     <div>
       <div className="pagehead">
-        <span className="eyebrow">Bus Operator Portal</span>
-        <h1>Overview</h1>
-        <p className="lede">
-          Report disruptions and send confirmed updates. AT validates each
-          notification and manages severity, recovery and passenger communication.
-        </p>
+        <Crumbs trail={['Bus Operator Portal']} />
+        <div className="pagehead-with-action">
+          <h1>Contractor Overview</h1>
+          <div className="actions-bar">
+            <FioriButton design="emphasized" icon="plus" to="/contractor/report">
+              Report Disruption
+            </FioriButton>
+          </div>
+        </div>
+        <p className="lede">Report service disruptions and keep Auckland Transport updated.</p>
       </div>
 
-      <ContractorNav />
-
-      <div className="kpi-grid">
-        <div className="kpi-card">
-          <h3>Active Incidents</h3>
-          <div className="kpi-value">{active.length}</div>
-          <p className="muted small">Reported and not yet closed</p>
-          <Link className="kpi-link" to="/contractor/incidents">
-            View my incidents
-          </Link>
-        </div>
-        <div className="kpi-card">
-          <h3>Awaiting AT Assessment</h3>
-          <div className="kpi-value">{awaiting.length}</div>
-          <p className="muted small">Submitted, severity not yet set by AT</p>
-          <Link className="kpi-link" to="/contractor/incidents">
-            View my incidents
-          </Link>
-        </div>
-        <div className="kpi-card">
-          <h3>Updates Required</h3>
-          <div className="kpi-value">{updates.length}</div>
-          <p className="muted small">Validated by AT, no follow-up sent yet</p>
-          <Link className="kpi-link" to="/contractor/incidents">
-            View my incidents
-          </Link>
-        </div>
-        <div className="kpi-card">
-          <h3>Closed</h3>
-          <div className="kpi-value">{closed.length}</div>
-          <p className="muted small">Restored and closed by AT</p>
-          <Link className="kpi-link" to="/contractor/incidents">
-            View my incidents
-          </Link>
-        </div>
+      <div className="kpi-grid kpi-grid-3">
+        <KpiCard title="Active Incidents" value={active.length} context="City Bus Operator" />
+        <KpiCard
+          title="Awaiting AT Assessment"
+          value={awaiting.length}
+          context={
+            awaiting.length === 0
+              ? 'All notifications assessed'
+              : 'Submitted, severity not yet set by AT'
+          }
+        />
+        <KpiCard
+          title="Updates Required"
+          value={updates.length}
+          tone={updates.length > 0 ? 'warn' : undefined}
+          context="Recovery update requested"
+        />
       </div>
 
-      <Section title="Report a disruption">
-        <p className="muted">
-          Record route, location, onset and impact as confirmed. AT assesses severity
-          and assigns an owner after submission.
-        </p>
-        <Link className="btn btn-primary btn-link" to="/contractor/report">
-          + Report disruption
-        </Link>
-      </Section>
-
-      <Section title="Recent incidents">
-        <ContractorIncidentTable rows={mine.slice(0, 5)} />
-        {mine.length > 5 && (
-          <p>
-            <Link className="btn" to="/contractor/incidents">
-              View all my incidents
-            </Link>
-          </p>
-        )}
+      <Section
+        title="My Reported Incidents"
+        count={`${filteredCount} record${filteredCount === 1 ? '' : 's'}`}
+      >
+        <ContractorIncidentTable rows={mine} onFilteredCount={setFilteredCount} />
+        <p className="table-foot">Only incidents reported by City Bus Operator are shown.</p>
       </Section>
     </div>
   );

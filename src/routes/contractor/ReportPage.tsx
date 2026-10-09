@@ -1,95 +1,143 @@
 import { useEffect, useState } from 'react';
-import type { ChangeEvent, FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Section } from '../../components/chrome.js';
-import { Field } from '../../components/forms.js';
-import { ContractorNav } from './ContractorTable.js';import {
+import type { ChangeEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { FioriButton } from '../../components/Button.js';
+import { Crumbs, Section } from '../../components/chrome.js';
+import { Field, SapSelect } from '../../components/forms.js';
+import {
   DISRUPTION_TYPES,
   EMPTY_REPORT,
   ROUTE_70_DEMO_VALUES,
-  SERVICE_IMPACTS,
   validateReport,
+  validateReportStep1,
+  validateReportStep2,
   type ReportErrors,
   type ReportInput,
 } from '../../domain/reporting.js';
 import { useAppStore } from '../../state/AppStore.js';
 
+const DRAFT_KEY = 'at-disruption-hub/report-draft/v1';
+
+const STEPS = ['Incident Details', 'Service Impact', 'Review'];
+
+function loadDraft(): ReportInput {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return EMPTY_REPORT;
+    const parsed = JSON.parse(raw) as Partial<ReportInput>;
+    return { ...EMPTY_REPORT, ...parsed };
+  } catch {
+    return EMPTY_REPORT;
+  }
+}
+
 /**
- * Contractor disruption notification form.
- * Layout follows design/Capture new bus disruption.png: Service & location,
- * Onset & source, Disruption & initial impact + readiness rail. Creating the
- * record opens AT assessment — it does NOT publish passenger communications.
+ * Contractor disruption notification — Figma "02 Bus Contractor"
+ * 3-step wizard (Incident Details → Service Impact → Review).
+ * Submitting creates one shared REPORTED incident and opens the
+ * Notification Sent screen; it never publishes passenger information.
  */
 export function ReportPage(): React.JSX.Element {
   const { setRole, createIncident } = useAppStore();
   const navigate = useNavigate();
-  const [form, setForm] = useState<ReportInput>(EMPTY_REPORT);
+  const [form, setForm] = useState<ReportInput>(() => loadDraft());
+  const [step, setStep] = useState(1);
   const [errors, setErrors] = useState<ReportErrors>({});
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
 
   useEffect(() => {
     setRole('CONTRACTOR');
   }, [setRole]);
 
-  const set = (key: keyof ReportInput) => (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
-  ) => {
-    const value =
-      e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value;
-    setForm((f) => ({ ...f, [key]: value }));
-  };
+  const set =
+    (key: keyof ReportInput) =>
+    (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+      const value =
+        e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value;
+      setForm((f) => ({ ...f, [key]: value }));
+      setDraftSavedAt(null);
+    };
 
-  const readiness = [
-    { ok: form.route.trim() !== '' && form.direction !== '', label: 'Route and direction identified' },
-    {
-      ok: form.location.trim() !== '' && /^\d{2}:\d{2}$/.test(form.onsetTime),
-      label: 'Location and onset confirmed',
-    },
-    { ok: form.operator.trim() !== '', label: 'Operator source recorded' },
-  ];
+  const setVal =
+    (key: 'disruptionType' | 'serviceContinues' | 'passengerImpact') =>
+    (value: string): void => {
+      setForm((f) => ({ ...f, [key]: value }) as ReportInput);
+      setDraftSavedAt(null);
+    };
 
-  function onSubmit(e: FormEvent): void {
-    e.preventDefault();
+  function onNext(): void {
+    const found = step === 1 ? validateReportStep1(form) : validateReportStep2(form);
+    setErrors(found);
+    if (Object.keys(found).length === 0) setStep((s) => Math.min(3, s + 1));
+  }
+
+  function onSaveDraft(): void {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(form));
+      setDraftSavedAt(new Date().toISOString());
+    } catch {
+      // Demo convenience only.
+    }
+  }
+
+  function onNotify(): void {
     const found = validateReport(form);
     setErrors(found);
-    if (Object.keys(found).length > 0) return; // input preserved; errors inline
+    if (Object.keys(found).length > 0) {
+      setStep(Object.keys(validateReportStep1(form)).length > 0 ? 1 : 2);
+      return;
+    }
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      // Ignore.
+    }
     const id = createIncident(form);
-    navigate(`/contractor/incident/${id}`, { state: { fresh: true } });
+    navigate(`/contractor/sent/${id}`);
   }
 
   return (
     <div>
       <div className="pagehead">
-        <span className="eyebrow">Bus Operator Portal</span>
-        <h1>Report bus disruption</h1>
+        <Crumbs trail={['Bus Operator Portal', 'Report Disruption']} />
+        <h1>Report Disruption</h1>
         <p className="lede">
-          Record what is known now. Refine the assessment as confirmed information
-          arrives. Required fields are marked *.
-        </p>
-        <p>
-          <button
-            className="btn"
-            type="button"
-            onClick={() => {
-              setForm(ROUTE_70_DEMO_VALUES);
-              setErrors({});
-            }}
-          >
-            ↻ Use Route 70 demo values
-          </button>
+          Step {step} of 3 · {STEPS[step - 1]}
         </p>
       </div>
 
-      <ContractorNav />
+      <ol className="steps" aria-label="Report progress">
+        {STEPS.map((label, i) => {
+          const n = i + 1;
+          const cls = n < step ? 'step done' : n === step ? 'step current' : 'step';
+          return (
+            <li key={label} className={cls}>
+              <span className="step-n">{n < step ? '✓' : n}</span> {label}
+            </li>
+          );
+        })}
+      </ol>
 
-      <form onSubmit={onSubmit} noValidate>
-        <div className="form-layout">
-          <div>
-            <Section title="Service & location">
-              <div className="form-grid">
-                <Field id="f-mode" label="Mode">
-                  <input id="f-mode" className="input" value="Bus" disabled aria-disabled="true" />
+      <form onSubmit={(e) => e.preventDefault()} noValidate>
+        {step === 1 && (
+          <>
+            <div className="note" role="note">
+              Provide the details available now. You can send an operator update after
+              notification.
+            </div>
+            <Section title="Incident Details">
+              <p className="muted small">Required fields are marked with *</p>
+              <div className="form-grid form-grid-3">
+                <Field id="f-operator" label="Operator">
+                  <input
+                    id="f-operator"
+                    className="input"
+                    value={form.operator}
+                    disabled
+                    aria-disabled="true"
+                  />
                 </Field>
-                <Field id="f-route" label="Affected route(s)" required error={errors.route}>
+                <Field id="f-route" label="Route" required error={errors.route}>
                   <input
                     id="f-route"
                     className="input"
@@ -99,169 +147,88 @@ export function ReportPage(): React.JSX.Element {
                     aria-invalid={Boolean(errors.route)}
                   />
                 </Field>
-                <Field id="f-direction" label="Direction" required error={errors.direction}>
-                  <select
-                    id="f-direction"
+                <Field id="f-vehicle" label="Vehicle / Service ID">
+                  <input
+                    id="f-vehicle"
                     className="input"
-                    value={form.direction}
-                    onChange={set('direction')}
-                    aria-invalid={Boolean(errors.direction)}
-                  >
-                    <option value="">Select…</option>
-                    <option>Citybound</option>
-                    <option>Outbound</option>
-                    <option>Both directions</option>
-                  </select>
+                    value={form.vehicleOrServiceId}
+                    onChange={set('vehicleOrServiceId')}
+                    placeholder="e.g. BUS-070"
+                  />
                 </Field>
               </div>
-              <div className="form-grid">
-                <Field
-                  id="f-location"
-                  label="Location / road"
-                  required
-                  error={errors.location}
-                  hint="Use the confirmed location."
-                >
+              <div className="form-grid form-grid-3">
+                <Field id="f-location" label="Location" required error={errors.location}>
                   <input
                     id="f-location"
                     className="input"
                     value={form.location}
                     onChange={set('location')}
-                    placeholder="e.g. Newmarket — Broadway"
+                    placeholder="e.g. Newmarket"
                     aria-invalid={Boolean(errors.location)}
                   />
                 </Field>
-                <Field id="f-vehicles" label="Affected vehicles / trips">
-                  <input
-                    id="f-vehicles"
-                    className="input"
-                    value={form.vehicleOrServiceId}
-                    onChange={set('vehicleOrServiceId')}
-                    placeholder="e.g. Bus 2147 · Route 70 citybound"
-                  />
-                </Field>
-              </div>
-              <Field
-                id="f-locdetail"
-                label="Location detail"
-                hint="Do not add a detour or stop closure unless confirmed."
-              >
-                <textarea
-                  id="f-locdetail"
-                  className="input"
-                  rows={2}
-                  value={form.locationDetail}
-                  onChange={set('locationDetail')}
-                />
-              </Field>
-            </Section>
-
-            <Section title="Onset & source">
-              <div className="form-grid form-grid-3">
-                <Field id="f-date" label="Incident onset date" required error={errors.onsetDate}>
-                  <input
-                    id="f-date"
-                    className="input"
-                    type="date"
-                    value={form.onsetDate}
-                    onChange={set('onsetDate')}
-                    aria-invalid={Boolean(errors.onsetDate)}
-                  />
-                </Field>
-                <Field
-                  id="f-time"
-                  label="Onset time (NZDT)"
-                  required
-                  error={errors.onsetTime}
-                  hint="Earliest confirmed disruption time."
-                >
-                  <input
-                    id="f-time"
-                    className="input"
-                    type="time"
-                    value={form.onsetTime}
-                    onChange={set('onsetTime')}
-                    aria-invalid={Boolean(errors.onsetTime)}
-                  />
-                </Field>
-                <Field id="f-operator" label="Reporting operator" required error={errors.operator}>
-                  <input
-                    id="f-operator"
-                    className="input"
-                    value={form.operator}
-                    onChange={set('operator')}
-                    aria-invalid={Boolean(errors.operator)}
-                  />
-                </Field>
-              </div>
-              <Field id="f-srcref" label="Source reference">
-                <input
-                  id="f-srcref"
-                  className="input"
-                  value={form.sourceReference}
-                  onChange={set('sourceReference')}
-                  placeholder="e.g. radio report reference"
-                />
-              </Field>
-            </Section>
-
-            <Section title="Disruption & initial impact">
-              <div className="form-grid">
-                <Field
+                <SapSelect
                   id="f-type"
-                  label="Disruption type"
+                  label="Disruption Type"
                   required
+                  value={form.disruptionType}
+                  onChange={setVal('disruptionType')}
+                  options={DISRUPTION_TYPES.map((t) => ({ value: t, label: t }))}
+                  placeholder="Select…"
                   error={errors.disruptionType}
-                  hint="Select the best match."
+                />
+                <Field
+                  id="f-detected"
+                  label="Detection Time"
+                  required
+                  error={errors.detectedAt}
                 >
-                  <select
-                    id="f-type"
+                  <input
+                    id="f-detected"
                     className="input"
-                    value={form.disruptionType}
-                    onChange={set('disruptionType')}
-                    aria-invalid={Boolean(errors.disruptionType)}
-                  >
-                    <option value="">Select…</option>
-                    {DISRUPTION_TYPES.map((t) => (
-                      <option key={t}>{t}</option>
-                    ))}
-                  </select>
-                </Field>
-                <Field id="f-impact" label="Service impact" required error={errors.serviceImpact}>
-                  <select
-                    id="f-impact"
-                    className="input"
-                    value={form.serviceImpact}
-                    onChange={set('serviceImpact')}
-                    aria-invalid={Boolean(errors.serviceImpact)}
-                  >
-                    <option value="">Select…</option>
-                    {SERVICE_IMPACTS.map((t) => (
-                      <option key={t}>{t}</option>
-                    ))}
-                  </select>
+                    type="datetime-local"
+                    value={form.detectedAt}
+                    onChange={set('detectedAt')}
+                    aria-invalid={Boolean(errors.detectedAt)}
+                  />
                 </Field>
               </div>
-              <Field
-                id="f-facts"
-                label="Confirmed operational facts"
-                required
-                error={errors.facts}
-                hint="Keep confirmed facts separate from estimates."
-              >
-                <textarea
-                  id="f-facts"
-                  className="input"
-                  rows={4}
-                  value={form.facts}
-                  onChange={set('facts')}
-                  aria-invalid={Boolean(errors.facts)}
-                />
-              </Field>
+            </Section>
+
+            <Section title="Reporting guidance">
+              <p>
+                Notify Auckland Transport promptly when service cannot continue, passenger
+                impact is high or a major interchange is affected.
+              </p>
+              <p className="muted small">
+                Your notification creates one shared incident record. AT Operations will
+                validate and assess it.
+              </p>
+            </Section>
+          </>
+        )}
+
+        {step === 2 && (
+          <>
+            <Section title="Service Impact">
               <div className="form-grid form-grid-3">
+                <SapSelect
+                  id="f-continue"
+                  label="Can Service Continue?"
+                  required
+                  value={form.serviceContinues}
+                  onChange={setVal('serviceContinues')}
+                  options={[
+                    { value: 'yes', label: 'Yes' },
+                    { value: 'no', label: 'No' },
+                  ]}
+                  placeholder="Select…"
+                  error={errors.serviceContinues}
+                />
                 <Field
                   id="f-delay"
-                  label="Estimated delay (minutes)"
+                  label="Estimated Delay"
                   required
                   error={errors.estimatedDelayMinutes}
                 >
@@ -271,72 +238,184 @@ export function ReportPage(): React.JSX.Element {
                     inputMode="numeric"
                     value={form.estimatedDelayMinutes}
                     onChange={set('estimatedDelayMinutes')}
-                    placeholder="e.g. 25"
+                    placeholder="e.g. 25 min"
                     aria-invalid={Boolean(errors.estimatedDelayMinutes)}
                   />
                 </Field>
-                <Field
-                  id="f-pax"
-                  label="Passenger impact"
+                <SapSelect
+                  id="f-impact"
+                  label="Passenger Impact"
                   required
+                  value={form.passengerImpact}
+                  onChange={setVal('passengerImpact')}
+                  options={[
+                    { value: 'LOW', label: 'Low' },
+                    { value: 'MEDIUM', label: 'Medium' },
+                    { value: 'HIGH', label: 'High' },
+                  ]}
+                  placeholder="Select…"
                   error={errors.passengerImpact}
-                >
-                  <select
-                    id="f-pax"
-                    className="input"
-                    value={form.passengerImpact}
-                    onChange={set('passengerImpact')}
-                    aria-invalid={Boolean(errors.passengerImpact)}
-                  >
-                    <option value="">Select…</option>
-                    <option value="LOW">Low</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="HIGH">High</option>
-                  </select>
-                </Field>
-                <div className="field field-check">
-                  <input
-                    id="f-interchange"
-                    type="checkbox"
-                    checked={form.majorInterchangeAffected}
-                    onChange={set('majorInterchangeAffected')}
-                  />
-                  <label htmlFor="f-interchange">Major interchange affected</label>
-                </div>
+                />
+              </div>
+              <div className="field field-check">
+                <input
+                  id="f-interchange"
+                  type="checkbox"
+                  checked={form.majorInterchangeAffected}
+                  onChange={set('majorInterchangeAffected')}
+                />
+                <label htmlFor="f-interchange">Major Interchange Affected</label>
               </div>
             </Section>
-          </div>
 
-          <aside>
-            <Section title="Capture readiness">
-              <p className="muted small">Use verified facts; unknown details can follow.</p>
-              <ul className="checklist">
-                {readiness.map((r) => (
-                  <li key={r.label} className={r.ok ? 'ok' : ''}>
-                    <span aria-hidden="true">{r.ok ? '☑' : '☐'}</span> {r.label}
-                  </li>
-                ))}
-                <li className="ok">
-                  <span aria-hidden="true">☑</span> Recovery time not yet confirmed — leave it
-                  unknown.
-                </li>
-              </ul>
+            <Section title="Description">
+              <Field
+                id="f-description"
+                label="Description"
+                required
+                error={errors.description}
+              >
+                <textarea
+                  id="f-description"
+                  className="input"
+                  rows={4}
+                  value={form.description}
+                  onChange={set('description')}
+                  aria-invalid={Boolean(errors.description)}
+                />
+              </Field>
+              {form.serviceContinues === 'no' && (
+                <div className="note warn" role="note">
+                  Service cannot continue. Auckland Transport will assess passenger impact
+                  and coordinate recovery.
+                </div>
+              )}
             </Section>
-            <div className="note">
-              Submitting sends this notification to AT. It does not publish
-              passenger communications.
+          </>
+        )}
+
+        {step === 3 && (
+          <>
+            <div className="note" role="note">
+              Review your notification before sending it to Auckland Transport.
             </div>
-          </aside>
-        </div>
+            <Section title="Incident Details">
+              <div className="actions-bar">
+                <FioriButton
+                  design="transparent"
+                  small
+                  icon="edit"
+                  type="button"
+                  onClick={() => setStep(1)}
+                >
+                  Edit
+                </FioriButton>
+              </div>
+              <dl className="facts-grid">
+                <div className="fact">
+                  <dt>Operator</dt>
+                  <dd>{form.operator || '—'}</dd>
+                </div>
+                <div className="fact">
+                  <dt>Route</dt>
+                  <dd>{form.route || '—'}</dd>
+                </div>
+                <div className="fact">
+                  <dt>Vehicle / Service ID</dt>
+                  <dd>{form.vehicleOrServiceId || '—'}</dd>
+                </div>
+                <div className="fact">
+                  <dt>Location</dt>
+                  <dd>{form.location || '—'}</dd>
+                </div>
+                <div className="fact">
+                  <dt>Disruption Type</dt>
+                  <dd>{form.disruptionType || '—'}</dd>
+                </div>
+                <div className="fact">
+                  <dt>Detection Time</dt>
+                  <dd>{form.detectedAt.replace('T', ' ') || '—'}</dd>
+                </div>
+              </dl>
+            </Section>
+
+            <Section title="Service Impact">
+              <div className="actions-bar">
+                <FioriButton
+                  design="transparent"
+                  small
+                  icon="edit"
+                  type="button"
+                  onClick={() => setStep(2)}
+                >
+                  Edit
+                </FioriButton>
+              </div>
+              <dl className="facts-grid">
+                <div className="fact">
+                  <dt>Can Service Continue?</dt>
+                  <dd>
+                    {form.serviceContinues === ''
+                      ? '—'
+                      : form.serviceContinues === 'yes'
+                        ? 'Yes'
+                        : 'No'}
+                  </dd>
+                </div>
+                <div className="fact">
+                  <dt>Estimated Delay</dt>
+                  <dd>{form.estimatedDelayMinutes || '—'}</dd>
+                </div>
+                <div className="fact">
+                  <dt>Passenger Impact</dt>
+                  <dd>{form.passengerImpact || '—'}</dd>
+                </div>
+                <div className="fact">
+                  <dt>Major Interchange Affected</dt>
+                  <dd>{form.majorInterchangeAffected ? 'Yes' : 'No'}</dd>
+                </div>
+              </dl>
+              <p>{form.description || '—'}</p>
+            </Section>
+          </>
+        )}
 
         <div className="actions-bar">
-          <Link className="btn btn-link" to="/contractor">
-            × Cancel
-          </Link>
-          <button className="btn btn-primary" type="submit">
-            → Submit to AT
-          </button>
-          <span className="muted small">No passenger update will be published yet.</span>
+          {step > 1 && (
+            <FioriButton icon="back" type="button" onClick={() => setStep((s) => s - 1)}>
+              Back
+            </FioriButton>
+          )}
+          <FioriButton design="transparent" icon="decline" to="/contractor">
+            Cancel
+          </FioriButton>
+          <FioriButton icon="save" type="button" onClick={onSaveDraft}>
+            Save Draft
+          </FioriButton>
+          {step === 1 && (
+            <FioriButton
+              design="transparent"
+              icon="refresh"
+              type="button"
+              onClick={() => {
+                setForm(ROUTE_70_DEMO_VALUES);
+                setErrors({});
+                setDraftSavedAt(null);
+              }}
+            >
+              Fill example values
+            </FioriButton>
+          )}
+          {step < 3 ? (
+            <FioriButton design="emphasized" icon="arrowRight" type="button" onClick={onNext}>
+              Next: {STEPS[step]}
+            </FioriButton>
+          ) : (
+            <FioriButton design="emphasized" icon="send" type="button" onClick={() => onNotify()}>
+              Notify Auckland Transport
+            </FioriButton>
+          )}
+          {draftSavedAt && <span className="muted small">Draft saved.</span>}
         </div>
       </form>
     </div>

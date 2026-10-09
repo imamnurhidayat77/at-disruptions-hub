@@ -336,9 +336,9 @@ page.
 
 # Phase 7 — SAP Integration Layer
 
-Status: BLOCKED — SAP credentials / sandbox required (07 Oct 2026).
+Status: CONNECTED — live sandbox verified (07 Oct 2026).
 
-Completed code (verified without a network):
+Completed code (live-verified 07 Oct 2026, plus unit tests):
 - [x] Server-side proxy (`server/sapProxy.ts` Vite plugin): same-origin
       `/api/sap/status` + `/api/sap/incidents`, key stays server-side,
       5-record cap, NOT_CONFIGURED (503) / upstream-error (502) mapping.
@@ -356,12 +356,19 @@ Completed code (verified without a network):
 - [x] Docs: `docs/SAP_INTEGRATION.md` (selected API, Option-2 fit,
       adaptation, auth, failure handling, demo steps).
 
-Not verified (hence BLOCKED, not complete):
-- No live request has returned data — no `SAP_API_BASE_URL`/`SAP_API_KEY`
-  supplied. Evidence-backed so far: service path + `A_Incident` entity set
-  from SAP's official EHS integration guide; exact sandbox properties are
-  intentionally unconfirmed and must be recorded in
-  `docs/SAP_INTEGRATION.md` after the first real response.
+Live-verified (07 Oct 2026 — sandbox key supplied, kept in git-ignored
+`.env.local`, never committed):
+- `GET …/API_EHS_REPORT_INCIDENT_SRV/A_Incident?$top=5&$format=json`
+  returns HTTP 200, OData V2 `d.results` with 5 records (IDs 2, 3, 4,
+  11, 12; titles e.g. "Slip from ladder"; all `IncidentStatus` 02;
+  categories 001/002/003; empty location/description strings → mapper
+  `null`). Proxy `$select` returns the same 9 spec-exact fields;
+  `/api/sap/status` flips to `connected` with `lastCount: 5`.
+  Full VALUES table lives in `docs/SAP_INTEGRATION.md`.
+- Demo enrichment (07 Oct 2026): `src/services/sap/sapDemoEnrichment.ts`
+  attaches labelled demo AT fields (route/location/disruption/delay +
+  `assessSeverity` suggestion) under a nested `demo` key — SAP data
+  untouched, display-only in the SAP panel (`Demo` badges), 10/10 tests.
 - "Use as Reference" import deferred (lower priority than working GET).
 
 ---
@@ -395,7 +402,9 @@ Publish-when-REPORTED and close-without-root-cause are safely ignored.
 - [x] Deterministic demo lifecycle (07 Oct 2026): INC-1043 seeds REPORTED /
   NOT_REQUIRED (State A); validation flips comms to REQUIRED (State B);
   severity gate admits it to the CI queue; draft never stops the clock;
-  publish removes it and flips coverage 67% → 100%. Cross-role flow
+  publish removes it and flips coverage 88% → 100% (8 in scope once
+  validated: 2 seed + 5 SAP archives published, INC-1043 awaiting; 8/8
+  after publish). Cross-role flow
   verified headlessly twice (contractor → ops → CI → ops, incl. queue
   counts, COUNTING timer, target-met, shared timestamp/event).
 - [x] Discreet header "↺ Reset demo" control with confirmation dialog
@@ -424,6 +433,299 @@ Known simplifications vs the PNGs (documented, not defects):
 - Single-publication model (no v1/v2/v3 update versioning); closure shows the first-update record.
 - No queue export buttons; no multi-update commitments beyond `nextUpdateBy`.
 - Browser visual/click-through pass still recommended before presenting.
+
+---
+
+# Phase 18 — Composition Rebalance (user-directed)
+
+Status: DONE (07 Oct 2026)
+
+User screenshot showed sidebar/content imbalance vs Figma. Root
+fix: pages now open on a white dynamic-page header band (full content
+width, like Figma 1232×132 headers) instead of floating on grey;
+content column centered capped at 1232px (Fiori launchpad style —
+identical to Figma at 1440px, balanced margins on ultra-wide).
+Follow-up (same phase): sidebar widened 208→248px with roomier items;
+header stripped to logo + role-switch + avatar only (prototype tag and
+bell removed); KPI cards locked to equal height (flex column +
+min-height 148px, verified aligned in re-shoots); pagehead band made
+full-bleed across the content column (attached to sidebar, Fiori
+DynamicPage pattern); cards below center under it (container uncapped,
+direct content blocks capped at 1232px and auto-margined) — sidebar-attached
+header plus balanced body.
+Supporting polish: KPI value 40px + roomier cards, card padding
+20/22px, filter actions pinned right, shortened filter helper text,
+table-foot margins realigned, footer inner aligned to 1232px.
+
+Verification: headless-Chrome re-shoots of contractor overview and
+incoming worklist confirm the balanced composition; `npm run build`
+passes; `npm run test:sap` 8/8.
+
+---
+
+# Phase 17 — Screenshot Audit vs Figma (user-directed)
+
+---
+
+Status: DONE (07 Oct 2026)
+
+First true side-by-side audit: headless-Chrome screenshots of all 18
+seed pages + a scripted end-to-end flow (report → accept → severity →
+owner → workspace → publish → recovery → close → reviews) compared
+against the Figma JSON specs (Figma image export times out in the
+plugin, so geometry/tokens came from node data).
+
+Bugs caught by the audit (all fixed + verified):
+- Severity +1 recovery factor pushed INC-1043 to CRITICAL and crashed
+  the app at runtime (seed invariant). Threshold CRITICAL → ≥9:
+  1043 scores 8/10 HIGH per Figma.
+- Wizard Next button morphed into the submit button in place — a
+  single click advanced AND submitted, skipping Review. Submit is now
+  a plain button with a direct handler (no form-submit morph).
+- Sidebar multi-select: NavLink prefix matching lit Overview + page.
+  Fixed with `end` + manual matching (verified single-active live).
+- Raw enums leaking into UI ("Not_required"); contradictory KPI
+  contexts when seed incidents are published (now conditional);
+  misleading "Last Operator Update" fallback (new
+  `hasOperatorUpdates` gate); owner subtitle hardcoded to Sarah Chen.
+
+Fidelity upgrades (verified in re-shoots): Inter bundled via
+@fontsource/inter (Figma typeface; documented dependency exception),
+Lucide SVG icon set (sidebar/shell), Demo Role popover replacing the
+select (Reset Demo moved inside, per 01 frame), eyebrows removed,
+two-tone shell title, table grey headers + taller rows + right-side
+counts + footer strips, compact wizard, search fields with icons and
+300px width, actions right-aligned, amber KPI tone, dialog r8/X/icons,
+btn-negative, favicon (kills console 404), transparent statuses,
+short timeline times, intake full dates.
+
+Deliberate deviations (documented): text breadcrumbs (Figma has none,
+kept for demo navigation), horizontal table scroll on phones (demo
+targets desktop 1440), no shell search/bell function, success strips
+without icons (00 spec shows icons on warning only), audit scripts +
+playwright-core removed after the audit (repo left clean).
+
+Verification: `npm run build` passes; `npm run test:sap` 8/8.
+
+---
+
+# Phase 16 — Full Figma Rebuild (user-directed)
+
+Status: DONE (07 Oct 2026)
+
+All 7 Figma pages read via TalkToFigma MCP (00 Design System, 01 Shared
+Shell, 02 Bus Contractor ×6, 03 AT Operations ×9+3, 04 Customer
+Information ×8, 05 Closure & Review ×3; 06 Prototype Flow is wires
+only). Old flows/designs deleted; app rebuilt following Figma.
+
+Design-system corrections from 00: Inter font, hover #0054B5, focus
+#003E87, exact strip tints, white table headers, 28px wizard markers
+with › separators, plain timeline rows, 12px field labels, disabled
+button greys, dialog r8, transparent ObjectStatus, link-style table
+actions/IDs, labeled FilterBars with Go/Clear, IllustratedMessage
+empty states, toast token (unused — no toasts in app).
+
+Contractor (02): 3-step report wizard (draft in localStorage, demo
+values kept), Notification Sent screen, detail with restoration field
++ AT-request card + updates table, overview with filter + actions
+card, My Incidents retained. ReportInput reshaped (serviceContinues
+added to Incident + seed + backfill).
+
+Operations (03): dedicated Incoming detail / Severity (factors table,
+score segments, override dialog per Figma) / Owner pages; workspace
+restructured to anchor tabs + parallel-track cards; recovery editing
+moved to Recovery page with explicit Complete Recovery (auto-restore
+removed); MARK_ACTIVE removed (assign implies active); severity +1
+recovery factor (1043 scores 8/10 per Figma); dead enrichment module
++ tests + SapStatus removed; SAP panel shows pure SAP fields.
+
+Comms (04): composer rebuilt as Message Workspace (500-char count,
+sticky footer actions, preview dialog → confirm dialog → success
+page at /comms/published/:id); commitmentOwner removed from domain;
+queue/overview 8-col tables + selected cards + filters; published
+list filter + detail card; templates as 3 static patterns wired into
+the composer.
+
+Closure (05): dedicated close route (frames A/B conditional, direct
+close — no dialog per Figma), review lifecycle OPEN→IN_PROGRESS→
+COMPLETED with Start Review + Mark done, Reviews worklist rebuild.
+New fields: closureNotes, reviewStatus; new actions SET_ACTUAL_
+RESTORATION/START_REVIEW/MARK_CORRECTIVE_DONE; CLOSE now also
+requires actual time + review.
+
+Verification: `npm run build` passes; `npm run test:sap` 8/8.
+Debt: docs/PRODUCT_REQUIREMENTS + DEMO_SCENARIO still describe the
+old flows (PLAN is authoritative); browser click-through recommended.
+
+---
+
+# Phase 15 — Figma SAP Intake + Total Chrome Overhaul (user-directed)
+
+Status: DONE (07 Oct 2026)
+
+User supplied live Figma frames ("05 SAP Integration": Incoming
+Worklist / Incoming Assessment / Linked incident detail, read via
+TalkToFigma MCP) and directed a total app overhaul following them plus
+a full intake flow. Tokens/values below are literal Figma reads.
+
+Chrome (all roles): white ShellBar (AT mark #0064d9, "AT Disruption
+Hub   Auckland Transport", Prototype tag, Demo Role, Reset, avatar),
+208px sidebar navigation per role (replaces all tab-strip navs —
+OpsNav/CommsNav/ContractorNav/IncomingCard deleted), white footer
+bar ("One incident · One shared record · Three role-based experiences"
++ demo disclaimer). Page bg #f5f6f7, cards radius 6, buttons/inputs
+radius 4, table head #eef1f4, transparent icon+text ObjectStatus,
+table actions as text links, plain note text, white default buttons
+with brand border/text.
+
+SAP intake (Operations): `SapCandidate` seed (123456–123460) +
+`sapLink` on Incident; store persists both (localStorage v5);
+`CREATE_LINKED_INCIDENT` builds ONE VALIDATED linked incident
+(KPI clock running → severity next, no duplicate); Incoming page
+rebuilt as the Figma worklist (KPIs, toolbar counts, intake routes,
+selection card, footnote); new `/operations/sap/:sapId` assessment
+(read-only SAP card, AT form with validation, workflow checklist,
+Cancel/Create); workspace shows SAP source context when linked.
+
+Verification: `npm run build` passes; `npm run test:sap` passes
+(0 fail). Browser click-through still recommended before presenting.
+
+---
+
+# Phase 14 — Total Fiori Redesign (user-directed)
+
+Status: DONE (07 Oct 2026)
+
+MCP-grounded (`search_docs`: IllustratedMessage, Wizard, List Report
+floorplan, FilterBar/Table, criticality→ObjectStatus) total audit +
+redesign. Workflow, permissions and domain logic unchanged.
+
+Shared redesign (every page affected):
+- New `EmptyState` (Fiori IllustratedMessage: illustration + title +
+  description + optional action) — all 14 one-line muted empties
+  replaced across contractor/operations/comms.
+- `.timeline` → Fiori rail with dots (latest entry highlighted).
+- `.steps` → Fiori Wizard (numbered circles, connectors, brand
+  done/current states).
+- `.card h3` → normal-case 14px semibold (Fiori form group titles).
+- `.filters` → Fiori FilterBar (card container, visible labels,
+  end-aligned Reset); Incidents filters relabelled.
+- Fiori link affordance (underline on hover, never on buttons/tabs).
+- `ConfirmDialog` → MessageBox icon in the title.
+- Recovery board shows visible completion %.
+
+Backfilled here (implemented just before this phase):
+- Table action buttons uniform width + centered; stray text-link
+  "Open →" converted to `btn-small`.
+- Header rebuilt to the SAP ShellBar template (product title +
+  second title, avatar last, role-tag removed).
+
+Known simplifications (documented, not defects): text breadcrumbs
+(Fiori Breadcrumb is navigable — ours is a static trail), tables
+scroll horizontally on phones instead of pop-ins (demo targets
+desktop 1440 per the design PNGs).
+
+Verification: `npm run build` passes; `npm run test:sap` passes
+(0 fail). Browser click-through still recommended before presenting.
+
+---
+
+# Phase 13 — Fiori Redesign via SAP MCP (user-directed)
+
+Status: DONE (07 Oct 2026)
+
+After `opencode.json` connected `@sap-ux/fiori-mcp-server` + `@ui5/mcp-server`,
+pulled the official pattern docs via MCP `search_docs` (criticality →
+ObjectStatus icons, Object Page HeaderInfo Title/Description/TypeName,
+header action order, MessageStrip criticality colours) and applied a
+second Fiori wave through shared patterns only — every page changes,
+no workflow/permission/domain change:
+
+- `badges.tsx`: per-level Fiori status icons (■ Critical/Negative,
+  ⚠ High/Critical, ℹ Medium/Information, ✓ Low/Positive).
+- `.subnav` → Fiori IconTabBar strip (transparent tabs, brand
+  underline indicator, no pills).
+- Tables → Fiori column headers (normal case, 12px semibold ink,
+  transparent background, stronger rule).
+- `.card h2` → Fiori card header divider (all Sections).
+- `.note`/`.success`/`.alert` → MessageStrip with automatic
+  ℹ/✓/⛔/⚠ icons (docs: colour derived from criticality).
+- ShellBar user area → Fiori avatar (initials circle + name;
+  avatar-only under 640px); stale `.user-chip` CSS removed.
+- `.sev-display` keeps the large severity display through
+  `SeverityBadge` (ternary deleted, look preserved).
+
+Verification: `npm run build` passes; `npm run test:sap` 8/8.
+Browser visual pass still recommended before presenting.
+
+---
+
+# Phase 12 — Clean & Rapi Pass (user-directed)
+
+Status: DONE (07 Oct 2026)
+
+Full-page tidiness audit (two parallel scope audits, 90+ findings) then a
+systematic fix, visuals-only except where noted. No workflow, permission
+or domain-logic change.
+
+CSS foundation (`tokens.css`, `app.css`):
+- `--brand`/`--brand-dark`/`--brand-tint` replace `--teal*` names
+  (teal kept as alias); new `--table-head-bg`, `--target-warn-border`.
+  All surface `#fff`/`#f2f4f6`/`#e9730c` now tokenised.
+- Dead `.role-switch` block deleted; new `.table-scroll` wrapper,
+  `.stack-gap` spacing utility, `.grid-2`/`.perm-lists` top-aligned,
+  `.facts` single-column under 560px, `.steps` wrap, ShellBar wraps
+  under 640px, stacked `.sap-details .facts`, badge gaps in table
+  cells, flush nested `.actions-bar` in strips, enlarged
+  `.sev-display .badge`.
+
+Shared components (deduplication):
+- New `Timeline` (replaces 3 verbatim copies) and `KpiCard`
+  (replaces 5 hand-rolled KPI grids); within-target tone now
+  conditional (green only at full achievement).
+
+Every page:
+- Breadcrumbs on all 18 pageheads; guards use standard pagehead + nav.
+- All 10 data tables in `.table-scroll`; all button rows in
+  `.actions-bar` (no more bare-`<p>` actions); inline `marginTop`
+  spacers replaced with `.stack-gap`.
+- Queue naming unified to "Communication Queue"; severity shown via
+  `SeverityBadge` everywhere (display size kept); Reviews uses
+  `facts` + `checklist`; Published channels render as badges;
+  ReportPage demo-fill moved to the form bar and the interchange
+  checkbox taken out of the 3-col grid; SAP panel precedence trap
+  fixed with labelled sync/last-sync figures; Close/Reopen merged
+  into one section; `#recovery` anchor kept via Section id.
+
+Verification: `npm run build` passes; `npm run test:sap` 8/8.
+Browser click-through still recommended before presenting.
+
+---
+
+# Phase 11 — SAP Fiori Restyle (user-directed)
+
+Status: DONE (07 Oct 2026)
+
+User explicitly requested a full Fiori redesign, overriding the Figma
+UI-kit source of truth for visuals. Implemented as a Fiori Horizon
+(Quartz Light) theme in hand-written CSS — no new dependencies, no
+component framework, domain logic untouched:
+
+- `src/styles/tokens.css`: Fiori tokens (brand #0a6ed1 / hover #0854a0,
+  shell #354a5f, background #f5f6f7, "72" font stack, card radius
+  .75rem, control radius .5rem, ObjectStatus severity tones).
+- `src/styles/app.css`: Fiori patterns — dark ShellBar (2.75rem +
+  shadow), Emphasized/default Button metrics, bordered MessageStrip
+  notes/alerts/success, grid-table headers + hover, brand focus ring,
+  dotted `:focus-visible`, rectangular ObjectStatus badges (still
+  labelled, never colour-alone), Fiori Dialog shadow.
+- `src/components/chrome.tsx`: header carries Fiori ShellBar
+  `role="banner"` semantics; footer disclaimer unchanged (required).
+- Prototype disclaimers, role permissions, demo flow, and SAP
+  adapter-boundary rules are unchanged.
+
+Verification: `npm run build` passes; `npm run test:sap` 8/8.
+Browser visual pass recommended before presenting.
 
 ---
 

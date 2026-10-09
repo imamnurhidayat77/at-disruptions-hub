@@ -13,6 +13,12 @@ export interface SapIncidentReference {
   status: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  /** Incident category (A_Incident.IncidentCategory, max 3 chars). */
+  category: string | null;
+  /** Raw incident start timestamp (A_Incident.IncidentUTCDateTime). */
+  incidentUtc: string | null;
+  /** Extra location text (A_Incident.IncidentLocationDescription). */
+  locationDescription: string | null;
   /** Complete original entry for audit — never rendered raw in normal UI. */
   rawSource: Record<string, unknown>;
 }

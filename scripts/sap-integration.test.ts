@@ -19,11 +19,14 @@ test('mapper handles a valid OData V2 envelope', () => {
     d: {
       results: [
         {
+          IncidentID: '000123',
           IncidentUUID: 'abc-123',
           IncidentTitle: 'Forklift near miss',
-          IncidentDescription: 'Near miss in warehouse aisle 4.',
+          IncidentDescriptionOfEvents: 'Near miss in warehouse aisle 4.',
+          IncidentLocationDescription: 'Warehouse aisle 4',
           IncidentStatus: 'Open',
-          CreatedAt: '2026-09-01T10:00:00Z',
+          IncidentCategory: 'IN',
+          IncidentUTCDateTime: '/Date(1756720800000)/',
           ChangedAt: '2026-09-02T10:00:00Z',
         },
       ],
@@ -31,20 +34,28 @@ test('mapper handles a valid OData V2 envelope', () => {
   });
   equal(entries.length, 1);
   const ref = normalizeEntry(entries[0], 0);
-  equal(ref.sapId, 'abc-123');
+  equal(ref.sapId, '000123');
   equal(ref.title, 'Forklift near miss');
+  equal(ref.description, 'Near miss in warehouse aisle 4.');
   equal(ref.status, 'Open');
+  equal(ref.category, 'IN');
+  equal(ref.incidentUtc, '/Date(1756720800000)/');
+  equal(ref.createdAt, '/Date(1756720800000)/');
+  equal(ref.locationDescription, 'Warehouse aisle 4');
   deepStrictEqual(ref.rawSource, entries[0]);
 });
 
 test('mapper handles OData V4 envelope with missing optional fields', () => {
-  const entries = normalizeEnvelope({ value: [{ Incident: '0001' }] });
+  const entries = normalizeEnvelope({ value: [{ IncidentID: '0001' }] });
   equal(entries.length, 1);
   const ref = normalizeEntry(entries[0], 0);
   equal(ref.sapId, '0001');
   equal(ref.title, null);
   equal(ref.description, null);
   equal(ref.status, null);
+  equal(ref.category, null);
+  equal(ref.incidentUtc, null);
+  equal(ref.locationDescription, null);
   equal(ref.createdAt, null);
   equal(ref.updatedAt, null);
 });
@@ -107,7 +118,7 @@ test('service maps 503 NOT_CONFIGURED to SapNotConfiguredError', async () => {
 
 test('sync path never mutates AT state or touches the incident store', () => {
   const input = Object.freeze({
-    d: { results: [Object.freeze({ Incident: '0001', Title: 'T' })] },
+    d: { results: [Object.freeze({ IncidentID: '0001', IncidentTitle: 'T' })] },
   });
   const before = JSON.stringify(input);
   const refs = normalizeEnvelope(input).map((e, i) => normalizeEntry(e, i));

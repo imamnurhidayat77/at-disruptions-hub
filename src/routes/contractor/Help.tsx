@@ -1,8 +1,7 @@
 import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Section } from '../../components/chrome.js';
+import { FioriButton } from '../../components/Button.js';
+import { Crumbs, Section } from '../../components/chrome.js';
 import { useAppStore } from '../../state/AppStore.js';
-import { ContractorNav } from './ContractorTable.js';
 
 /** Bus Operator Portal — reporting guidance for operators. */
 export function ContractorHelp(): React.JSX.Element {
@@ -15,12 +14,10 @@ export function ContractorHelp(): React.JSX.Element {
   return (
     <div>
       <div className="pagehead">
-        <span className="eyebrow">Bus Operator Portal</span>
+        <Crumbs trail={['Bus Operator Portal', 'Help']} />
         <h1>Help</h1>
         <p className="lede">How disruption reporting works in this portal.</p>
       </div>
-
-      <ContractorNav />
 
       <Section title="What to report">
         <ul>
@@ -46,11 +43,11 @@ export function ContractorHelp(): React.JSX.Element {
           analytics are managed by AT roles. This portal shows only your reports,
           their AT status and any assessed severity.
         </p>
-        <p>
-          <Link className="btn btn-primary btn-link" to="/contractor/report">
-            + Report disruption
-          </Link>
-        </p>
+        <div className="actions-bar">
+          <FioriButton design="emphasized" icon="plus" to="/contractor/report">
+            Report disruption
+          </FioriButton>
+        </div>
       </Section>
     </div>
   );

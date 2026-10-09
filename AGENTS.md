@@ -376,6 +376,20 @@ Changing roles must:
 
 ## Design Rules
 
+> Override (user-directed, 07 Oct 2026, PLAN Phase 11–14): visuals follow
+> the SAP Fiori Horizon design language via the MCP-grounded hand-written
+> theme, not the Figma PNGs. Figma remains the workflow reference only.
+> Override (user Figma, PLAN Phase 15): the live "05 SAP Integration"
+> Figma frames (white shell + sidebar, Intake Worklist / Assessment /
+> Linked detail) are now the visual + workflow source of truth for the
+> SAP intake surfaces and app chrome. Old UI-kit PNGs are superseded
+> where the Figma speaks.
+> Override (user Figma full file, PLAN Phase 16): the complete "Untitled"
+> Figma file (00 Design System, 01 Shared Shell, 02 Bus Contractor,
+> 03 AT Operations, 04 Customer Information, 05 Closure & Review — read
+> via TalkToFigma MCP) is now the SOLE visual + workflow source of truth
+> for the whole app. Old flows/designs were deleted to match it.
+
 Follow the approved Figma design as closely as possible.
 
 The app is an enterprise operations interface, not a consumer journey-planning app.

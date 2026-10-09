@@ -3,8 +3,9 @@ import type { Incident, PassengerImpact } from './types.js';
 
 /**
  * Contractor reporting — validation + factory for new disruption
- * notifications. Pure domain logic; the form collects strings, this
- * module validates and builds the shared Incident record.
+ * notifications (Figma "02 Bus Contractor" 3-step wizard). Pure domain
+ * logic; the form collects strings, this module validates and builds
+ * the shared Incident record.
  *
  * A created incident is REPORTED (awaiting AT validation), severity
  * unset, KPI clock not started. Creating it does NOT send passenger
@@ -12,61 +13,51 @@ import type { Incident, PassengerImpact } from './types.js';
  */
 
 export interface ReportInput {
+  /** Read-only in the Figma form: the demo operator. */
   operator: string;
   route: string;
-  direction: string;
-  location: string;
-  locationDetail: string;
-  /** yyyy-mm-dd */
-  onsetDate: string;
-  /** HH:MM (24h) */
-  onsetTime: string;
-  disruptionType: string;
-  serviceImpact: string;
-  facts: string;
   vehicleOrServiceId: string;
+  location: string;
+  disruptionType: string;
+  /** 'YYYY-MM-DDTHH:MM' from the detection-time picker. */
+  detectedAt: string;
+  /** Figma "Can Service Continue?" — Yes/No/''. */
+  serviceContinues: '' | 'yes' | 'no';
   /** Raw form value; parsed to integer minutes. */
   estimatedDelayMinutes: string;
   passengerImpact: '' | PassengerImpact;
   majorInterchangeAffected: boolean;
-  sourceReference: string;
+  description: string;
 }
 
 export const EMPTY_REPORT: ReportInput = {
-  operator: 'Demo Bus Operator',
+  operator: 'City Bus Operator',
   route: '',
-  direction: '',
-  location: '',
-  locationDetail: '',
-  onsetDate: '2026-10-06',
-  onsetTime: '',
-  disruptionType: '',
-  serviceImpact: '',
-  facts: '',
   vehicleOrServiceId: '',
+  location: '',
+  disruptionType: '',
+  detectedAt: '',
+  serviceContinues: '',
   estimatedDelayMinutes: '',
   passengerImpact: '',
   majorInterchangeAffected: false,
-  sourceReference: '',
+  description: '',
 };
 
-/** One-click demo values matching docs/DEMO_SCENARIO.md (Route 70). */
+/** One-click demo values (Route 70). */
 export const ROUTE_70_DEMO_VALUES: ReportInput = {
   ...EMPTY_REPORT,
   route: '70',
-  direction: 'Citybound',
-  location: 'Newmarket — Broadway near Newmarket interchange',
-  locationDetail: 'Affected bus stopped in a safe position; citybound service affected.',
-  onsetTime: '09:02',
+  vehicleOrServiceId: 'BUS-070',
+  location: 'Newmarket',
   disruptionType: 'Vehicle breakdown',
-  serviceImpact: 'Delay / vehicle out of service',
-  facts:
-    'Route 70 citybound bus suffered a mechanical breakdown near Newmarket. Passengers transferred to a following service; replacement vehicle requested. Restoration time not confirmed.',
-  vehicleOrServiceId: 'Bus 2147 · Route 70 citybound',
+  detectedAt: '2026-10-06T09:02',
+  serviceContinues: 'no',
   estimatedDelayMinutes: '25',
   passengerImpact: 'HIGH',
   majorInterchangeAffected: true,
-  sourceReference: 'Demo operator · radio report D-70',
+  description:
+    'Vehicle breakdown near Newmarket. Route 70 service cannot continue. Replacement vehicle required; passengers are experiencing an estimated 25-minute delay.',
 };
 
 export const DISRUPTION_TYPES = [
@@ -88,26 +79,15 @@ export const SERVICE_IMPACTS = [
 
 export type ReportErrors = Partial<Record<keyof ReportInput, string>>;
 
-const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-function required(value: string): boolean {
-  return value.trim().length > 0;
-}
-
 export function validateReport(input: ReportInput): ReportErrors {
   const errors: ReportErrors = {};
-  if (!required(input.operator)) errors.operator = 'Reporting operator is required.';
-  if (!required(input.route)) errors.route = 'Affected route is required.';
-  if (!required(input.direction)) errors.direction = 'Direction is required.';
-  if (!required(input.location)) errors.location = 'Location / road is required.';
-  if (!DATE_RE.test(input.onsetDate)) errors.onsetDate = 'Enter a valid onset date.';
-  if (!TIME_RE.test(input.onsetTime)) errors.onsetTime = 'Enter a valid time in HH:MM format.';
-  if (!required(input.disruptionType)) errors.disruptionType = 'Select the best disruption type.';
-  if (!required(input.serviceImpact)) errors.serviceImpact = 'Service impact is required.';
-  if (input.facts.trim().length < 10) {
-    errors.facts = 'Confirmed operational facts need at least 10 characters.';
+  if (input.route.trim() === '') errors.route = 'Route is required.';
+  if (input.location.trim() === '') errors.location = 'Location is required.';
+  if (input.disruptionType.trim() === '') errors.disruptionType = 'Disruption type is required.';
+  if (input.detectedAt.trim() === '' || Number.isNaN(Date.parse(input.detectedAt))) {
+    errors.detectedAt = 'Detection time is required.';
   }
+  if (input.serviceContinues === '') errors.serviceContinues = 'Select whether service can continue.';
   if (input.estimatedDelayMinutes.trim() === '') {
     errors.estimatedDelayMinutes = 'Estimated delay is required (enter 0 if none).';
   } else {
@@ -117,6 +97,40 @@ export function validateReport(input: ReportInput): ReportErrors {
     }
   }
   if (input.passengerImpact === '') errors.passengerImpact = 'Passenger impact is required.';
+  if (input.description.trim().length < 10) {
+    errors.description = 'Description needs at least 10 characters.';
+  }
+  return errors;
+}
+
+/** Step 1 (Incident Details) fields only. */
+export function validateReportStep1(input: ReportInput): ReportErrors {
+  const errors: ReportErrors = {};
+  if (input.route.trim() === '') errors.route = 'Route is required.';
+  if (input.location.trim() === '') errors.location = 'Location is required.';
+  if (input.disruptionType.trim() === '') errors.disruptionType = 'Disruption type is required.';
+  if (input.detectedAt.trim() === '' || Number.isNaN(Date.parse(input.detectedAt))) {
+    errors.detectedAt = 'Detection time is required.';
+  }
+  return errors;
+}
+
+/** Step 2 (Service Impact) fields only. */
+export function validateReportStep2(input: ReportInput): ReportErrors {
+  const errors: ReportErrors = {};
+  if (input.serviceContinues === '') errors.serviceContinues = 'Select whether service can continue.';
+  if (input.estimatedDelayMinutes.trim() === '') {
+    errors.estimatedDelayMinutes = 'Estimated delay is required (enter 0 if none).';
+  } else {
+    const n = Number(input.estimatedDelayMinutes);
+    if (!Number.isInteger(n) || n < 0 || n > 300) {
+      errors.estimatedDelayMinutes = 'Enter whole minutes between 0 and 300.';
+    }
+  }
+  if (input.passengerImpact === '') errors.passengerImpact = 'Passenger impact is required.';
+  if (input.description.trim().length < 10) {
+    errors.description = 'Description needs at least 10 characters.';
+  }
   return errors;
 }
 
@@ -140,11 +154,7 @@ export function nextIncidentId(existing: Incident[]): string {
  */
 export function buildReportedIncident(input: ReportInput, id: string): Incident {
   const delay = Math.max(0, Math.min(300, Number.parseInt(input.estimatedDelayMinutes, 10) || 0));
-  const detectedAt = `${input.onsetDate}T${input.onsetTime}:00+13:00`;
-  const description =
-    input.locationDetail.trim().length > 0
-      ? `${input.facts.trim()}\nLocation detail: ${input.locationDetail.trim()}`
-      : input.facts.trim();
+  const detectedAt = `${input.detectedAt}:00+13:00`;
 
   return {
     id,
@@ -154,12 +164,13 @@ export function buildReportedIncident(input: ReportInput, id: string): Incident 
       input.vehicleOrServiceId.trim() || `${input.route.trim()} service · vehicle unknown`,
     location: input.location.trim(),
     disruptionType: input.disruptionType,
-    description,
+    description: input.description.trim(),
     detectedAt,
     confirmedAt: null,
     estimatedDelayMinutes: delay,
     passengerImpact: input.passengerImpact as PassengerImpact,
     majorInterchangeAffected: input.majorInterchangeAffected,
+    serviceContinues: input.serviceContinues === '' ? null : input.serviceContinues === 'yes',
     severity: null,
     severityScore: null,
     severityReason: null,
@@ -178,13 +189,16 @@ export function buildReportedIncident(input: ReportInput, id: string): Incident 
     reviewRequired: false,
     rootCause: null,
     correctiveActions: [],
+    reviewStatus: 'OPEN',
+    closureNotes: null,
+    sapLink: null,
     timeline: [
       {
         id: `evt-${id}-submit`,
         at: detectedAt,
         actorRole: 'CONTRACTOR',
         action: 'Operator submitted initial disruption notification',
-        detail: `${input.operator.trim()} — Route ${input.route.trim()} ${input.direction}, ${input.disruptionType}, ${delay}-min estimated delay.`,
+        detail: `${input.operator.trim()} — Route ${input.route.trim()}, ${input.disruptionType}, ${delay}-min estimated delay.`,
       },
     ],
   };

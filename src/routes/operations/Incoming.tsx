@@ -1,38 +1,201 @@
 import { useEffect } from 'react';
-import { Section } from '../../components/chrome.js';
+import { Crumbs, Section } from '../../components/chrome.js';
+import { EmptyState } from '../../components/EmptyState.js';
+import { FioriButton } from '../../components/Button.js';
+import { DataTable, type DataColumn } from '../../components/DataTable.js';
+import { formatNzdtDate, formatNzdtShort } from '../../domain/kpi.js';
+import type { Incident } from '../../domain/types.js';
+import { fetchLiveEnriched } from '../../services/sap/sapIncidentService.ts';
 import { useAppStore } from '../../state/AppStore.js';
-import { IncomingCard } from './IncomingCard.js';
-import { OpsNav } from './OpsNav.js';
 
-/** Incoming — every unvalidated contractor notification, actionable. */
+/**
+ * Incoming Worklist — review new arrivals and route them for assessment.
+ */
+
+function IntakeStatus({ tone, icon, label }: { tone: string; icon: string; label: string }): React.JSX.Element {
+  return (
+    <span className={`badge ${tone}`}>
+      {icon} {label}
+    </span>
+  );
+}
+
+function contractorStatus(): React.JSX.Element {
+  return <IntakeStatus tone="tg-bad" icon="●" label="Awaiting Assessment" />;
+}
+
+interface IntakeRow {
+  key: string;
+  title: string;
+  sub: string;
+  statusLabel: string;
+  receivedLabel: string;
+  receivedMs: number;
+  route: string;
+  kind: 'contractor' | 'sap';
+  incidentId?: string;
+  sapId?: string;
+  linkedIncidentId?: string | null;
+}
+
 export function Incoming(): React.JSX.Element {
-  const { state, setRole } = useAppStore();
+  const { state, setRole, autoIntakeSap } = useAppStore();
 
   useEffect(() => {
     setRole('OPERATIONS');
   }, [setRole]);
 
-  const incoming = state.incidents.filter((i) => i.operationalStatus === 'REPORTED');
+  // Fully automatic SAP intake — no clicks, no forms. Live records are
+  // fetched, enriched and turned into VALIDATED incidents on open; the
+  // labelled cached-records path builds complete CLOSED archives instead.
+  // Idempotent: already-linked records are skipped.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const live = await fetchLiveEnriched();
+      if (!cancelled) {
+        autoIntakeSap(live ? live.candidates : state.sapCandidates, !live);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const reported: Incident[] = state.incidents.filter((i) => i.operationalStatus === 'REPORTED');
+  const active = state.incidents.filter((i) => i.operationalStatus !== 'CLOSED').length;
+  const unlinked = state.sapCandidates.filter((c) => c.linkedIncidentId === null);
+
+  const intakeItems = reported.length + state.sapCandidates.length;
+
+  const rows: IntakeRow[] = [
+    ...reported.map((i): IntakeRow => ({
+      key: i.id,
+      title: `${i.id} · Route ${i.route}`,
+      sub: `${i.disruptionType} · ${i.location}`,
+      statusLabel: 'Awaiting Assessment',
+      receivedLabel: `${formatNzdtDate(i.detectedAt)}, ${formatNzdtShort(i.detectedAt)}`,
+      receivedMs: Date.parse(i.detectedAt),
+      route: `Route ${i.route}`,
+      kind: 'contractor',
+      incidentId: i.id,
+    })),
+    ...state.sapCandidates.map((c): IntakeRow => ({
+      key: c.sapId,
+      title: `${c.sapId} · ${c.title}`,
+      sub: `${c.category} · SAP: ${c.sapStatus}`,
+      statusLabel: c.linkedIncidentId !== null ? 'Accepted' : 'Queued',
+      receivedLabel: `${formatNzdtDate(c.receivedAt)}, ${formatNzdtShort(c.receivedAt)}`,
+      receivedMs: Date.parse(c.receivedAt),
+      route: '—',
+      kind: 'sap',
+      sapId: c.sapId,
+      linkedIncidentId: c.linkedIncidentId,
+    })),
+  ];
+
+  const columns: Array<DataColumn<IntakeRow>> = [
+    {
+      key: 'summary',
+      label: 'Summary',
+      sortable: true,
+      sortValue: (r) => r.title,
+      render: (r) => (
+        <span>
+          <strong>{r.title}</strong>
+          <div className="muted small">{r.sub}</div>
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      sortable: true,
+      filter: 'select',
+      filterValue: (r) => r.statusLabel,
+      sortValue: (r) => r.statusLabel,
+      render: (r) => {
+        if (r.kind === 'contractor') return contractorStatus();
+        if (r.linkedIncidentId !== null && r.linkedIncidentId !== undefined)
+          return <IntakeStatus tone="tg-good" icon="✓" label="Accepted" />;
+        return <IntakeStatus tone="tg-warn" icon="◷" label="Queued" />;
+      },
+    },
+    {
+      key: 'received',
+      label: 'Received',
+      sortable: true,
+      sortValue: (r) => r.receivedMs,
+      render: (r) => r.receivedLabel,
+    },
+    {
+      key: 'route',
+      label: 'Intake Route',
+      sortable: true,
+      filter: 'select',
+      filterValue: (r) => (r.kind === 'contractor' ? 'Contractor alert' : 'SAP EHS intake'),
+      sortValue: (r) => (r.kind === 'contractor' ? 'Contractor alert' : 'SAP EHS intake'),
+      render: (r) => (r.kind === 'contractor' ? 'Contractor alert' : 'SAP EHS intake'),
+    },
+    {
+      key: 'action',
+      label: 'Action',
+      render: (r) => {
+        if (r.kind === 'contractor' && r.incidentId) {
+          return (
+            <FioriButton small icon="detail" to={`/operations/incoming/${r.incidentId}`}>
+              Review
+            </FioriButton>
+          );
+        }
+        if (r.kind === 'sap' && r.linkedIncidentId) {
+          return (
+            <FioriButton small icon="view" to={`/operations/incident/${r.linkedIncidentId}`}>
+              Open
+            </FioriButton>
+          );
+        }
+        return <span className="muted">Auto-intake…</span>;
+      },
+    },
+  ];
 
   return (
     <div>
       <div className="pagehead">
-        <span className="eyebrow">AT Operations</span>
-        <h1>Incoming Notifications</h1>
-        <p className="lede">
-          Operator notifications awaiting AT validation. Accepting starts the
-          10-minute communication clock.
-        </p>
+        <Crumbs trail={['Operations', 'Incoming']} />
+        <h1>Incoming Worklist</h1>
+        <p className="lede">Review new arrivals and route them for assessment.</p>
       </div>
 
-      <OpsNav />
-
-      <Section title={`Awaiting assessment (${incoming.length})`}>
-        {incoming.length === 0 ? (
-          <p className="muted">No unvalidated notifications. Contractor reports appear here.</p>
+      <Section title="Incoming Worklist">
+        <p className="muted small">
+          {intakeItems} intake items · {reported.length} notification · {unlinked.length} SAP
+          candidates
+        </p>
+        {intakeItems === 0 ? (
+          <EmptyState
+            illustration="☰"
+            title="Intake queue is clear"
+            description="Contractor notifications and SAP records appear here."
+          />
         ) : (
-          incoming.map((i) => <IncomingCard key={i.id} incident={i} />)
+          <DataTable<IntakeRow>
+            rows={rows}
+            columns={columns}
+            rowKey={(r) => r.key}
+            searchText={(r) => `${r.title} ${r.sub} ${r.statusLabel}`}
+            searchPlaceholder="Search intake"
+            pageSize={8}
+            emptyTitle="Intake queue is clear"
+            emptyDescription="Contractor notifications and SAP records appear here."
+          />
         )}
+        <p className="muted small">
+          {reported.length} operator notification · {unlinked.length} SAP candidates ·{' '}
+          {active} active shared incident.
+        </p>
       </Section>
     </div>
   );

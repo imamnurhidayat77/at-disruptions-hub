@@ -36,7 +36,7 @@ export const ACTION_LABELS: Record<DemoAction, string> = {
   'manage-review': 'Create / trigger review actions',
   'view-comms-status': 'View customer communication status',
   'draft-comms': 'Prepare / edit passenger communication draft',
-  'publish-comms': 'Approve & publish passenger notice (demo)',
+  'publish-comms': 'Approve & publish passenger notice',
   'view-comms-kpi': 'View communication KPI and timer',
   'view-analytics': 'View internal AT analytics',
 };

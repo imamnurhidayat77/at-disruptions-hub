@@ -41,17 +41,36 @@ integration capability in parallel.
 
 ### SAP fields actually used
 
-No SAP property name is assumed from documentation alone. The proxy
-requests entity set `A_Incident` (attested by SAP's official EHS incident
-integration guide, which also attests base path
-`<host>/sap/opu/odata/sap/API_EHS_REPORT_INCIDENT_SRV/` and navigation
-properties `to_Persons` / `to_Attachments`). The frontend mapper
-(`src/services/sap/sapIncidentMapper.ts`) accepts OData V2, OData V4,
-bare arrays and single objects, and reads identifier/title/description/
-status/date values through a documented candidate-key list — first match
-wins, anything absent stays `null`, and the untouched original entry is
-kept in `rawSource`. Exact sandbox properties are recorded here once a
-live response is observed (none observed yet — see Status below).
+Spec source: supplied `API_EHS_REPORT_INCIDENT_SRV` OpenAPI v1.0.0
+(EHS Incident - Create, Read; communication scenario SAP_COM_0369;
+sandbox server
+`https://sandbox.api.sap.com/s4hanacloud/sap/opu/odata/sap/API_EHS_REPORT_INCIDENT_SRV`).
+
+The proxy requests entity set `A_Incident` with an explicit spec-exact
+`$select` (plus `$top=5`, `$format=json`):
+
+`IncidentID`, `IncidentUUID`, `IncidentUTCDateTime`, `IncidentTitle`,
+`IncidentStatus`, `IncidentLocationDescription`,
+`IncidentDescriptionOfEvents`, `IncidentCategory`, `EHSLocationUUID`.
+
+The frontend mapper (`src/services/sap/sapIncidentMapper.ts`) reads
+those keys first (OData V2 `{d:{results}}`, OData V4 `{value}`,
+bare arrays and single objects all accepted):
+
+- id ← `IncidentID`, then `IncidentUUID`
+- title ← `IncidentTitle`
+- description ← `IncidentDescriptionOfEvents`, then `IncidentLocationDescription`
+- status ← `IncidentStatus`
+- created ← `IncidentUTCDateTime` (OData `/Date(...)/` or ISO)
+- category ← `IncidentCategory`; location text ← `IncidentLocationDescription`
+
+Anything absent stays `null`, and the untouched original entry is
+kept in `rawSource`. Related entity sets exist in the spec
+(`A_Incident(...)/to_Persons`, `/to_Attachments`, `/to_Location`, plus
+value helps `C_EHSLocationValueHelp`, `C_EHSPersonValueHelp`) but the
+prototype GETs the incident list only. Exact live sandbox VALUES are
+recorded here once a live response is observed (none observed yet —
+see Status below).
 
 ### Auckland Transport fields kept in the prototype
 
@@ -60,6 +79,28 @@ live response is observed (none observed yet — see Status below).
 `communicationStatus`, `firstPublishedAt`, `estimatedRestorationAt`,
 `selectedChannels`, `recoveryStatus`, timeline/audit events. None of
 these are mapped from SAP fields and none are sent to SAP.
+
+### Demo enrichment of SAP references (07 Oct 2026)
+
+Because the EHS sandbox carries no bus-operation data, the prototype
+adapter attaches the missing operational fields as explicitly labelled
+DEMO data: `src/services/sap/sapDemoEnrichment.ts`
+(`enrichSapReference` / `enrichSapReferences`).
+
+- Honesty boundary: SAP fields are never modified and `rawSource` passes
+  through untouched; demo values live ONLY under the nested `demo` key
+  (`source: 'demo'`), never as top-level fields — so demo data can never
+  be mistaken for an SAP response.
+- Deterministic per `sapId` (stable across re-syncs): 5 coherent
+  Auckland-flavoured scenarios (Route 70/Newmarket/breakdown/25-min,
+  Route 18/Great North Road/road-blocked/40-min, Route 22N/vehicle
+  unavailable/15-min, Route 75/congestion/12-min, Route 95B/breakdown/
+  20-min; operator always "Demo Bus Operator").
+- Severity is a *suggestion* computed with the single shared domain rule
+  `assessSeverity` — never a final AT severity.
+- Enriched data is display-only in Operations → Analytics → SAP
+  Integration (columns badged `Demo`); it never enters the shared AT
+  incident store and is never sent to SAP.
 
 ## Authentication
 
@@ -99,10 +140,85 @@ these are mapped from SAP fields and none are sent to SAP.
    expands the normalised view.
 5. `npm run test:sap` proves mapper + error handling without a network.
 
+## SAP Intake (Figma "05 SAP Integration", Oct 2026)
+
+User-supplied Figma frames define an intake workflow on top of the
+adapter boundary above. Until a live sandbox returns candidates, the
+intake runs on explicitly labelled demo seed (`buildSapSeed`, 5
+records mirroring the Figma rows 123456–123460):
+
+- Operations → **Incoming** worklist mixes contractor notifications
+  with SAP-source candidates (intake routes "Contractor alert" /
+  "SAP EHS intake"), each with a Figma intake status (Awaiting AT
+  Assessment / Needs Enrichment / Not Linked / Linked).
+- **Enrich** opens the assessment page: SAP fields render read-only,
+  AT adds operational information, **Create AT Disruption** produces
+  ONE linked shared incident (VALIDATED, KPI clock running) — never
+  a second incident. The candidate is marked linked.
+- The linked incident workspace shows a **SAP source context** card
+  (SAP ID/UUID/status/last sync + the separation note). SAP Status
+  stays source-system state; AT status is managed separately.
+- The existing sync panel (Analytics) is unchanged and remains the
+  live-source probe; demo candidates are never presented as live data.
+
+## Automatic intake (no clicks, no forms)
+
+SAP intake is fully automatic — there is no Sync button and no enrich
+form. Opening Operations → **Incoming** fetches up to 5 live records,
+auto-enriches them, and turns each one directly into a VALIDATED shared
+incident (`AUTO_INTAKE_SAP`, one atomic dispatch):
+
+- `fetchLiveEnriched` (`sapIncidentService.ts`) — fetch + enrich only.
+  Null when SAP is unconfigured/unreachable; the labelled demo seed then
+  goes through the identical automatic path.
+- `referenceToCandidate` (`sapIncidentMapper.ts`) completes every field
+  the worklist needs (derived or explicit labelled default); OData
+  `/Date(...)/` payloads are normalised to ISO via `toIsoDate` so a bad
+  timestamp can never blank a view (formatters also render `—` instead
+  of throwing).
+- `autoEnrichInput` + `dummyScenarioFor` + `disruptionTypeFor`
+  (`domain/intake.ts`) — deterministic Auckland dummy scenarios per SAP
+  ID (5 rute/lokasi/tipe/delay/impact koheren; ID sama → skenario sama).
+  Teks SAP asli menang bila ada; sisanya dari skenario. Operator selalu
+  `SAP EHS Import` (view kontraktor tetap bersih). `buildLinkedIncident
+  (..., auto=true)` menulis timeline "auto-linked".
+- `autoIntakeSap` (AppStore) skips already-linked records, so refreshes
+  never duplicate; linked history survives via `mergeCandidates`.
+- Severity assessment and owner assignment stay manual in the incident
+  workspace — automation stops at VALIDATED.
+- The manual enrich page (`/operations/sap/:sapId`) is deleted; intake
+  rows link straight to the created incident. The Analytics → SAP
+  Integration panel is status + records only.
+
 ## Status (07 Oct 2026)
 
-**BLOCKED — SAP credentials / sandbox required.** All code paths above
-are implemented and unit-tested, but no live request has returned data
-because no sandbox URL or API key has been supplied. Do not mark Phase 7
-complete until a real response is observed and its fields recorded in
-"Adaptation" above.
+**CONNECTED — live sandbox response observed (07 Oct 2026).** With
+`SAP_API_BASE_URL=https://sandbox.api.sap.com/s4hanacloud` plus a valid
+sandbox `APIKey` in git-ignored `.env.local` (key never committed, never
+in `src/`), `GET
+…/API_EHS_REPORT_INCIDENT_SRV/A_Incident?$top=5&$format=json` returns
+HTTP 200 with an OData V2 envelope (`d.results`, 5 records). The
+dev-server proxy (`/api/sap/incidents`) forwards the same 5 records and
+`/api/sap/status` flips to `connected` with `lastCount: 5`. No code
+changes were needed — the existing proxy `$select` and mapper keys
+matched the live payload verbatim.
+
+Observed live VALUES (`$top=5`, default ordering):
+
+| IncidentID | IncidentTitle (truncated) | IncidentStatus | IncidentCategory | IncidentUTCDateTime |
+|---|---|---|---|---|
+| 2 | Incident Based on Injury/Illness Log Entry ID: 1 | 02 | 001 | /Date(1687755600000+0000)/ (2023-06-26) |
+| 3 | Slip from ladder | 02 | 002 | /Date(1687839153000+0000)/ (2023-06-27) |
+| 4 | slippery floor | 02 | 003 | /Date(1687839177000+0000)/ (2023-06-27) |
+| 11 | An employee is not wearing heat resistant gloves… | 02 | 003 | /Date(1638187860000+0000)/ (2021-11-29) |
+| 12 | Employee lifts a heavy metal plate… | 02 | 003 | /Date(1591874040000+0000)/ (2020-06-11) |
+
+Notes: all 5 records return empty-string `IncidentLocationDescription`
+and `IncidentDescriptionOfEvents` (mapper normalises these to `null`,
+never invented); `IncidentLatitudeMeasure`/`IncidentLongitudeMeasure`
+are `"0.000000000000"`; navigation properties (`to_Persons`,
+`to_Attachments`, `to_Location`) are deferred URIs, not expanded — the
+prototype GETs the incident list only. The sandbox is EHS safety
+data (Option-2 partial fit), so AT-specific fields (route, severity,
+owner, comms) stay demo-local and SAP references render read-only with
+a SAP badge in Operations → Analytics → SAP Integration.

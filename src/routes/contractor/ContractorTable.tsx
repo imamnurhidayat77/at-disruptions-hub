@@ -1,34 +1,14 @@
-import { Link, NavLink } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { SeverityBadge } from '../../components/badges.js';
+import { FioriButton } from '../../components/Button.js';
+import { DataTable, type DataColumn } from '../../components/DataTable.js';
 import {
   assessedByAT,
   lastOperatorUpdateAt,
-  needsOperatorUpdate,
   operatorStatusLabel,
 } from '../../domain/contractor.js';
 import { formatNzdtTime } from '../../domain/kpi.js';
 import type { Incident } from '../../domain/types.js';
-
-/** Contractor sub-navigation: only operator-relevant destinations. */
-export function ContractorNav(): React.JSX.Element {
-  const cls = ({ isActive }: { isActive: boolean }): string => (isActive ? 'active' : '');
-  return (
-    <nav className="subnav" aria-label="Bus Operator Portal navigation">
-      <NavLink to="/contractor" end className={cls}>
-        Overview
-      </NavLink>
-      <NavLink to="/contractor/report" className={cls}>
-        Report Disruption
-      </NavLink>
-      <NavLink to="/contractor/incidents" className={cls}>
-        My Incidents
-      </NavLink>
-      <NavLink to="/contractor/help" className={cls}>
-        Help
-      </NavLink>
-    </nav>
-  );
-}
 
 /**
  * Contractor incident table — business information only: ID, route,
@@ -36,71 +16,97 @@ export function ContractorNav(): React.JSX.Element {
  * only once assessed, last operator update, action. No SLA timers, no
  * KPI analytics, no AT-internal fields.
  */
-export function ContractorIncidentTable({ rows }: { rows: Incident[] }): React.JSX.Element {
-  if (rows.length === 0) {
-    return <p className="muted">No incidents to show.</p>;
-  }
+export function ContractorIncidentTable({
+  rows,
+  onFilteredCount,
+}: {
+  rows: Incident[];
+  onFilteredCount?: (count: number) => void;
+}): React.JSX.Element {
+  const columns: Array<DataColumn<Incident>> = [
+    {
+      key: 'id',
+      label: 'Incident',
+      sortable: true,
+      sortValue: (i) => i.id,
+      render: (i) => <Link to={`/contractor/incident/${i.id}`}>{i.id}</Link>,
+    },
+    {
+      key: 'route',
+      label: 'Route',
+      sortable: true,
+      sortValue: (i) => i.route,
+      render: (i) => i.route,
+    },
+    {
+      key: 'location',
+      label: 'Location',
+      sortable: true,
+      sortValue: (i) => i.location,
+      render: (i) => i.location,
+    },
+    {
+      key: 'type',
+      label: 'Disruption Type',
+      sortable: true,
+      sortValue: (i) => i.disruptionType,
+      filter: 'select',
+      filterValue: (i) => i.disruptionType,
+      render: (i) => i.disruptionType,
+    },
+    {
+      key: 'status',
+      label: 'AT Status',
+      filter: 'select',
+      filterValue: (i) => operatorStatusLabel(i),
+      render: (i) => <span className="badge st-ops">◷ {operatorStatusLabel(i)}</span>,
+    },
+    {
+      key: 'severity',
+      label: 'AT Severity',
+      sortable: true,
+      sortValue: (i) => (assessedByAT(i) ? i.severity : ''),
+      filter: 'select',
+      filterValue: (i) => (assessedByAT(i) ? (i.severity ?? 'Awaiting AT Assessment') : 'Awaiting AT Assessment'),
+      render: (i) =>
+        assessedByAT(i) ? (
+          <SeverityBadge level={i.severity} />
+        ) : (
+          <span className="muted">Awaiting AT Assessment</span>
+        ),
+    },
+    {
+      key: 'updated',
+      label: 'Last Operator Update',
+      sortable: true,
+      sortValue: (i) => lastOperatorUpdateAt(i) ?? '',
+      render: (i) => {
+        const lastUpdate = lastOperatorUpdateAt(i);
+        return lastUpdate ? formatNzdtTime(lastUpdate) : '—';
+      },
+    },
+    {
+      key: 'action',
+      label: 'Action',
+      render: (i) => (
+        <FioriButton small icon="view" to={`/contractor/incident/${i.id}`}>
+          View Incident
+        </FioriButton>
+      ),
+    },
+  ];
+
   return (
-    <table className="records">
-      <thead>
-        <tr>
-          <th>Incident ID</th>
-          <th>Route</th>
-          <th>Location</th>
-          <th>Disruption type</th>
-          <th>AT Status</th>
-          <th>AT Severity</th>
-          <th>Last operator update</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((i) => {
-          const lastUpdate = lastOperatorUpdateAt(i);
-          return (
-            <tr key={i.id}>
-              <td>
-                <strong>{i.id}</strong>
-              </td>
-              <td>{i.route}</td>
-              <td>{i.location}</td>
-              <td>{i.disruptionType}</td>
-              <td>
-                <span className="badge st-ops">{operatorStatusLabel(i)}</span>
-              </td>
-              <td>
-                {assessedByAT(i) ? (
-                  <>
-                    <span className="muted small">AT Severity: </span>
-                    <SeverityBadge level={i.severity} />
-                  </>
-                ) : (
-                  <span className="muted">Awaiting AT Assessment</span>
-                )}
-              </td>
-              <td>{lastUpdate ? formatNzdtTime(lastUpdate) : '—'}</td>
-              <td>
-                {(() => {
-                  const label = i.infoRequested
-                    ? 'Respond'
-                    : needsOperatorUpdate(i)
-                      ? 'Send update'
-                      : 'View incident';
-                  const primary = label !== 'View incident';
-                  return (
-                    <Link
-                      className={`btn btn-small${primary ? ' btn-primary' : ''}`}
-                      to={`/contractor/incident/${i.id}`}
-                    >
-                      {label}
-                    </Link>
-                  );
-                })()}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+    <DataTable<Incident>
+      rows={rows}
+      columns={columns}
+      rowKey={(i) => i.id}
+      searchText={(i) => `${i.id} ${i.route} ${i.location} ${i.disruptionType}`}
+      searchPlaceholder="Incident, route or location"
+      pageSize={8}
+      emptyTitle="No incidents to show"
+      emptyDescription="Reports from this operator will appear here."
+      onFilteredCount={onFilteredCount}
+    />
   );
 }

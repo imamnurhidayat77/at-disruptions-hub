@@ -1,7 +1,11 @@
 import { firstCommunicationKpi, formatMmSs } from '../domain/kpi.js';
 import type { Incident, OperationalStatus, Severity } from '../domain/types.js';
 
-/** Labelled severity badge (never colour-alone). */
+/**
+ * Labelled severity badge (never colour-alone).
+ * Icon + criticality mapping per SAP Fiori ObjectStatus guidance
+ * (Negative/Critical/Information/Positive with status icons).
+ */
 export function SeverityBadge({ level }: { level: Severity | null }): React.JSX.Element {
   if (level === null) return <span className="badge sev-none">◌ Not assessed</span>;
   const cls =
@@ -12,8 +16,13 @@ export function SeverityBadge({ level }: { level: Severity | null }): React.JSX.
         : level === 'MEDIUM'
           ? 'sev-medium'
           : 'sev-low';
+  const icon = level === 'CRITICAL' ? '■' : level === 'HIGH' ? '⚠' : level === 'MEDIUM' ? 'ℹ' : '✓';
   const label = level.charAt(0) + level.slice(1).toLowerCase();
-  return <span className={`badge ${cls}`}>▲ {label}</span>;
+  return (
+    <span className={`badge ${cls}`}>
+      {icon} {label}
+    </span>
+  );
 }
 
 /** Operational lifecycle badge. */
@@ -27,8 +36,28 @@ export function OpStatusBadge({ status }: { status: OperationalStatus }): React.
 }
 
 /**
+ * Post-incident review lifecycle (Figma Reviews): Open → In Progress →
+ * Completed (all corrective actions done). NONE when no review required.
+ */
+export type ReviewDisplay = 'NONE' | 'OPEN' | 'IN_PROGRESS' | 'COMPLETED';
+
+export function reviewDisplay(incident: Incident): ReviewDisplay {
+  if (!incident.reviewRequired) return 'NONE';
+  const open = incident.correctiveActions.filter((c) => c.status === 'OPEN').length;
+  if (incident.correctiveActions.length > 0 && open === 0) return 'COMPLETED';
+  return incident.reviewStatus;
+}
+
+export function ReviewBadge({ status }: { status: ReviewDisplay }): React.JSX.Element | null {
+  if (status === 'NONE') return null;
+  if (status === 'OPEN') return <span className="badge tg-warn">▲ Open</span>;
+  if (status === 'IN_PROGRESS') return <span className="badge st-ops">◈ In Progress</span>;
+  return <span className="badge tg-good">✓ Completed</span>;
+}
+
+/**
  * Communication-target badge, derived from timestamps via the shared KPI
- * function (UI kit: Due soon / Breached / Achieved / Not published).
+ * function (Due soon / Breached / Achieved / Not published).
  */
 export function CommsTargetBadge({ incident }: { incident: Incident }): React.JSX.Element {
   const kpi = firstCommunicationKpi(incident);

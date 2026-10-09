@@ -6,49 +6,83 @@
 
 body {
   margin: 0;
+  overflow-x: clip;
   font-family: var(--font);
   background: var(--bg);
   color: var(--ink);
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: var(--sapFontSize);
+  line-height: var(--sapContent_LineHeight);
 }
 
 a {
-  color: var(--teal);
+  color: var(--sapLinkColor);
   text-decoration: none;
 }
 
 a:hover {
-  color: var(--teal-dark);
+  color: var(--sapLink_HoverColor);
 }
 
+/* Fiori link affordance: color change on hover, never underline. */
+
 a:visited {
-  color: var(--teal-dark);
+  color: var(--sapLink_HoverColor);
   text-decoration: none;
 }
 
-.role-switch a,
-.role-switch a:visited {
-  color: var(--nav-muted);
+/* ---------- Fiori interaction baseline: pointer & affordance ---------- */
+/* Clickable controls show the pointer; plain text and text fields keep
+   their native cursors. Non-interactive indicators never suggest
+   clickability. */
+select.input,
+input[type="checkbox"],
+input[type="radio"],
+summary,
+.dialog-check,
+.channel,
+.field-check {
+  cursor: pointer;
 }
 
-.role-switch a:hover,
-.role-switch a.active,
-.role-switch a.active:visited {
-  color: #fff;
+button:disabled,
+input:disabled,
+select:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
 }
 
-/* ---------- Top navigation (UI kit: dark navy + role chip) ---------- */
+.badge,
+.kpi-value,
+.count-big,
+.timeline li {
+  cursor: default;
+}
+
+/* ---------- ShellBar (white, per Figma shell) ---------- */
 .topnav {
-  background: var(--nav);
-  color: var(--nav-ink);
+  background: var(--card);
+  color: var(--ink);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 40;
 }
 
 .topnav-inner {
   display: flex;
   align-items: center;
-  gap: 24px;
-  height: 60px;
+  gap: 16px;
+  height: 3.5rem;
+}
+
+@media (max-width: 640px) {
+  .topnav-inner {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 3.5rem;
+    padding: 8px 0;
+    row-gap: 8px;
+  }
 }
 
 .brand {
@@ -61,150 +95,300 @@ a:visited {
 }
 
 .brand-mark {
-  background: #fff;
-  color: var(--nav);
+  background: var(--brand);
+  color: #fff;
   font-weight: 800;
-  border-radius: 6px;
+  border-radius: var(--control-radius);
   padding: 2px 8px;
-  font-size: 14px;
+  font-size: 19px;
+  line-height: 30px;
+  min-width: 34px;
+  text-align: center;
 }
 
 a.brand-link,
 a.brand-link:visited {
-  color: #fff;
-}
-
-a.brand-link:hover {
-  color: #fff;
-  opacity: 0.9;
-}
-
-.role-tag {
-  background: rgba(255, 255, 255, 0.16);
-  color: #fff;
-  border-radius: 6px;
-  padding: 2px 10px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-}
-
-.role-switch {
-  display: flex;
-  gap: 4px;
-  margin-left: 12px;
-}
-
-.role-switch a {
-  color: var(--nav-muted);
-  text-decoration: none;
-  padding: 8px 14px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 13px;
-}
-
-.role-switch a:hover {
-  color: #fff;
-}
-
-.role-switch a.active {
-  background: rgba(255, 255, 255, 0.16);
-  color: #fff;
-}
-
-.user-chip {
-  margin-left: auto;
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
-  padding: 4px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-/* ---------- Demo Role control (prototype demonstration only) ---------- */
-.demo-role {
-  margin-left: 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--nav-muted);
-  white-space: nowrap;
-}
-
-.demo-role select {
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 8px;
-  padding: 6px 8px;
-  font-size: 12px;
-  font-weight: 600;
-  font-family: inherit;
-}
-
-.demo-role select option {
   color: var(--ink);
 }
 
-/* ---------- Discreet prototype-only reset control ---------- */
-.demo-reset {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  color: var(--nav-muted);
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 12px;
-  font-weight: 600;
+a.brand-link:hover {
+  color: var(--ink);
+  opacity: 0.85;
+  text-decoration: none;
+}
+
+/* ShellBar titles: product title (+ Auckland Transport suffix). */
+.shell-titles {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.shell-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shell-subtitle {
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* Right cluster: bell + Demo Role + avatar (Figma 02 header). */
+.topnav-right {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  border-radius: 999px;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0;
+}
+
+.icon-button:hover {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+/* ---------- Demo Role popover (Figma role selector) ---------- */
+.role-menu {
+  position: relative;
+  margin-left: 0;
+}
+
+.role-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 6px 4px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink);
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
 }
 
-.demo-reset:hover {
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.5);
+.role-button-label {
+  color: var(--muted);
+  font-weight: 400;
 }
 
-/* ---------- Shared page gutter: header and body align ---------- */
+.role-button strong {
+  font-weight: 600;
+}
+
+.role-button:hover {
+  color: var(--brand-dark);
+}
+
+.role-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--sapElement_BorderCornerRadius);
+  box-shadow: var(--sapContent_Shadow2);
+  padding: 20px;
+  z-index: 60;
+}
+
+.role-popover-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.role-popover .muted.small {
+  margin: 0 0 12px;
+}
+
+.role-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 38px;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  background: var(--card);
+  border: 1px solid transparent;
+  border-radius: var(--control-radius);
+  font-size: 14px;
+  color: var(--ink);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.role-option:hover {
+  background: var(--bg);
+}
+
+.role-option.selected {
+  background: var(--brand-tint);
+  font-weight: 600;
+}
+
+.role-option-icon {
+  display: inline-flex;
+  color: var(--muted);
+}
+
+.role-option.selected .role-option-icon {
+  color: var(--ink);
+}
+
+.role-user {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 12px 0;
+}
+
+.role-user strong {
+  font-size: 14px;
+}
+
+/* ShellBar user area: avatar circle + chevron (Figma 02 header). */
+button.shell-user {
+  margin-left: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  background: none;
+  border: none;
+  padding: 4px;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+button.shell-user:hover {
+  color: var(--brand-dark);
+}
+
+.shell-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--brand-tint);
+  color: var(--brand);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.shell-username {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+@media (max-width: 640px) {
+  .shell-username {
+    display: none;
+  }
+
+  .shell-user {
+    margin-left: 0;
+  }
+}
+
+/* ---------- Shared page shell: everything inset, max 1280px centered ---------- */
 .wrap {
   width: 100%;
-  max-width: 1160px;
+  max-width: 1280px;
   margin: 0 auto;
   padding-left: 24px;
   padding-right: 24px;
 }
 
-/* ---------- Layout ---------- */
+@media (max-width: 700px) {
+  .wrap {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+/* ---------- Layout (no sidebar — menu lives in the top navbar) ---------- */
 .container {
-  max-width: 1160px;
+  width: 100%;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 24px 24px 32px;
+}
+
+/* Content blocks fill the content column (no centered gutter). */
+.shell-content .container > div > *:not(.pagehead):not(.page-actions) {
+  max-width: none;
+  margin: 0 0 16px;
+}
+
+.shell-content .container > div > *:last-child {
+  margin-bottom: 0;
 }
 
 .pagehead h1 {
   margin: 0 0 4px;
-  font-size: 28px;
-  letter-spacing: -0.015em;
+  font-size: var(--sapFontHeader3Size);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/* Page header as a contained panel: same width as the cards below it. */
+.pagehead {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--sapContent_Shadow0);
+  margin: 0 0 24px;
+  padding: 20px 24px;
+}
+
+@media (max-width: 700px) {
+  .container {
+    padding: 16px 16px 24px;
+  }
+
+  .pagehead {
+    margin: 0 0 20px;
+    padding: 16px;
+  }
 }
 
 .crumbs {
   color: var(--muted);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 400;
   margin: 0 0 6px;
-}
-
-.eyebrow {
-  color: var(--teal);
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
 .lede {
@@ -213,55 +397,181 @@ a.brand-link:hover {
   max-width: 72ch;
 }
 
-.subnav {
+/* ---------- Shell layout: sidebar + content (Figma) ---------- */
+.shell-layout {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 12px 0 20px;
+  align-items: stretch;
+  min-height: calc(100vh - 3.5rem);
 }
 
-.subnav a {
-  border: 1px solid var(--border);
-  background: #fff;
-  color: var(--ink);
-  border-radius: 999px;
-  padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  text-decoration: none;
-  transition: border-color 120ms ease, box-shadow 120ms ease;
+.sidenav {
+  width: 248px;
+  flex: none;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: sticky;
+  top: 3.5rem;
+  height: calc(100vh - 3.5rem);
+  overflow-y: auto;
 }
 
-.subnav a:hover {
-  border-color: var(--teal);
-  color: var(--teal-dark);
-}
-
-.subnav a.active {
-  background: var(--nav);
-  border-color: var(--nav);
-  color: #fff;
-}
-
-.subnav a.active:visited {
-  color: #fff;
-}
-
-.phase-tag {
-  display: inline-block;
+.sidenav-label {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   color: var(--muted);
-  background: var(--status-idle-bg);
-  border-radius: 999px;
-  padding: 1px 8px;
-  margin-left: 6px;
+  padding: 4px 12px;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+.sidenav a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 0 var(--control-radius) var(--control-radius) 0;
+  border: none;
+  border-left: 3px solid transparent;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 400;
+  text-decoration: none;
+  min-height: 44px;
+}
+
+.sidenav a:hover {
+  background: var(--bg);
+  text-decoration: none;
+}
+
+.sidenav a.active {
+  background: var(--brand-tint);
+  border-left-color: var(--brand);
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.sidenav a.active:visited {
+  color: var(--brand);
+}
+
+.sidenav-icon {
+  flex: none;
+  width: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+
+.sidenav a.active .sidenav-icon {
+  color: var(--brand);
+}
+
+.shell-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 7rem);
+}
+
+/* ---------- Top navbar menu (replaces the sidebar) ---------- */
+.menubar {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 3.5rem;
+  z-index: 30;
+}
+
+.menubar-inner {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.menubar a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+  text-decoration: none;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+}
+
+.menubar a:hover {
+  color: var(--brand-dark);
+  text-decoration: none;
+  background: var(--bg);
+}
+
+.menubar a.active {
+  color: var(--brand);
+  font-weight: 600;
+  border-bottom-color: var(--brand);
+}
+
+.menubar a.active:visited {
+  color: var(--brand);
+}
+
+.menubar-icon {
+  display: inline-flex;
+  color: inherit;
+}
+
+.shell-content .container {
+  flex: 1;
+  width: 100%;
+}
+
+@media (max-width: 860px) {
+  .shell-layout {
+    flex-direction: column;
+  }
+
+  .sidenav {
+    width: auto;
+    height: auto;
+    position: static;
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 8px 12px;
+  }
+
+  .sidenav-label {
+    margin: 0 8px 0 0;
+    padding: 0;
+    white-space: nowrap;
+  }
+
+  .sidenav a {
+    min-height: 2.25rem;
+    white-space: nowrap;
+  }
 }
 
 .grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+  align-items: start;
 }
 
 @media (max-width: 860px) {
@@ -270,26 +580,128 @@ a.brand-link:hover {
   }
 }
 
+/* Horizontal scroll wrapper for data tables on narrow screens. */
+.table-scroll {
+  overflow-x: auto;
+  margin: 0 -2px;
+  padding: 0 2px;
+}
+
+/* ---------- Card (Fiori Card: tile radius, content shadow level 0) ---------- */
 .card {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 18px 20px;
+  padding: 16px 18px;
   margin-bottom: 16px;
-  box-shadow: 0 1px 2px rgba(14, 42, 62, 0.06);
+  box-shadow: var(--sapContent_Shadow0);
 }
 
 .card h2 {
-  margin: 0 0 10px;
+  margin: 0 0 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
   font-size: 16px;
+  font-weight: 700;
+}
+
+/* Centered card variant (content + title + actions centered). */
+.card.center {
+  text-align: center;
+}
+
+.card.center .section-toolbar {
+  justify-content: center;
+}
+
+.card.center .actions-bar {
+  justify-content: center;
+}
+
+/* Toolbar row: title left, record count right (Figma). */
+.section-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-toolbar h2 {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.section-toolbar .muted {
+  white-space: nowrap;
 }
 
 .card h3 {
-  margin: 16px 0 6px;
-  font-size: 13px;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  margin: 16px 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* ---------- IllustratedMessage-style empty states (Fiori) ---------- */
+.empty {
+  text-align: center;
+  padding: 32px 16px;
+}
+
+.empty-illustration {
+  font-size: 40px;
+  line-height: 1;
+  color: var(--btn-border);
+  margin-bottom: 12px;
+}
+
+.empty-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.empty-title-large {
+  font-size: 24px;
+}
+
+.empty .muted {
+  margin: 0 0 4px;
+}
+
+.empty-action {
+  justify-content: center;
+  margin: 12px 0 0;
+}
+
+/* ---------- Receipt hero (confirmation screens) ---------- */
+.receipt-medallion {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  line-height: 1;
+  color: var(--target-good-fg);
+  background: var(--target-good-bg);
+  border: 1px solid var(--target-good-fg);
+  border-radius: 50%;
+}
+
+.receipt-hero .muted {
+  margin: 8px 0 0;
+}
+
+hr.receipt-sep {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 8px 0 16px;
 }
 
 .muted {
@@ -300,32 +712,34 @@ a.brand-link:hover {
   font-size: 12px;
 }
 
-/* ---------- Badges (labelled — never colour-alone) ---------- */
+/* ---------- ObjectStatus (Figma: transparent text + icon, never colour-alone) ---------- */
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border-radius: 999px;
-  padding: 2px 10px;
-  font-size: 12px;
-  font-weight: 700;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
   white-space: nowrap;
+  background: transparent;
+  border: none;
+  border-radius: 0;
 }
 
-.sev-critical { color: var(--sev-critical-fg); background: var(--sev-critical-bg); }
-.sev-high { color: var(--sev-high-fg); background: var(--sev-high-bg); }
-.sev-medium { color: var(--sev-medium-fg); background: var(--sev-medium-bg); }
-.sev-low { color: var(--sev-low-fg); background: var(--sev-low-bg); }
-.sev-none { color: var(--status-idle-fg); background: var(--status-idle-bg); }
+.sev-critical { color: var(--sev-critical-fg); }
+.sev-high { color: var(--sev-high-fg); }
+.sev-medium { color: var(--sev-medium-fg); }
+.sev-low { color: var(--sev-low-fg); }
+.sev-none { color: var(--status-idle-fg); }
 
-.st-ops { color: var(--teal-dark); background: var(--status-ops-bg); }
-.st-done { color: var(--status-done-fg); background: var(--status-done-bg); }
-.st-idle { color: var(--status-idle-fg); background: var(--status-idle-bg); }
+.st-ops { color: var(--status-ops-fg); }
+.st-done { color: var(--status-done-fg); }
+.st-idle { color: var(--status-idle-fg); }
 
-.tg-bad { color: var(--target-bad-fg); background: var(--target-bad-bg); }
-.tg-warn { color: var(--target-warn-fg); background: var(--target-warn-bg); }
-.tg-good { color: var(--target-good-fg); background: var(--target-good-bg); }
-.tg-idle { color: var(--target-idle-fg); background: var(--target-idle-bg); }
+.tg-bad { color: var(--target-bad-fg); }
+.tg-warn { color: var(--target-warn-fg); }
+.tg-good { color: var(--target-good-fg); }
+.tg-idle { color: var(--target-idle-fg); }
 
 /* ---------- Facts / tables / timeline ---------- */
 .facts {
@@ -346,44 +760,65 @@ a.brand-link:hover {
   font-weight: 500;
 }
 
+@media (max-width: 560px) {
+  .facts {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .facts dd {
+    margin-bottom: 8px;
+  }
+}
+
+/* ---------- Table (sapList_*: white header, #e5e5e5 rows, hover #eaecee) ---------- */
 table.records {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--sapFontSize);
 }
 
 table.records th {
   text-align: left;
-  color: var(--muted);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
+  color: var(--ink);
+  font-size: var(--sapFontSmallSize);
+  font-weight: 600;
+  padding: 0.625rem;
+  border-bottom: 1px solid var(--table-border);
+  background: var(--table-head-bg);
+  white-space: nowrap;
 }
 
 table.records td {
-  padding: 10px;
-  border-bottom: 1px solid var(--border);
+  padding: 0.875rem 0.625rem;
+  border-bottom: 1px solid var(--table-border);
   vertical-align: middle;
+  background: var(--sapList_Background);
+}
+
+/* Grey footer strip inside table cards (Figma). */
+.table-foot {
+  background: var(--bg);
+  border-radius: 0 0 var(--control-radius) var(--control-radius);
+  padding: 10px 14px;
+  margin: 0 -18px -16px;
+  font-size: 12px;
+  color: var(--muted);
 }
 
 table.records tbody tr {
   transition: background 120ms ease;
 }
 
-table.records tbody tr:hover {
-  background: #f7fafb;
+table.records tbody tr:hover td {
+  background: var(--sapList_Hover_Background);
 }
 
 table.records td:last-child {
   white-space: nowrap;
 }
 
-table.records tbody tr:hover {
-  background: #f7fafb;
-}
-
+/* ---------- Timeline (Figma: plain event rows) ---------- */
 .timeline {
   list-style: none;
   margin: 0;
@@ -391,7 +826,7 @@ table.records tbody tr:hover {
 }
 
 .timeline li {
-  padding: 10px 0 10px 4px;
+  padding: 10px 0;
   border-bottom: 1px solid var(--border);
 }
 
@@ -416,102 +851,251 @@ table.records tbody tr:hover {
   font-size: 13px;
 }
 
-/* ---------- Permissions ---------- */
-.perm-lists {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-@media (max-width: 860px) {
-  .perm-lists {
-    grid-template-columns: 1fr;
-  }
-}
-
-.perm-lists ul {
-  margin: 6px 0 0;
-  padding-left: 0;
-  list-style: none;
-}
-
-.perm-lists li {
-  padding: 4px 0;
-  font-size: 13px;
-}
-
-.perm-yes { color: var(--target-good-fg); font-weight: 700; }
-.perm-no { color: var(--target-bad-fg); font-weight: 700; }
-
-/* ---------- Notes / buttons / footer ---------- */
+/* ---------- MessageStrip (Fiori: tinted bg, semantic border, icon) ---------- */
 .note {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
   background: var(--note-bg);
-  border-left: 3px solid var(--note-border);
-  border-radius: 0 8px 8px 0;
-  padding: 10px 14px;
-  font-size: 13px;
+  border: 0.0625rem solid var(--note-border);
+  border-left-width: 0.375rem;
+  border-radius: var(--control-radius);
+  padding: 0.625rem 0.875rem;
+  font-size: var(--sapFontSize);
   color: var(--ink);
   margin-top: 12px;
+  margin-bottom: 16px;
 }
 
+.note.warn {
+  background: var(--target-warn-bg);
+  border-color: var(--target-warn-fg);
+  color: var(--ink);
+}
+
+.note.warn::before {
+  content: '⚠';
+  color: var(--target-warn-fg);
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.success,
+.alert {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+/* ---------- Button (sapButton_*, Horizon: 2.25rem, .5rem radius) ---------- */
 .btn {
   appearance: none;
-  border: 1px solid var(--btn-border);
-  background: var(--btn-bg);
-  border-radius: 8px;
-  padding: 10px 18px;
-  font-size: 14px;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0.0625rem solid var(--sapButton_BorderColor);
+  background: var(--sapButton_Background);
+  border-radius: var(--sapButton_BorderCornerRadius);
+  padding: 0 1rem;
+  min-height: var(--sapElement_Height);
+  font-size: var(--sapFontSize);
+  font-weight: 600;
   cursor: pointer;
-  color: var(--ink);
+  color: var(--sapBrandColor);
   text-decoration: none;
+  vertical-align: middle;
+  font-family: inherit;
 }
 
 .btn:visited {
-  color: var(--ink);
+  color: var(--sapBrandColor);
   text-decoration: none;
 }
 
+/* Emphasized (sapButton_Emphasized_*): #0070f2 → #0064d9 → #0057d2. */
 .btn-primary,
 .btn-primary:visited {
-  background: var(--teal);
-  border-color: var(--teal);
-  color: #fff;
+  background: var(--sapButton_Emphasized_Background);
+  border-color: var(--sapButton_Emphasized_BorderColor);
+  color: var(--sapButton_Emphasized_TextColor);
   text-decoration: none;
 }
 
 .btn-primary:not(:disabled):hover {
-  background: var(--teal-dark);
-  border-color: var(--teal-dark);
+  background: var(--sapButton_Emphasized_Hover_Background);
+  border-color: var(--sapButton_Emphasized_Hover_Background);
   color: #fff;
 }
 
+.btn-primary:not(:disabled):active {
+  background: var(--sapButton_Emphasized_Active_Background);
+  border-color: var(--sapButton_Emphasized_Active_Background);
+  color: #fff;
+}
+
+/* Destructive (sapButton_Negative_*): white, red border + text. */
+.btn-negative,
+.btn-negative:visited {
+  background: var(--sapButton_Background);
+  border-color: var(--sapNegativeColor);
+  color: var(--sapNegativeColor);
+  text-decoration: none;
+}
+
+.btn-negative:not(:disabled):hover {
+  background: var(--sapErrorBackground);
+  border-color: var(--sapNegativeColor);
+  color: var(--sapNegativeColor);
+}
+
+/* Accept/positive (sapButton_Success_*): white, green border + text. */
+.btn-positive,
+.btn-positive:visited {
+  background: var(--sapButton_Background);
+  border-color: var(--sapPositiveColor);
+  color: var(--sapPositiveColor);
+  text-decoration: none;
+}
+
+.btn-positive:not(:disabled):hover {
+  background: var(--sapSuccessBackground);
+  border-color: var(--sapPositiveColor);
+  color: var(--sapPositiveColor);
+}
+
+/* Button glyph (SAP-icon-style, 1rem optical). */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+  flex: none;
+}
+
 .btn:disabled {
-  opacity: 0.55;
+  opacity: 0.4;
   cursor: not-allowed;
+  background: var(--sapButton_Background);
+  border-color: var(--sapButton_BorderColor);
+  color: var(--sapContent_DisabledTextColor);
 }
 
 .btn:not(:disabled):hover {
-  background: var(--btn-hover-bg);
-  border-color: var(--faint);
+  background: var(--sapButton_Hover_Background);
+  border-color: var(--sapButton_Hover_BorderColor);
+  color: var(--sapBrandColor);
 }
 
-.fingerprint {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
-  background: var(--status-idle-bg);
-  border-radius: 6px;
-  padding: 8px 12px;
-  margin-top: 10px;
-  word-break: break-all;
+.btn:not(:disabled):active {
+  background: var(--sapActiveColor);
+  border-color: var(--sapButton_BorderColor);
+  color: var(--sapBrandColor);
+}
+
+/* Figma table actions are text links, not buttons. */
+table.records td:last-child .btn {
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  min-height: 0;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--brand);
+}
+
+table.records td:last-child .btn:hover {
+  background: none;
+}
+
+/* Transparent button (Figma Button · Transparent). */
+.btn-transparent,
+.btn-transparent:visited {
+  background: var(--card);
+  border-color: transparent;
+  color: var(--brand);
+}
+
+.btn-transparent:not(:disabled):hover {
+  background: var(--brand-tint);
+  border-color: transparent;
+  color: var(--brand-dark);
+}
+
+/* Page header with a primary action on the right (Figma headers). */
+.pagehead-with-action {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.pagehead-with-action .actions-bar {
+  margin: 4px 0 0;
+  flex: none;
+}
+
+@media (max-width: 640px) {
+  .pagehead-with-action {
+    flex-direction: column;
+  }
+}
+
+/* Sticky page action bar (Figma composer footer row). */
+.page-actions {
+  position: sticky;
+  bottom: 0;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  padding: 12px 0;
+  margin: 16px calc(-1 * 24px) -24px;
+  padding-left: 24px;
+  padding-right: 24px;
+  z-index: 10;
+}
+
+.page-actions .actions-bar {
+  margin: 0;
+}
+
+/* Composer: wider context rail (Figma 800 + 344). */
+@media (min-width: 961px) {
+  .form-layout.composer-layout {
+    grid-template-columns: 1fr 344px;
+  }
+}
+
+.channels legend {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Text-button that reads as a table action link. */
+.tbl-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--sapLinkColor);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.tbl-link:hover {
+  color: var(--sapLink_HoverColor);
 }
 
 .footer {
+  background: var(--card);
   border-top: 1px solid var(--border);
   color: var(--muted);
   font-size: 12px;
-  padding-top: 14px;
-  padding-bottom: 28px;
+  min-height: 3.5rem;
+  display: flex;
+  align-items: center;
+  margin-top: auto;
 }
 
 .footer-inner {
@@ -519,6 +1103,8 @@ table.records tbody tr:hover {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+  width: 100%;
+  margin: 0 auto;
 }
 
 /* ---------- Forms (Capture disruption, UI kit fields) ---------- */
@@ -558,40 +1144,50 @@ table.records tbody tr:hover {
 
 .field label {
   display: block;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
   margin-bottom: 6px;
 }
 
+/* ---------- Input (sapField_*, Horizon: .25rem radius) ---------- */
 .input {
   width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 14px;
+  border: 0.0625rem solid var(--sapField_BorderColor);
+  border-radius: var(--sapField_BorderCornerRadius);
+  padding: 0 0.75rem;
+  min-height: var(--sapElement_Height);
+  font-size: var(--sapFontSize);
   font-family: inherit;
   color: var(--ink);
-  background: #fff;
+  background: var(--sapField_Background);
+}
+
+.input:hover {
+  border-color: var(--sapField_Hover_BorderColor);
 }
 
 .input:focus {
-  outline: 2px solid var(--teal);
-  outline-offset: 0;
-  border-color: var(--teal);
+  outline: none;
+  border-color: var(--sapField_Focus_BorderColor);
+  box-shadow: 0 0 0 0.0625rem var(--sapField_Focus_BorderColor);
 }
 
 .input:disabled {
-  background: var(--status-idle-bg);
-  color: var(--muted);
+  background: var(--sapField_ReadOnly_Background);
+  color: var(--sapContent_DisabledTextColor);
+  border-color: var(--sapField_BorderColor);
 }
 
 textarea.input {
   resize: vertical;
+  padding: 10px 12px;
+  min-height: 4.5rem;
 }
 
 select.input {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%235d6f79' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23556b81' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
   padding-right: 32px;
@@ -614,18 +1210,18 @@ select.input {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding-top: 26px;
+  padding-top: 0;
 }
 
 .field-check input {
   width: 18px;
   height: 18px;
-  accent-color: var(--teal);
+  accent-color: var(--brand);
 }
 
 .field-check label {
   margin: 0;
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .checklist {
@@ -653,25 +1249,42 @@ select.input {
   flex-wrap: wrap;
 }
 
+.actions-bar.center {
+  justify-content: center;
+}
+
 .btn-link {
-  display: inline-block;
+  display: inline-flex;
   text-decoration: none;
   /* No color here: .btn / .btn-primary control the text color. */
 }
 
+/* Neighbouring badges in a table cell need breathing room. */
+.records td .badge + .badge {
+  margin-left: 6px;
+}
+
+/* Action rows nested inside strips/cards sit flush, not page-spaced. */
+.success .actions-bar,
+.note .actions-bar {
+  margin: 8px 0 0;
+}
+
 .btn-small {
-  padding: 6px 12px;
-  font-size: 12px;
-  border-radius: 7px;
+  padding: 0 0.75rem;
+  min-height: 2rem;
+  font-size: var(--sapFontSmallSize);
+  border-radius: var(--sapButton_BorderCornerRadius);
   white-space: nowrap;
 }
 
-/* ---------- Success / inline confirmation ---------- */
+/* ---------- MessageStrip: Success / Error (Horizon semantic bgs) ---------- */
 .success {
   background: var(--target-good-bg);
-  border-left: 3px solid var(--target-good-fg);
-  border-radius: 0 8px 8px 0;
-  padding: 12px 16px;
+  border: 0.0625rem solid var(--target-good-fg);
+  border-left-width: 0.375rem;
+  border-radius: var(--control-radius);
+  padding: 0.75rem 1rem;
   margin-bottom: 16px;
 }
 
@@ -681,45 +1294,66 @@ select.input {
   font-size: 13px;
 }
 
-/* ---------- Workflow stepper (operations workspace) ---------- */
+/* ---------- Workflow wizard (Figma Wizard bar) ---------- */
 .steps {
   list-style: none;
   display: flex;
-  gap: 0;
-  margin: 14px 0 0;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 0 8px;
+  margin: 16px 0 0;
   padding: 0;
-  border-top: 1px solid var(--border);
 }
 
 .step {
-  flex: 1;
-  padding: 10px 8px 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--faint);
-  border-top: 2px solid transparent;
-  margin-top: -1px;
+  flex: none;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 4px 10px 0;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--muted);
+  position: relative;
+}
+
+.step::after {
+  content: '›';
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--btn-border);
+  margin-left: auto;
+  padding: 0 8px;
+}
+
+.step:last-child::after {
+  display: none;
 }
 
 .step-n {
+  flex: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
   border-radius: 999px;
   background: var(--status-idle-bg);
-  font-size: 11px;
-  margin-right: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  position: relative;
+  z-index: 1;
 }
 
 .step.current {
-  color: var(--teal-dark);
-  border-top-color: var(--teal);
+  color: var(--brand);
+  font-weight: 600;
 }
 
 .step.current .step-n {
-  background: var(--teal);
+  background: var(--brand);
   color: #fff;
 }
 
@@ -728,75 +1362,85 @@ select.input {
 }
 
 .step.done .step-n {
-  background: var(--teal-tint);
-  color: var(--teal-dark);
+  background: var(--brand);
+  color: #fff;
 }
-/* ---------- Severity radio cards ---------- */
-.sev-cards {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin: 12px 0 16px;
-}
-
-@media (max-width: 860px) {
-  .sev-cards {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.sev-card {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 12px;
+/* ---------- Severity score segments (Figma) ---------- */
+.score-bar {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  cursor: pointer;
-  background: #fff;
+  gap: 4px;
+  margin: 12px 0 8px;
 }
 
-.sev-card.selected {
-  border-color: var(--teal);
-  outline: 2px solid var(--teal);
+.score-seg {
+  flex: 1;
+  text-align: center;
+  padding: 10px 4px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted);
+  background: var(--status-idle-bg);
+  border: 1px solid transparent;
+  border-radius: var(--control-radius);
 }
 
-.sev-card input {
-  accent-color: var(--teal);
+.score-seg.recommended {
+  background: var(--sev-critical-bg);
+  border-color: var(--sev-critical-fg);
+  color: var(--sev-critical-fg);
+  font-weight: 600;
 }
 
 /* ---------- Misc ---------- */
 .note.warn {
   background: var(--target-warn-bg);
-  border-left-color: var(--target-warn-fg);
+  border-color: var(--target-warn-fg);
 }
 
 input.check {
   width: 18px;
   height: 18px;
-  accent-color: var(--teal);
-}
-
-/* ---------- Severity display ---------- */
-.sev-display {
-  font-size: 20px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
+  accent-color: var(--brand);
 }
 
 /* ---------- Recovery progress ---------- */
 .progress {
   background: var(--status-idle-bg);
-  border-radius: 999px;
-  height: 10px;
+  border-radius: var(--control-radius);
+  height: 8px;
   overflow: hidden;
   margin: 8px 0 4px;
 }
 
 .progress-fill {
-  background: var(--teal);
+  background: var(--brand);
   height: 100%;
   border-radius: 999px;
+}
+
+.progress-fill.good {
+  background: var(--target-good-fg);
+}
+
+/* ---------- Workspace anchor tabs (Figma) ---------- */
+.anchor-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  margin: 0 0 16px;
+  padding: 4px 0;
+}
+
+.anchor-tabs a {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 6px 0;
+}
+
+.anchor-tabs a:hover {
+  color: var(--brand-dark);
 }
 
 /* ---------- KPI cards (operations overview + contractor portal) ---------- */
@@ -805,16 +1449,23 @@ input.check {
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   margin-bottom: 16px;
+  align-items: stretch;
+}
+
+.kpi-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
 }
 
 @media (max-width: 960px) {
-  .kpi-grid {
+  .kpi-grid,
+  .kpi-grid-3 {
     grid-template-columns: 1fr 1fr;
   }
 }
 
 @media (max-width: 600px) {
-  .kpi-grid {
+  .kpi-grid,
+  .kpi-grid-3 {
     grid-template-columns: 1fr;
   }
 }
@@ -824,6 +1475,10 @@ input.check {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 16px 18px;
+  box-shadow: var(--sapContent_Shadow0);
+  display: flex;
+  flex-direction: column;
+  min-height: 132px;
 }
 
 .kpi-card h3 {
@@ -834,7 +1489,7 @@ input.check {
 }
 
 .kpi-value {
-  font-size: 34px;
+  font-size: 40px;
   font-weight: 800;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
@@ -842,6 +1497,10 @@ input.check {
 
 .kpi-value.bad {
   color: var(--target-bad-fg);
+}
+
+.kpi-value.warn {
+  color: var(--target-warn-fg);
 }
 
 .kpi-value.good {
@@ -853,34 +1512,167 @@ input.check {
 }
 
 .kpi-link {
-  color: var(--teal);
+  color: var(--sapLinkColor);
   font-size: 13px;
   font-weight: 700;
   text-decoration: none;
 }
 
 .kpi-link:visited {
-  color: var(--teal-dark);
+  color: var(--sapLink_HoverColor);
 }
 
 .kpi-link:hover {
-  color: var(--teal-dark);
+  color: var(--sapLink_HoverColor);
 }
 
 .alert {
   background: var(--target-bad-bg);
-  border-left: 3px solid var(--target-bad-fg);
-  border-radius: 0 8px 8px 0;
-  padding: 12px 16px;
+  border: 0.0625rem solid var(--target-bad-fg);
+  border-left-width: 0.375rem;
+  border-radius: var(--control-radius);
+  padding: 0.75rem 1rem;
   margin-bottom: 16px;
 }
 
-/* ---------- Queue filters ---------- */
+/* ---------- Fiori responsive table (sap.m.Table + FilterBar) ---------- */
+.sap-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.sap-filterbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.sap-filterbar .filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+  flex: 1 1 160px;
+}
+
+.sap-filterbar-search {
+  flex: 2 1 220px;
+  max-width: 320px;
+}
+
+.sap-filterbar-label {
+  font-size: var(--sapFontSmallSize);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.sap-filterbar-actions {
+  display: inline-flex;
+  align-items: end;
+  padding-bottom: 1px;
+}
+
+table.records.sap-records thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.sap-sorthead {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sap-sorthead:hover {
+  color: var(--sapLink_HoverColor);
+}
+
+.sap-sortglyph {
+  font-size: 10px;
+  color: var(--muted);
+  min-width: 12px;
+  text-align: center;
+}
+
+.sap-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  flex-wrap: wrap;
+}
+
+/* ---------- FilterBar (Fiori List Report) ---------- */
 .filters {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
   gap: 10px;
+  align-items: end;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  padding: 12px 14px;
   margin-bottom: 14px;
+}
+
+.filters .filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.filters .filter-field > span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.filters .filter-field.search-field {
+  max-width: 300px;
+}
+
+.filters .actions-bar {
+  justify-self: start;
+  align-self: end;
+  margin: 0;
+}
+
+/* Search input with embedded icon (Figma filter bar). */
+.search-field {
+  position: relative;
+}
+
+.search-field .input {
+  padding-right: 34px;
+  width: 100%;
+}
+
+.search-field .search-icon {
+  position: absolute;
+  right: 10px;
+  bottom: 9px;
+  color: var(--muted);
+  display: inline-flex;
+  pointer-events: none;
 }
 
 @media (max-width: 960px) {
@@ -889,45 +1681,36 @@ input.check {
   }
 }
 
-/* ---------- Countdown card (composer rail) ---------- */
-.countcard {
-  background: #fdf6e3;
-  border: 1px solid #ead9a8;
-  border-radius: var(--radius);
-  padding: 18px 20px;
-  margin-bottom: 16px;
+/* ---------- Contractor overview: balanced single-search card (Figma 02) ---------- */
+.contractor-search {
+  padding: 12px 18px;
 }
 
-.countcard.good {
-  background: var(--target-good-bg);
-  border-color: #bfe0cb;
+.contractor-search-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 280px;
 }
 
-.countcard.bad {
-  background: var(--target-bad-bg);
-  border-color: #f3c1bc;
-}
-
-.countcard h3 {
-  margin: 0 0 6px;
-  font-size: 13px;
+.contractor-search-field > span:first-child {
+  font-size: 12px;
+  font-weight: 400;
   color: var(--muted);
 }
 
-.count-big {
-  font-size: 40px;
-  font-weight: 800;
-  line-height: 1;
-  margin: 4px 0 8px;
-  font-variant-numeric: tabular-nums;
+@media (max-width: 640px) {
+  .contractor-search-field {
+    max-width: none;
+  }
 }
 
 /* ---------- Passenger preview ---------- */
 .preview {
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--control-radius);
   padding: 14px 16px;
-  background: #fbfcfd;
+  background: var(--card);
 }
 
 .preview h3 {
@@ -963,14 +1746,14 @@ input.check {
 .channel input {
   width: 18px;
   height: 18px;
-  accent-color: var(--teal);
+  accent-color: var(--brand);
 }
 
-/* ---------- Confirmation dialog ---------- */
+/* ---------- Fiori Dialog ---------- */
 .dialog-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(14, 42, 62, 0.55);
+  background: rgba(29, 45, 62, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -979,18 +1762,48 @@ input.check {
 }
 
 .dialog {
-  background: #fff;
+  background: var(--card);
   color: var(--ink);
-  border-radius: 14px;
+  border-radius: var(--sapElement_BorderCornerRadius);
+  border: 1px solid var(--border);
   max-width: 560px;
   width: 100%;
   padding: 24px 28px;
-  box-shadow: 0 12px 40px rgba(14, 42, 62, 0.25);
+  box-shadow: var(--sapContent_Shadow3);
+  position: relative;
+}
+
+.dialog-close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+}
+
+.dialog-close:hover {
+  color: var(--ink);
 }
 
 .dialog h2 {
   margin: 0 0 10px;
   font-size: 19px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dialog-icon {
+  color: var(--target-warn-fg);
+}
+
+.dialog-icon.info {
+  color: var(--brand);
 }
 
 .dialog ul {
@@ -1010,7 +1823,7 @@ input.check {
 .dialog-check input {
   width: 18px;
   height: 18px;
-  accent-color: var(--teal);
+  accent-color: var(--brand);
 }
 
 .dialog-actions {
@@ -1021,14 +1834,6 @@ input.check {
 }
 
 /* ---------- SAP integration ---------- */
-.sap-chip {
-  margin-left: auto;
-  align-self: center;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--muted);
-  white-space: nowrap;
-}
 
 .sap-details {
   margin-top: 6px;
@@ -1037,12 +1842,874 @@ input.check {
 
 .sap-details summary {
   cursor: pointer;
-  color: var(--teal);
+  color: var(--brand);
   font-weight: 700;
 }
 
-/* ---------- Accessibility ---------- */
+/* Stacked attribute pairs (Figma SAP Incident Data card). */
+.facts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 24px;
+  margin: 0;
+}
+
+.fact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fact dt {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.fact dd {
+  margin: 0;
+  font-size: 14px;
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 700px) {
+  .facts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Stacked label/value inside table-cell expanders (prevents crush). */
+.sap-details .facts {
+  grid-template-columns: 1fr;
+  gap: 2px;
+  margin-top: 8px;
+}
+
+.sap-details .facts dd {
+  margin-bottom: 6px;
+}
+
+/* ---------- Focus (sapContent_FocusColor, Horizon) ---------- */
 :focus-visible {
-  outline: 2px solid var(--teal);
-  outline-offset: 2px;
+  outline: var(--sapContent_FocusWidth) var(--sapContent_FocusStyle) var(--sapContent_FocusColor);
+  outline-offset: 1px;
+}
+
+/* ---------- Fiori shell-bar (reference: XXL→S responsive shell) ---------- */
+.shellbar .shellbar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 3rem;
+}
+
+.shellbar-start {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.shellbar-end {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex: none;
+}
+
+.shell-icon {
+  color: var(--ink);
+  width: 36px;
+  height: 36px;
+}
+
+.shellbar .brand {
+  gap: 8px;
+  margin-left: 2px;
+}
+
+.shellbar .brand-mark {
+  background: var(--sapBrandColor);
+  border-radius: 4px;
+  font-size: 15px;
+  line-height: 24px;
+  min-width: 30px;
+  padding: 1px 6px;
+}
+
+.shell-product {
+  color: var(--sapBrandColor);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.shell-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.shell-search input {
+  width: 300px;
+  height: 32px;
+  border: 1px solid var(--sapField_BorderColor);
+  border-radius: 999px;
+  background: #f1f4f6;
+  padding: 0 32px 0 14px;
+  font-family: inherit;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--ink);
+}
+
+.shell-search input::placeholder {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.shell-search input:focus {
+  outline: none;
+  border-color: var(--sapField_Focus_BorderColor);
+  background: #fff;
+}
+
+.shell-search-icon {
+  position: absolute;
+  right: 10px;
+  display: inline-flex;
+  color: var(--ink);
+  pointer-events: none;
+}
+
+.shell-search-toggle {
+  display: none;
+}
+
+.shell-pop-anchor {
+  position: relative;
+}
+
+.shell-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 260px;
+  max-width: 340px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--sapContent_Shadow2);
+  padding: 12px;
+  z-index: 70;
+}
+
+.shell-pop a {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.shell-pop a:hover {
+  background: var(--bg);
+}
+
+.shell-pop a.selected {
+  background: var(--brand-tint);
+  font-weight: 600;
+}
+
+.shell-pop-title {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.search-pop {
+  left: auto;
+  right: 0;
+  top: calc(100% + 6px);
+  width: 320px;
+}
+
+.search-hit {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.search-hit:hover {
+  background: var(--bg);
+}
+
+.notif-pop,
+.help-pop,
+.overflow-pop {
+  width: 300px;
+}
+
+.shell-dot {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--sapNegativeColor);
+  border: 1.5px solid #fff;
+}
+
+.shellbar .shell-user {
+  margin-left: 2px;
+}
+
+.shellbar .shell-avatar {
+  width: 28px;
+  height: 28px;
+  background: #d9e8f5;
+  color: #0a3d62;
+  object-fit: cover;
+}
+
+.shellbar-mobile-search {
+  display: none;
+  padding-bottom: 8px;
+}
+
+.shellbar-mobile-search .shell-search {
+  width: 100%;
+}
+
+.shellbar-mobile-search .shell-search input {
+  width: 100%;
+}
+
+/* Hamburger drawer (mobile nav + role switch). */
+.shell-drawer-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(19, 30, 41, 0.4);
+  z-index: 80;
+}
+
+.shell-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 300px;
+  max-width: 86vw;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  box-shadow: var(--sapContent_Shadow2);
+  padding: 16px 12px;
+  overflow-y: auto;
+  transform: translateX(-105%);
+  transition: transform 160ms ease;
+  z-index: 81;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shell-drawer.open {
+  transform: none;
+}
+
+.shell-drawer a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.shell-drawer a:hover {
+  background: var(--bg);
+  text-decoration: none;
+}
+
+.shell-drawer a.active {
+  background: var(--brand-tint);
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.shell-drawer-role {
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+/* Tab row: text tabs + More pill, like the reference. */
+.menubar {
+  top: 3rem;
+}
+
+.menubar-inner {
+  gap: 2px;
+}
+
+.menubar a {
+  color: var(--ink);
+  font-size: 13.5px;
+  padding: 10px 12px 9px;
+  border-bottom-width: 2px;
+  gap: 4px;
+}
+
+.menubar a:hover {
+  background: none;
+  color: var(--brand-dark);
+}
+
+.menubar a.active {
+  color: var(--sapHighlightColor);
+  border-bottom-color: var(--sapHighlightColor);
+}
+
+.menubar-caret {
+  display: inline-flex;
+  color: inherit;
+}
+
+.menubar-more {
+  position: relative;
+  margin-left: auto;
+  padding: 6px 0;
+}
+
+.menubar-more-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--card);
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.menubar-more-button:hover {
+  background: var(--bg);
+}
+
+.menubar-more-button.active {
+  color: var(--sapHighlightColor);
+  border-color: var(--sapHighlightColor);
+}
+
+.menubar-more-pop {
+  min-width: 220px;
+}
+
+/* Reference breakpoints: XL full search, L icon search + More tabs. */
+@media (max-width: 1100px) {
+  .shell-search {
+    display: none;
+  }
+  .shell-search.open {
+    display: flex;
+  }
+  .shell-search-toggle {
+    display: inline-flex;
+  }
+  .shellbar-mobile-search {
+    display: block;
+  }
+}
+
+@media (max-width: 700px) {
+  .shell-product {
+    display: none;
+  }
+  .shell-help-anchor {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .shell-back {
+    display: none;
+  }
+  .shellbar-row {
+    gap: 2px;
+  }
+}
+
+/* ---------- SAP API-hub style: card / fields / table ----------
+   Reference: light neutral borders, flat cards, floating-legend
+   selects with a segmented chevron button, blue double-ring focus,
+   uppercase table headers, generous row rhythm. */
+
+/* Card: flat white, 1px neutral border, no drop shadow. */
+.card {
+  border-color: #c9d1d8;
+  box-shadow: none;
+}
+
+/* Fields: 6px radius, neutral border, blue double-ring focus
+   (inner brand border + outer navy ring, like the reference). */
+.input {
+  border-color: #7f8fa3;
+  border-radius: 6px;
+}
+
+.input::placeholder {
+  color: #6b7a8d;
+}
+
+.input:focus {
+  border-color: #0a6ed1;
+  box-shadow:
+    0 0 0 1px #0a6ed1,
+    0 0 0 3px #fff,
+    0 0 0 5px #1e3a5f;
+}
+
+select.input {
+  border-radius: 6px;
+}
+
+/* SAP select: floating legend on the top border + segmented chevron. */
+.sap-select {
+  position: relative;
+}
+
+.sap-select-legend {
+  position: absolute;
+  top: -9px;
+  left: 12px;
+  z-index: 1;
+  background: var(--card);
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+  white-space: nowrap;
+  max-width: calc(100% - 24px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.sap-select-trigger {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-height: var(--sapElement_Height);
+  background: var(--sapField_Background);
+  border: 1px solid #7f8fa3;
+  border-radius: 6px;
+  padding: 0;
+  font-family: inherit;
+  font-size: var(--sapFontSize);
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.sap-select-trigger:hover {
+  border-color: var(--sapField_Hover_BorderColor);
+}
+
+.sap-select.open .sap-select-trigger,
+.sap-select-trigger:focus-visible {
+  outline: none;
+  border-color: #0a6ed1;
+  box-shadow:
+    0 0 0 1px #0a6ed1,
+    0 0 0 3px #fff,
+    0 0 0 5px #1e3a5f;
+}
+
+.sap-select.invalid .sap-select-trigger {
+  border-color: var(--sapNegativeColor);
+}
+
+.sap-select.disabled .sap-select-trigger {
+  background: var(--sapField_ReadOnly_Background);
+  color: var(--sapContent_DisabledTextColor);
+  cursor: not-allowed;
+}
+
+.sap-select-value {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 0 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sap-select-value.empty {
+  color: #6b7a8d;
+}
+
+/* Segmented chevron button: vertical divider + chevron. */
+.sap-select-seg {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  border-left: 1px solid #b8c3cd;
+  color: var(--ink);
+}
+
+.sap-select-trigger:hover .sap-select-seg {
+  color: var(--brand-dark);
+}
+
+/* Popover: rounded, neutral border, soft shadow. */
+.sap-select-pop {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 70;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  background: var(--card);
+  border: 1px solid #aebdca;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(34, 53, 72, 0.22);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.sap-select-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid transparent;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.sap-select-pop li:last-child .sap-select-item {
+  border-bottom: none;
+}
+
+.sap-select-item:hover {
+  background: var(--bg);
+}
+
+/* Picked option: tinted bg + brand divider underneath. */
+.sap-select-item.picked {
+  background: #e8eff6;
+  border-bottom-color: #0a6ed1;
+  font-weight: 400;
+}
+
+.sap-select-action-row {
+  border-top: 1px solid #d5dce2;
+}
+
+.sap-select-action {
+  color: var(--ink);
+}
+
+.sap-select-plus {
+  display: inline-flex;
+  color: var(--sapBrandColor);
+}
+
+/* Table: uppercase compact headers, airy rows, link-blue descriptions. */
+table.records th {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #2b3a48;
+  background: #fff;
+  padding: 14px 12px 10px;
+  border-bottom: 1px solid #d5dce2;
+}
+
+table.records td {
+  padding: 18px 12px;
+  border-bottom: 1px solid #e3e8ed;
+  vertical-align: top;
+}
+
+table.records tbody tr:last-child td {
+  border-bottom: none;
+}
+
+table.records td a {
+  color: #0a6ed1;
+}
+
+.cell-name {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.cell-type {
+  color: #6b7a8d;
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.cell-desc {
+  color: #4d5f72;
+}
+
+@media (max-width: 700px) {
+  table.records td {
+    padding: 14px 10px;
+  }
+}
+
+/* SapSelect inside the table FilterBar: no field gutter, flexible width. */
+.sap-filterbar .field {
+  margin-bottom: 0;
+  flex: 1 1 180px;
+  min-width: 160px;
+  max-width: 260px;
+}
+
+/* ---------- Fiori DateTimePicker: calendar popover ---------- */
+.sap-datetime-pop {
+  width: 320px;
+  max-width: calc(100vw - 48px);
+  max-height: none;
+  overflow: visible;
+  padding: 12px 12px 8px;
+}
+
+.sap-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.sap-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 12px;
+}
+
+.sap-cal-dow {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  padding: 4px 0;
+}
+
+.sap-cal-empty {
+  min-height: 32px;
+}
+
+.sap-cal-day {
+  min-height: 32px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.sap-cal-day:hover {
+  background: var(--bg);
+  border-color: var(--btn-border);
+}
+
+.sap-cal-day.today {
+  border-color: var(--sapBrandColor);
+}
+
+.sap-cal-day.picked {
+  background: #0a6ed1;
+  border-color: #0a6ed1;
+  color: #fff;
+  font-weight: 700;
+}
+
+.sap-datetime-time {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.sap-datetime-time .field {
+  flex: 1 1 0;
+  margin-bottom: 0;
+  min-width: 0;
+}
+
+.sap-datetime-colon {
+  font-size: 18px;
+  font-weight: 700;
+  padding-top: 8px;
+}
+
+.sap-datetime-foot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0 4px;
+}
+
+.sap-datetime-spacer {
+  flex: 1 1 auto;
+}
+
+/* ---------- Recovery: progress + task rows (Fiori list pattern) ---------- */
+.recovery-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.recovery-status {
+  margin: 0;
+}
+
+.recovery-progress-label {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.progress {
+  height: 8px;
+  border-radius: 999px;
+  background: #dde3e9;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #0a6ed1;
+  transition: width 200ms ease;
+}
+
+.tasks {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+}
+
+.task {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid #e3e8ed;
+}
+
+.task:last-child {
+  border-bottom: none;
+}
+
+.task-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.task-check .check {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  accent-color: #0a6ed1;
+}
+
+.task-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.task.done .task-label {
+  color: #256f3a;
+}
+
+.task-meta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: none;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: right;
+}
+
+.task-done {
+  color: #4d5f72;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 560px) {
+  .task {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  .task-meta {
+    padding-left: 28px;
+  }
+}
+
+/* Flat surfaces: no shadows anywhere on cards/panels/popovers —
+   definition comes from the 1px neutral border only. */
+.card,
+.pagehead,
+.kpi-card,
+.role-popover,
+.shell-pop,
+.shell-drawer,
+.dialog,
+.sap-select-pop {
+  box-shadow: none;
+  border-color: #c9d1d8;
 }

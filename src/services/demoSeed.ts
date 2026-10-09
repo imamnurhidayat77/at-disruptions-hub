@@ -1,6 +1,6 @@
 import { defaultRecoveryTasks } from '../domain/operations.js';
 import { assessSeverity } from '../domain/severity.js';
-import type { Incident } from '../domain/types.js';
+import type { Incident, SapCandidate } from '../domain/types.js';
 
 /**
  * Controlled demo seed data. Explicitly synthetic — never presented as
@@ -31,6 +31,7 @@ function incident1043(): Incident {
     passengerImpact: 'HIGH',
     majorInterchangeAffected: true,
     disruptionType: 'Vehicle breakdown',
+    recoveryActionRequired: true,
   });
   // Seed invariant: the canonical demo must recommend HIGH.
   if (assessment.level !== 'HIGH') {
@@ -39,7 +40,7 @@ function incident1043(): Incident {
   return {
     id: 'INC-1043',
     route: '70',
-    operator: 'Demo Bus Operator',
+    operator: 'City Bus Operator',
     vehicleOrServiceId: 'Bus 2147 · Route 70 citybound',
     location: 'Newmarket — Broadway near Newmarket interchange',
     disruptionType: 'Vehicle breakdown',
@@ -50,6 +51,7 @@ function incident1043(): Incident {
     estimatedDelayMinutes: 25,
     passengerImpact: 'HIGH',
     majorInterchangeAffected: true,
+    serviceContinues: false,
     // Not yet assessed by AT Operations — UI shows the live recommendation.
     severity: null,
     severityScore: null,
@@ -69,8 +71,11 @@ function incident1043(): Incident {
     reviewRequired: false,
     rootCause: null,
     correctiveActions: [],
+    reviewStatus: 'OPEN',
+    closureNotes: null,
+    sapLink: null,
     timeline: baseTimelineSubmit(
-      'Demo Bus Operator',
+      'City Bus Operator',
       'Route 70 breakdown, Newmarket, 25-min estimated delay, high passenger impact.',
     ),
   };
@@ -80,7 +85,7 @@ function incident1039(): Incident {
   return {
     id: 'INC-1039',
     route: '18',
-    operator: 'Demo Bus Operator',
+    operator: 'City Bus Operator',
     vehicleOrServiceId: 'Bus 1180 · Route 18',
     location: 'Great North Road — both directions',
     disruptionType: 'Road blocked — no service',
@@ -90,6 +95,7 @@ function incident1039(): Incident {
     estimatedDelayMinutes: 40,
     passengerImpact: 'HIGH',
     majorInterchangeAffected: true,
+    serviceContinues: false,
     severity: 'CRITICAL',
     severityScore: 9,
     severityReason: 'Estimated delay 40 min (≥ 20 min); High passenger impact; Major interchange affected',
@@ -111,7 +117,6 @@ function incident1039(): Incident {
         'Route 18 services are suspended in both directions near Great North Road due to a road closure. Please use alternative routes and allow additional travel time.',
       channels: ['AT Mobile App', 'Website'],
       nextUpdateBy: '08:15',
-      commitmentOwner: 'Talia Reed',
       updatedAt: at('07:51'),
     },
     infoRequested: false,
@@ -122,6 +127,9 @@ function incident1039(): Incident {
     reviewRequired: false,
     rootCause: null,
     correctiveActions: [],
+    reviewStatus: 'OPEN',
+    closureNotes: null,
+    sapLink: null,
     timeline: [
       {
         id: 'evt-1039-pub',
@@ -145,7 +153,7 @@ function incident1041(): Incident {
   return {
     id: 'INC-1041',
     route: '22N',
-    operator: 'Demo Bus Operator',
+    operator: 'City Bus Operator',
     vehicleOrServiceId: 'Bus 2203 · Route 22N citybound',
     location: 'New North Road — citybound',
     disruptionType: 'Vehicle unavailable',
@@ -155,6 +163,7 @@ function incident1041(): Incident {
     estimatedDelayMinutes: 15,
     passengerImpact: 'MEDIUM',
     majorInterchangeAffected: false,
+    serviceContinues: true,
     severity: 'MEDIUM',
     severityScore: 3,
     severityReason: 'Estimated delay 15 min (10–19 min); Medium passenger impact',
@@ -170,7 +179,6 @@ function incident1041(): Incident {
         'Route 22N citybound services are delayed because a scheduled vehicle is unavailable. Please allow additional travel time while we arrange a standby bus. We do not yet have a confirmed restoration time.',
       channels: ['AT Mobile App', 'Website'],
       nextUpdateBy: '09:10',
-      commitmentOwner: 'Talia Reed',
       updatedAt: at('08:49'),
     },
     infoRequested: false,
@@ -181,6 +189,9 @@ function incident1041(): Incident {
     reviewRequired: false,
     rootCause: null,
     correctiveActions: [],
+    reviewStatus: 'OPEN',
+    closureNotes: null,
+    sapLink: null,
     timeline: [
       {
         id: 'evt-1041-pub',
@@ -203,4 +214,76 @@ function incident1041(): Incident {
 /** Fresh demo state: INC-1043 awaiting validation + two background records. */
 export function buildDemoSeed(): Incident[] {
   return [incident1043(), incident1039(), incident1041()];
+}
+
+/**
+ * SAP intake candidates (demo seed, explicitly synthetic). Figma "05 SAP
+ * Integration": 5 SAP EHS source records reviewed as intake candidates.
+ * Candidates never enter the AT workflow until enrichment creates a
+ * linked shared incident — one shared incident record stays the source
+ * of truth.
+ */
+export function buildSapSeed(): SapCandidate[] {
+  return [
+    {
+      sapId: '123456',
+      sapUuid: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+      title: 'Vehicle breakdown near Newmarket',
+      category: 'Technical Incident',
+      sapStatus: 'Open',
+      locationDescription: 'Newmarket',
+      description: 'Vehicle failure reported near Newmarket.',
+      receivedAt: at('09:02'),
+      intakeRoute: 'SAP EHS intake',
+      linkedIncidentId: null,
+    },
+    {
+      sapId: '123457',
+      sapUuid: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+      title: 'Equipment fault',
+      category: 'Equipment',
+      sapStatus: 'Open',
+      locationDescription: 'Depot workshop',
+      description: 'Diagnostic equipment fault flagged by depot systems.',
+      receivedAt: at('08:40'),
+      intakeRoute: 'SAP EHS intake',
+      linkedIncidentId: null,
+    },
+    {
+      sapId: '123458',
+      sapUuid: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+      title: 'Facility inspection',
+      category: 'Facility',
+      sapStatus: 'In Process',
+      locationDescription: 'Newmarket interchange',
+      description: 'Scheduled facility inspection with a follow-up finding.',
+      receivedAt: '2026-10-05T16:15:00+13:00',
+      intakeRoute: 'SAP EHS intake',
+      linkedIncidentId: null,
+    },
+    {
+      sapId: '123459',
+      sapUuid: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+      title: 'Safety observation',
+      category: 'Safety',
+      sapStatus: 'Open',
+      locationDescription: 'City depot',
+      description: 'Safety observation raised during yard checks.',
+      receivedAt: '2026-10-05T14:30:00+13:00',
+      intakeRoute: 'SAP EHS intake',
+      linkedIncidentId: null,
+    },
+    {
+      sapId: '123460',
+      sapUuid: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+      title: 'Maintenance report',
+      category: 'Maintenance',
+      sapStatus: 'Closed',
+      locationDescription: 'Depot workshop',
+      description: 'Routine maintenance report already closed in SAP.',
+      receivedAt: '2026-10-04T11:20:00+13:00',
+      intakeRoute: 'SAP EHS intake',
+      linkedIncidentId: null,
+    },
+  ];
 }
