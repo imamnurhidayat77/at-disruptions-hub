@@ -4,7 +4,8 @@ import { useParams } from 'react-router-dom';
 import { SeverityBadge } from '../../components/badges.js';
 import { Crumbs, Section } from '../../components/chrome.js';
 import { EmptyState } from '../../components/EmptyState.js';
-import { Field, SapSelect } from '../../components/forms.js';
+import { Field, SapInput, SapSelect } from '../../components/forms.js';
+import { SapDateTime } from '../../components/DateTimeField.js';
 import { KpiCard } from '../../components/KpiCard.js';
 import { FioriButton } from '../../components/Button.js';
 import { DataTable, type DataColumn } from '../../components/DataTable.js';
@@ -237,15 +238,14 @@ export function CloseIncidentPage(): React.JSX.Element {
             </dl>
           )}
           <div className="form-grid">
-            <Field id={`rc-${incident.id}`} label="Root Cause" required>
-              <input
-                id={`rc-${incident.id}`}
-                className="input"
-                value={rootCause}
-                onChange={(e) => setRootCause(e.target.value)}
-                placeholder="e.g. Vehicle mechanical failure"
-              />
-            </Field>
+            <SapInput
+              id={`rc-${incident.id}`}
+              label="Root Cause"
+              required
+              value={rootCause}
+              onChange={(e) => setRootCause(e.target.value)}
+              placeholder="e.g. Vehicle mechanical failure"
+            />
           </div>
           <div className="field field-check">
             <input id={`cc-${incident.id}`} type="checkbox" checked={commsComplete} disabled />
@@ -298,15 +298,14 @@ export function CloseIncidentPage(): React.JSX.Element {
             HIGH / CRITICAL incidents require a post-incident review. Corrective actions
             remain open after incident closure.
           </p>
-          <Field id={`ca-${incident.id}`} label="New corrective action" error={caError}>
-            <input
-              id={`ca-${incident.id}`}
-              className="input"
-              value={caAction}
-              onChange={(e) => setCaAction(e.target.value)}
-              placeholder="e.g. Review operator early-notification procedure"
-            />
-          </Field>
+          <SapInput
+            id={`ca-${incident.id}`}
+            label="New corrective action"
+            value={caAction}
+            onChange={(e) => setCaAction(e.target.value)}
+            placeholder="e.g. Review operator early-notification procedure"
+            error={caError}
+          />
           <div className="form-grid">
             <SapSelect
               id={`cao-${incident.id}`}
@@ -315,15 +314,13 @@ export function CloseIncidentPage(): React.JSX.Element {
               onChange={setCaOwner}
               options={CORRECTIVE_OWNER_ROSTER.map((o) => ({ value: o, label: o }))}
             />
-            <Field id={`cad-${incident.id}`} label="Due date">
-              <input
-                id={`cad-${incident.id}`}
-                className="input"
-                type="date"
-                value={caDue}
-                onChange={(e) => setCaDue(e.target.value)}
-              />
-            </Field>
+            <SapDateTime
+              id={`cad-${incident.id}`}
+              label="Due date"
+              mode="date"
+              value={caDue}
+              onChange={setCaDue}
+            />
           </div>
           <div className="actions-bar">
             <FioriButton icon="plus" onClick={onAddCorrective}>

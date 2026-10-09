@@ -7,9 +7,13 @@ import { Icon } from './icons.js';
  * SAP Fiori-style date-time field (sap.m.DateTimePicker pattern).
  * Floating legend label, segmented calendar button, and a popover with a
  * month calendar plus hour/minute steppers. Value shape matches the native
- * `datetime-local` input ("YYYY-MM-DDTHH:mm") so existing state code is
- * untouched; display is always NZ style ("dd/mm/yyyy, hh:mm").
+ * inputs it replaces so existing state code is untouched:
+ * - datetime: "YYYY-MM-DDTHH:mm" (display "dd/mm/yyyy, hh:mm")
+ * - date:     "YYYY-MM-DD"        (display "dd/mm/yyyy")
+ * - time:     "HH:mm"             (display "hh:mm")
  */
+
+type PickerMode = 'datetime' | 'date' | 'time';
 
 interface Parts {
   y: number;
@@ -30,29 +34,42 @@ function pad(n: number): string {
   return String(n).padStart(2, '0');
 }
 
-function parseValue(v: string): Parts | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(v.trim());
+function parseValue(v: string, mode: PickerMode): Parts | null {
+  const s = v.trim();
+  if (mode === 'time') {
+    const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(s);
+    if (!m) return null;
+    const now = new Date();
+    return { y: now.getFullYear(), m: now.getMonth(), d: now.getDate(), hh: Number(m[1]), mm: Number(m[2]) };
+  }
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?$/.exec(s);
   if (!m) return null;
+  if (mode === 'datetime' && (m[4] === undefined || m[5] === undefined)) return null;
+  if (mode === 'date' && m[4] !== undefined) return null;
   const parts: Parts = {
     y: Number(m[1]),
     m: Number(m[2]) - 1,
     d: Number(m[3]),
-    hh: Number(m[4]),
-    mm: Number(m[5]),
+    hh: m[4] === undefined ? 0 : Number(m[4]),
+    mm: m[5] === undefined ? 0 : Number(m[5]),
   };
   if (parts.m < 0 || parts.m > 11 || parts.d < 1 || parts.d > 31) return null;
   if (parts.hh > 23 || parts.mm > 59) return null;
   return parts;
 }
 
-function toValue(p: Parts): string {
-  return `${p.y}-${pad(p.m + 1)}-${pad(p.d)}T${pad(p.hh)}:${pad(p.mm)}`;
+function toValue(p: Parts, mode: PickerMode): string {
+  if (mode === 'time') return `${pad(p.hh)}:${pad(p.mm)}`;
+  const date = `${p.y}-${pad(p.m + 1)}-${pad(p.d)}`;
+  return mode === 'date' ? date : `${date}T${pad(p.hh)}:${pad(p.mm)}`;
 }
 
-function formatDisplay(v: string): string | null {
-  const p = parseValue(v);
+function formatDisplay(v: string, mode: PickerMode): string | null {
+  const p = parseValue(v, mode);
   if (!p) return null;
-  return `${pad(p.d)}/${pad(p.m + 1)}/${p.y}, ${pad(p.hh)}:${pad(p.mm)}`;
+  if (mode === 'time') return `${pad(p.hh)}:${pad(p.mm)}`;
+  const date = `${pad(p.d)}/${pad(p.m + 1)}/${p.y}`;
+  return mode === 'date' ? date : `${date}, ${pad(p.hh)}:${pad(p.mm)}`;
 }
 
 function nowParts(): Parts {
@@ -64,12 +81,19 @@ function daysInMonth(y: number, m: number): number {
   return new Date(y, m + 1, 0).getDate();
 }
 
+const DEFAULT_PLACEHOLDER: Record<PickerMode, string> = {
+  datetime: 'Select date and time',
+  date: 'Select a date',
+  time: 'HH:MM',
+};
+
 export function SapDateTime({
   id,
   label,
   value,
   onChange,
-  placeholder = 'Select date and time',
+  mode = 'datetime',
+  placeholder,
   required,
   error,
   hint,
@@ -79,6 +103,7 @@ export function SapDateTime({
   label: string;
   value: string;
   onChange: (value: string) => void;
+  mode?: PickerMode;
   placeholder?: string;
   required?: boolean;
   error?: string;
@@ -88,12 +113,12 @@ export function SapDateTime({
   const autoId = useId();
   const fieldId = id ?? `sap-datetime-${autoId}`;
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<Parts>(() => parseValue(value) ?? nowParts());
+  const [draft, setDraft] = useState<Parts>(() => parseValue(value, mode) ?? nowParts());
   const rootRef = useRef<HTMLDivElement>(null);
 
   // Refresh the draft from the committed value each time the picker opens.
   function onToggle(): void {
-    if (!open) setDraft(parseValue(value) ?? nowParts());
+    if (!open) setDraft(parseValue(value, mode) ?? nowParts());
     setOpen((v) => !v);
   }
 
@@ -113,7 +138,8 @@ export function SapDateTime({
     };
   }, [open ]);
 
-  const shown = formatDisplay(value);
+  const shown = formatDisplay(value, mode);
+  const text = placeholder ?? DEFAULT_PLACEHOLDER[mode];
 
   const cells = useMemo(() => {
     const offset = (new Date(draft.y, draft.m, 1).getDay() + 6) % 7; // Monday-first
@@ -125,7 +151,7 @@ export function SapDateTime({
     });
   }, [draft.y, draft.m]);
 
-  const committed = parseValue(value);
+  const committed = parseValue(value, mode);
   const isPickedDay = (day: number): boolean =>
     committed !== null && committed.y === draft.y && committed.m === draft.m && committed.d === day;
 
@@ -173,77 +199,87 @@ export function SapDateTime({
           onClick={onToggle}
         >
           <span id={`${fieldId}-value`} className={`sap-select-value${shown ? '' : ' empty'}`}>
-            {shown ?? placeholder}
+            {shown ?? text}
           </span>
           <span className="sap-select-seg" aria-hidden="true">
-            <Icon name="calendar" size={16} />
+            <Icon name={mode === 'time' ? 'clock' : 'calendar'} size={16} />
           </span>
         </button>
         {open && !disabled && (
-          <div className="sap-select-pop sap-datetime-pop" role="dialog" aria-label={label}>
-            <div className="sap-cal-head">
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Previous month"
-                onClick={() => shiftMonth(-1)}
-              >
-                <Icon name="chevronLeft" size={16} />
-              </button>
-              <strong>
-                {MONTHS[draft.m]} {draft.y}
-              </strong>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Next month"
-                onClick={() => shiftMonth(1)}
-              >
-                <Icon name="chevronRight" size={16} />
-              </button>
-            </div>
-            <div className="sap-cal-grid" role="grid" aria-label="Choose a date">
-              {WEEKDAYS.map((w) => (
-                <span key={w} className="sap-cal-dow" aria-hidden="true">
-                  {w}
-                </span>
-              ))}
-              {cells.map((day, i) =>
-                day === null ? (
-                  <span key={`x-${i}`} className="sap-cal-empty" />
-                ) : (
+          <div
+            className={`sap-select-pop sap-datetime-pop${mode === 'time' ? ' time-only' : ''}`}
+            role="dialog"
+            aria-label={label}
+          >
+            {mode !== 'time' && (
+              <>
+                <div className="sap-cal-head">
                   <button
-                    key={day}
                     type="button"
-                    role="gridcell"
-                    aria-selected={isPickedDay(day)}
-                    className={`sap-cal-day${isPickedDay(day) ? ' picked' : ''}${isToday(day) ? ' today' : ''}`}
-                    onClick={() => setDraft((p) => ({ ...p, d: day }))}
+                    className="icon-button"
+                    aria-label="Previous month"
+                    onClick={() => shiftMonth(-1)}
                   >
-                    {day}
+                    <Icon name="chevronLeft" size={16} />
                   </button>
-                ),
-              )}
-            </div>
-            <div className="sap-datetime-time">
-              <SapSelect
-                id={`${fieldId}-hh`}
-                label="Hour"
-                value={pad(draft.hh)}
-                onChange={(v) => setDraft((p) => ({ ...p, hh: Number(v) }))}
-                options={hours}
-              />
-              <span className="sap-datetime-colon" aria-hidden="true">
-                :
-              </span>
-              <SapSelect
-                id={`${fieldId}-mm`}
-                label="Minute"
-                value={pad(draft.mm)}
-                onChange={(v) => setDraft((p) => ({ ...p, mm: Number(v) }))}
-                options={minutes}
-              />
-            </div>
+                  <strong>
+                    {MONTHS[draft.m]} {draft.y}
+                  </strong>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label="Next month"
+                    onClick={() => shiftMonth(1)}
+                  >
+                    <Icon name="chevronRight" size={16} />
+                  </button>
+                </div>
+                <div className="sap-cal-grid" role="grid" aria-label="Choose a date">
+                  {WEEKDAYS.map((w) => (
+                    <span key={w} className="sap-cal-dow" aria-hidden="true">
+                      {w}
+                    </span>
+                  ))}
+                  {cells.map((day, i) =>
+                    day === null ? (
+                      <span key={`x-${i}`} className="sap-cal-empty" />
+                    ) : (
+                      <button
+                        key={day}
+                        type="button"
+                        role="gridcell"
+                        aria-selected={isPickedDay(day)}
+                        className={`sap-cal-day${isPickedDay(day) ? ' picked' : ''}${isToday(day) ? ' today' : ''}`}
+                        onClick={() => setDraft((p) => ({ ...p, d: day }))}
+                      >
+                        {day}
+                      </button>
+                    ),
+                  )}
+                </div>
+              </>
+            )}
+            {mode !== 'date' && (
+              <div className="sap-datetime-time">
+                <SapSelect
+                  id={`${fieldId}-hh`}
+                  label="Hour"
+                  value={pad(draft.hh)}
+                  onChange={(v) => setDraft((p) => ({ ...p, hh: Number(v) }))}
+                  options={hours}
+                />
+                <span className="sap-datetime-colon" aria-hidden="true">
+                  :
+                </span>
+                <SapSelect
+                  id={`${fieldId}-mm`}
+                  label="Minute"
+                  value={pad(draft.mm)}
+                  onChange={(v) => setDraft((p) => ({ ...p, mm: Number(v) }))}
+                  options={minutes}
+                />
+              </div>
+            )}
             <div className="sap-datetime-foot">
               <FioriButton
                 design="transparent"
@@ -260,7 +296,7 @@ export function SapDateTime({
                 Clear
               </FioriButton>
               <FioriButton design="emphasized" small onClick={() => {
-                onChange(toValue(draft));
+                onChange(toValue(draft, mode));
                 setOpen(false);
               }}>
                 OK

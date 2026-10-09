@@ -3,7 +3,8 @@ import type { ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FioriButton } from '../../components/Button.js';
 import { Crumbs, Section } from '../../components/chrome.js';
-import { Field, SapSelect } from '../../components/forms.js';
+import { Field, SapInput, SapSelect } from '../../components/forms.js';
+import { SapDateTime } from '../../components/DateTimeField.js';
 import {
   DISRUPTION_TYPES,
   EMPTY_REPORT,
@@ -64,6 +65,11 @@ export function ReportPage(): React.JSX.Element {
       setForm((f) => ({ ...f, [key]: value }) as ReportInput);
       setDraftSavedAt(null);
     };
+
+  const setDetected = (value: string): void => {
+    setForm((f) => ({ ...f, detectedAt: value }));
+    setDraftSavedAt(null);
+  };
 
   function onNext(): void {
     const found = step === 1 ? validateReportStep1(form) : validateReportStep2(form);
@@ -128,46 +134,40 @@ export function ReportPage(): React.JSX.Element {
             <Section title="Incident Details">
               <p className="muted small">Required fields are marked with *</p>
               <div className="form-grid form-grid-3">
-                <Field id="f-operator" label="Operator">
-                  <input
-                    id="f-operator"
-                    className="input"
-                    value={form.operator}
-                    disabled
-                    aria-disabled="true"
-                  />
-                </Field>
-                <Field id="f-route" label="Route" required error={errors.route}>
-                  <input
-                    id="f-route"
-                    className="input"
-                    value={form.route}
-                    onChange={set('route')}
-                    placeholder="e.g. 70"
-                    aria-invalid={Boolean(errors.route)}
-                  />
-                </Field>
-                <Field id="f-vehicle" label="Vehicle / Service ID">
-                  <input
-                    id="f-vehicle"
-                    className="input"
-                    value={form.vehicleOrServiceId}
-                    onChange={set('vehicleOrServiceId')}
-                    placeholder="e.g. BUS-070"
-                  />
-                </Field>
+                <SapInput
+                  id="f-operator"
+                  label="Operator"
+                  value={form.operator}
+                  onChange={() => undefined}
+                  disabled
+                />
+                <SapInput
+                  id="f-route"
+                  label="Route"
+                  required
+                  value={form.route}
+                  onChange={set('route')}
+                  placeholder="e.g. 70"
+                  error={errors.route}
+                />
+                <SapInput
+                  id="f-vehicle"
+                  label="Vehicle / Service ID"
+                  value={form.vehicleOrServiceId}
+                  onChange={set('vehicleOrServiceId')}
+                  placeholder="e.g. BUS-070"
+                />
               </div>
               <div className="form-grid form-grid-3">
-                <Field id="f-location" label="Location" required error={errors.location}>
-                  <input
-                    id="f-location"
-                    className="input"
-                    value={form.location}
-                    onChange={set('location')}
-                    placeholder="e.g. Newmarket"
-                    aria-invalid={Boolean(errors.location)}
-                  />
-                </Field>
+                <SapInput
+                  id="f-location"
+                  label="Location"
+                  required
+                  value={form.location}
+                  onChange={set('location')}
+                  placeholder="e.g. Newmarket"
+                  error={errors.location}
+                />
                 <SapSelect
                   id="f-type"
                   label="Disruption Type"
@@ -178,21 +178,14 @@ export function ReportPage(): React.JSX.Element {
                   placeholder="Select…"
                   error={errors.disruptionType}
                 />
-                <Field
+                <SapDateTime
                   id="f-detected"
                   label="Detection Time"
                   required
+                  value={form.detectedAt}
+                  onChange={(v) => setDetected(v)}
                   error={errors.detectedAt}
-                >
-                  <input
-                    id="f-detected"
-                    className="input"
-                    type="datetime-local"
-                    value={form.detectedAt}
-                    onChange={set('detectedAt')}
-                    aria-invalid={Boolean(errors.detectedAt)}
-                  />
-                </Field>
+                />
               </div>
             </Section>
 
@@ -226,22 +219,16 @@ export function ReportPage(): React.JSX.Element {
                   placeholder="Select…"
                   error={errors.serviceContinues}
                 />
-                <Field
+                <SapInput
                   id="f-delay"
                   label="Estimated Delay"
                   required
+                  value={form.estimatedDelayMinutes}
+                  onChange={set('estimatedDelayMinutes')}
+                  placeholder="e.g. 25 min"
+                  inputMode="numeric"
                   error={errors.estimatedDelayMinutes}
-                >
-                  <input
-                    id="f-delay"
-                    className="input"
-                    inputMode="numeric"
-                    value={form.estimatedDelayMinutes}
-                    onChange={set('estimatedDelayMinutes')}
-                    placeholder="e.g. 25 min"
-                    aria-invalid={Boolean(errors.estimatedDelayMinutes)}
-                  />
-                </Field>
+                />
                 <SapSelect
                   id="f-impact"
                   label="Passenger Impact"

@@ -2502,6 +2502,49 @@ table.records td a {
   max-width: 260px;
 }
 
+/* SAP text input: floating legend, same metrics as SapSelect. */
+.sap-inputwrap {
+  position: relative;
+}
+
+.sap-input {
+  width: 100%;
+  min-height: var(--sapElement_Height);
+  border: 1px solid #7f8fa3;
+  border-radius: 6px;
+  background: var(--sapField_Background);
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: var(--sapFontSize);
+  color: var(--ink);
+}
+
+.sap-input::placeholder {
+  color: #6b7a8d;
+}
+
+.sap-input:hover {
+  border-color: var(--sapField_Hover_BorderColor);
+}
+
+.sap-input:focus {
+  outline: none;
+  border-color: #0a6ed1;
+  box-shadow:
+    0 0 0 1px #0a6ed1,
+    0 0 0 3px #fff,
+    0 0 0 5px #1e3a5f;
+}
+
+.sap-input:disabled {
+  background: var(--sapField_ReadOnly_Background);
+  color: var(--sapContent_DisabledTextColor);
+}
+
+.sap-inputwrap.invalid .sap-input {
+  border-color: var(--sapNegativeColor);
+}
+
 /* ---------- Fiori DateTimePicker: calendar popover ---------- */
 .sap-datetime-pop {
   width: 320px;
@@ -2594,6 +2637,11 @@ table.records td a {
 
 .sap-datetime-spacer {
   flex: 1 1 auto;
+}
+
+.sap-datetime-pop.time-only .sap-datetime-time {
+  border-top: none;
+  padding-top: 4px;
 }
 
 /* ---------- Recovery: progress + task rows (Fiori list pattern) ---------- */

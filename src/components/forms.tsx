@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { ChangeEvent, ReactNode } from 'react';
 import { Icon } from './icons.js';
 
 /** Labelled form field with required marker, hint and inline error text. */
@@ -37,6 +37,65 @@ export function Field({
 }
 
 export const inputClass = 'input';
+
+/**
+ * SAP-style text input with a floating legend label on the top border —
+ * same visual language as SapSelect so mixed grids stay aligned.
+ */
+export function SapInput({
+  id,
+  label,
+  value,
+  onChange,
+  placeholder,
+  required,
+  error,
+  hint,
+  disabled,
+  inputMode,
+}: {
+  id?: string;
+  label: string;
+  value: string;
+  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  placeholder?: string;
+  required?: boolean;
+  error?: string;
+  hint?: string;
+  disabled?: boolean;
+  inputMode?: 'text' | 'numeric' | 'decimal';
+}): React.JSX.Element {
+  const autoId = useId();
+  const fieldId = id ?? `sap-input-${autoId}`;
+  return (
+    <div className="field">
+      <div className={`sap-inputwrap${error ? ' invalid' : ''}`}>
+        <span className="sap-select-legend" id={`${fieldId}-label`}>
+          {label}
+          {required === true ? ' *' : ''}
+        </span>
+        <input
+          id={fieldId}
+          className="sap-input"
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          disabled={disabled}
+          inputMode={inputMode}
+          aria-labelledby={`${fieldId}-label`}
+          aria-invalid={Boolean(error)}
+        />
+      </div>
+      {error ? (
+        <p className="field-error" role="alert">
+          {error}
+        </p>
+      ) : hint ? (
+        <p className="hint">{hint}</p>
+      ) : null}
+    </div>
+  );
+}
 
 export interface SapOption {
   value: string;

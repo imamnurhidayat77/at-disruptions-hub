@@ -5,7 +5,8 @@ import { OpStatusBadge, SeverityBadge } from '../../components/badges.js';
 import { FioriButton } from '../../components/Button.js';
 import { Crumbs, Section } from '../../components/chrome.js';
 import { DataTable, type DataColumn } from '../../components/DataTable.js';
-import { Field } from '../../components/forms.js';
+import { Field, SapInput } from '../../components/forms.js';
+import { SapDateTime } from '../../components/DateTimeField.js';
 import { formatNzdtShort } from '../../domain/kpi.js';
 import { lastOperatorUpdateAt, hasOperatorUpdates } from '../../domain/contractor.js';
 import { validateOperatorUpdate } from '../../domain/reporting.js';
@@ -205,41 +206,28 @@ export function IncidentDetailPage(): React.JSX.Element {
                 />
               </Field>
               <div className="form-grid">
-                <Field
+                <SapInput
                   id="u-delay"
                   label="Estimated Delay"
+                  value={delay}
+                  onChange={(e) => {
+                    setDelay(e.target.value);
+                    setSaved(false);
+                  }}
+                  inputMode="numeric"
                   error={errors.estimatedDelayMinutes}
                   hint="Leave blank to keep the current estimate."
-                >
-                  <input
-                    id="u-delay"
-                    className="input"
-                    inputMode="numeric"
-                    value={delay}
-                    onChange={(e) => {
-                      setDelay(e.target.value);
-                      setSaved(false);
-                    }}
-                    aria-invalid={Boolean(errors.estimatedDelayMinutes)}
-                  />
-                </Field>
-                <Field
+                />
+                <SapDateTime
                   id="u-restoration"
                   label="Estimated Restoration"
+                  value={restoration}
+                  onChange={(v) => {
+                    setRestoration(v);
+                    setSaved(false);
+                  }}
                   error={errors.restoration}
-                >
-                  <input
-                    id="u-restoration"
-                    className="input"
-                    type="datetime-local"
-                    value={restoration}
-                    onChange={(e) => {
-                      setRestoration(e.target.value);
-                      setSaved(false);
-                    }}
-                    aria-invalid={Boolean(errors.restoration)}
-                  />
-                </Field>
+                />
               </div>
               <div className="actions-bar">
                 <FioriButton design="emphasized" icon="send" type="submit">

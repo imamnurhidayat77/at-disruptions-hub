@@ -3,7 +3,8 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { OpStatusBadge, SeverityBadge } from '../../components/badges.js';
 import { FioriButton } from '../../components/Button.js';
 import { Crumbs, Section } from '../../components/chrome.js';
-import { Field } from '../../components/forms.js';
+import { Field, SapInput } from '../../components/forms.js';
+import { SapDateTime } from '../../components/DateTimeField.js';
 import {
   buildTemplateMessage,
   buildTemplateTitle,
@@ -149,6 +150,10 @@ export function Composer(): React.JSX.Element {
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setForm({ ...draft, [key]: e.target.value });
 
+  const setTime = (value: string): void => {
+    setForm({ ...draft, nextUpdateBy: value });
+  };
+
   function toggleChannel(channel: string): void {
     setForm({
       ...draft,
@@ -218,16 +223,15 @@ export function Composer(): React.JSX.Element {
       <div className="form-layout composer-layout">
         <div>
           <Section title="Prepare Passenger Update">
-            <Field id="c-title" label="Message Title" required error={errors.title}>
-              <input
-                id="c-title"
-                className="input"
-                value={draft.title}
-                disabled={!editable}
-                onChange={set('title')}
-                aria-invalid={Boolean(errors.title)}
-              />
-            </Field>
+            <SapInput
+              id="c-title"
+              label="Message Title"
+              required
+              value={draft.title}
+              onChange={set('title')}
+              disabled={!editable}
+              error={errors.title}
+            />
             <Field
               id="c-message"
               label="Passenger Message"
@@ -246,17 +250,15 @@ export function Composer(): React.JSX.Element {
               />
             </Field>
             <p className="muted small">{draft.message.trim().length} / 500 characters</p>
-            <Field id="c-next" label="Next Update Time" error={errors.nextUpdateBy}>
-              <input
-                id="c-next"
-                className="input"
-                placeholder="HH:MM"
-                value={draft.nextUpdateBy}
-                disabled={!editable}
-                onChange={set('nextUpdateBy')}
-                aria-invalid={Boolean(errors.nextUpdateBy)}
-              />
-            </Field>
+            <SapDateTime
+              id="c-next"
+              label="Next Update Time"
+              mode="time"
+              value={draft.nextUpdateBy}
+              onChange={setTime}
+              disabled={!editable}
+              error={errors.nextUpdateBy}
+            />
             <fieldset className="channels">
               <legend>Channels</legend>
               {CHANNELS.map((c) => (
