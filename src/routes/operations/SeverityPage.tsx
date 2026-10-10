@@ -159,7 +159,7 @@ export function SeverityPage(): React.JSX.Element {
           </Section>
 
           <Section title={`Severity Score: ${recommendation.score} / 10`}>
-            <div className="score-bar" role="img" aria-label={`Severity score ${recommendation.score} of 10, ${recommendation.level} recommended`}>
+            <div className="score-bar" role="progressbar" aria-valuenow={recommendation.score} aria-valuemin={0} aria-valuemax={10} aria-label={`Severity score ${recommendation.score} of 10, ${recommendation.level} recommended`}>
               {LEVELS.map((level) => (
                 <div
                   key={level}
@@ -270,6 +270,14 @@ function OverrideDialog({
   const [level, setLevel] = useState<Severity>(calculated);
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent): void {
+      if (e.key === 'Escape') onCancel();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onCancel]);
 
   function onSubmit(): void {
     const err = validateSeverityOverride(reason);

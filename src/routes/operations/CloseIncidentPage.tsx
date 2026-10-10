@@ -6,10 +6,13 @@ import { Crumbs, Section } from '../../components/chrome.js';
 import { EmptyState } from '../../components/EmptyState.js';
 import { Field, SapInput, SapSelect } from '../../components/forms.js';
 import { SapDateTime } from '../../components/DateTimeField.js';
+import { ConfirmDialog } from '../../components/ConfirmDialog.js';
+import { useNowTick } from '../../components/useNowTick.js';
 import { KpiCard } from '../../components/KpiCard.js';
 import { FioriButton } from '../../components/Button.js';
 import { DataTable, type DataColumn } from '../../components/DataTable.js';
 import { formatMmSs, firstCommunicationKpi, formatNzdtShort } from '../../domain/kpi.js';
+import { OWNER_ROSTER } from '../../domain/operations.js';
 import type { CorrectiveAction, Incident } from '../../domain/types.js';
 import { useAppStore } from '../../state/AppStore.js';
 
@@ -54,10 +57,6 @@ function correctiveSearch(c: CorrectiveAction): string {
   return `${c.action} ${c.owner} ${c.dueDate} ${c.status}`;
 }
 
-// TODO: OwnerPage does not export its roster — keep this copy in sync with the
-// OwnerPage/OWNER_ROSTER list (or share it) when a common source is available.
-const CORRECTIVE_OWNER_ROSTER = ['Sarah Chen', 'James Wilson', 'Mia Roberts'];
-
 function defaultCorrectiveDue(): string {
   const due = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
   return due.toISOString().slice(0, 10);
@@ -83,10 +82,11 @@ export function CloseIncidentPage(): React.JSX.Element {
   const [reviewRequired, setReviewRequired] = useState(true);
   const [notes, setNotes] = useState('');
   const [caAction, setCaAction] = useState('');
-  const [caOwner, setCaOwner] = useState(CORRECTIVE_OWNER_ROSTER[0]);
+  const [caOwner, setCaOwner] = useState(OWNER_ROSTER[0]);
   const [caDue, setCaDue] = useState(defaultCorrectiveDue);
   const [caError, setCaError] = useState<string | undefined>(undefined);
   const [closeError, setCloseError] = useState<string | undefined>(undefined);
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     setRole('OPERATIONS');
@@ -188,6 +188,11 @@ export function CloseIncidentPage(): React.JSX.Element {
       return;
     }
     setCloseError(undefined);
+    setConfirming(true);
+  }
+
+  function onCloseConfirm(): void {
+    setConfirming(false);
     setReview(
       incident!.id,
       rootCause.trim(),
@@ -224,7 +229,7 @@ export function CloseIncidentPage(): React.JSX.Element {
               Actual restoration time is not recorded yet. Record it in Recovery
               before closing — restoration time is edited only there.
               <div className="actions-bar">
-                <FioriButton design="emphasized" icon="arrowRight" to="/operations/recovery">
+                <FioriButton design="emphasized" icon="arrowRight" to={`/operations/incident/${incident.id}#recovery`}>
                   Back to Recovery
                 </FioriButton>
               </div>
@@ -310,9 +315,9 @@ export function CloseIncidentPage(): React.JSX.Element {
             <SapSelect
               id={`cao-${incident.id}`}
               label="Action owner"
-              value={CORRECTIVE_OWNER_ROSTER.includes(caOwner) ? caOwner : CORRECTIVE_OWNER_ROSTER[0]}
+              value={OWNER_ROSTER.includes(caOwner) ? caOwner : OWNER_ROSTER[0]}
               onChange={setCaOwner}
-              options={CORRECTIVE_OWNER_ROSTER.map((o) => ({ value: o, label: o }))}
+              options={OWNER_ROSTER.map((o) => ({ value: o, label: o }))}
             />
             <SapDateTime
               id={`cad-${incident.id}`}
@@ -343,12 +348,28 @@ export function CloseIncidentPage(): React.JSX.Element {
           </p>
         )}
       </form>
+      {confirming && (
+        <ConfirmDialog
+          title="Close Incident?"
+          subtitle={`${incident.id} · Route ${incident.route}`}
+          summary={[
+            'Root cause and review decision are recorded.',
+            `${incident.correctiveActions.filter((c) => c.status === 'OPEN').length} corrective actions stay open after closure.`,
+          ]}
+          checkLabel="Service is restored and the review record is complete."
+          disclaimer="Closure archives the shared incident record. Open corrective actions stay assigned."
+          confirmLabel="Close Incident"
+          onConfirm={onCloseConfirm}
+          onCancel={() => setConfirming(false)}
+        />
+      )}
     </div>
   );
 }
 
 function ClosedRecord({ incident }: { incident: Incident }): React.JSX.Element {
-  const kpi = firstCommunicationKpi(incident);
+  const nowIso = useNowTick(incident.communicationStatus !== 'PUBLISHED');
+  const kpi = firstCommunicationKpi(incident, nowIso);
   const durationMs =
     incident.restoredAt && incident.detectedAt
       ? Date.parse(incident.restoredAt) - Date.parse(incident.detectedAt)

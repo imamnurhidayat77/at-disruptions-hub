@@ -2761,3 +2761,58 @@ table.records td a {
   box-shadow: none;
   border-color: #c9d1d8;
 }
+
+/* ---------- Skeleton loading (shimmer placeholders) ---------- */
+.skel {
+  display: inline-block;
+  vertical-align: middle;
+  background: var(--table-head-bg);
+  position: relative;
+  overflow: hidden;
+}
+.skel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 25%, rgba(255, 255, 255, 0.8) 50%, transparent 75%);
+  animation: skel-sweep 1.4s ease-in-out infinite;
+}
+@keyframes skel-sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+.skel-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.skel-cell-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.skel-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.skel-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--brand);
+  animation: skel-pulse 1.2s ease-in-out infinite;
+}
+@keyframes skel-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skel::after,
+  .skel-pulse {
+    animation: none;
+  }
+  .skel {
+    background: var(--border);
+  }
+}

@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
 import type { ReactNode } from 'react';
 import { toCommsDraft, type DraftInput } from '../domain/comms.js';
-import { autoEnrichInput, buildArchivedIncident, buildLinkedIncident, disruptionTypeFor, dummyScenarioFor, type EnrichInput } from '../domain/intake.js';
+import { buildArchivedIncident, buildLinkedIncident, type EnrichInput } from '../domain/intake.js';
+import { FIRST_COMM_TARGET_MS } from '../domain/kpi.js';
 import { buildReportedIncident, nextIncidentId, type ReportInput } from '../domain/reporting.js';
 import { assessSeverity } from '../domain/severity.js';
 import type {
@@ -560,7 +561,7 @@ interface Store {
   /** SAP intake: replace the candidate list with auto-fetched live records. */
   replaceSapCandidates: (candidates: SapCandidate[]) => void;
   /** SAP intake: fully automatic — fresh candidates become incidents, no clicks. Returns new IDs. */
-  autoIntakeSap: (fresh: SapCandidate[], archiveSeed: boolean) => string[];
+  autoIntakeSap: (fresh: SapCandidate[]) => string[];
   /** Operations: enrich a SAP candidate into a linked VALIDATED incident. Returns the new ID. */
   createLinkedIncident: (sapId: string, input: EnrichInput) => string | null;
   /** Contractor: create a REPORTED incident from a validated report. Returns the new ID. */
@@ -629,8 +630,7 @@ export function AppStoreProvider({
       getCandidate: (sapId: string) => state.sapCandidates.find((c) => c.sapId === sapId),
       replaceSapCandidates: (candidates: SapCandidate[]) =>
         dispatch({ type: 'SET_SAP_CANDIDATES', candidates }),
-      autoIntakeSap: (fresh: SapCandidate[], archiveSeed: boolean) => {
-        const at = new Date().toISOString();
+      autoIntakeSap: (fresh: SapCandidate[]) => {
         const knownLinked = new Set(
           state.sapCandidates.filter((c) => c.linkedIncidentId !== null).map((c) => c.sapId),
         );
@@ -638,23 +638,35 @@ export function AppStoreProvider({
           state.incidents.flatMap((i) => (i.sapLink ? [i.sapLink.sapId] : [])),
         );
         const pending = fresh.filter((c) => !knownLinked.has(c.sapId) && !knownIncidents.has(c.sapId));
-        if (pending.length === 0) return [];
+        // Live set wins: keep linked history, take the fresh records as the
+        // unlinked set. Unlinked demo seed therefore disappears once live
+        // SAP connects (fallback path passes the existing list, so it keeps
+        // the seed when SAP is unreachable).
+        const linkedExisting = state.sapCandidates.filter((c) => c.linkedIncidentId !== null);
+        const merged: SapCandidate[] = [
+          ...linkedExisting,
+          ...fresh.filter(
+            (c) =>
+              !linkedExisting.some((e) => e.sapId === c.sapId) && !knownIncidents.has(c.sapId),
+          ),
+        ];
+        if (pending.length === 0) {
+          const same =
+            merged.length === state.sapCandidates.length &&
+            merged.every((c) => state.sapCandidates.some((e) => e.sapId === c.sapId));
+          if (!same) dispatch({ type: 'AUTO_INTAKE_SAP', candidates: merged, incidents: [] });
+          return [];
+        }
         let next = nextIncidentId(state.incidents);
         const incidents = pending.map((c) => {
           const id = next;
           const m = /^INC-(\d+)$/.exec(next);
           next = m ? `INC-${Number.parseInt(m[1], 10) + 1}` : `${next}-1`;
-          // Seed candidates are back-history: complete them as CLOSED archives.
-          // Genuinely live arrivals stay actionable VALIDATED records.
-          if (archiveSeed) return buildArchivedIncident(c, id);
-          const scenario = dummyScenarioFor(c.sapId);
-          const built = buildLinkedIncident(c, autoEnrichInput(c, at), id, at, true);
-          return { ...built, disruptionType: disruptionTypeFor(c.title, scenario) };
+          // All SAP records are treated as finished incidents: every live
+          // record completes as a CLOSED archive with deterministic dummy
+          // operational data (severity, owner, publish, recovery, review).
+          return buildArchivedIncident(c, id);
         });
-        const merged: SapCandidate[] = [
-          ...state.sapCandidates,
-          ...pending.filter((c) => !state.sapCandidates.some((e) => e.sapId === c.sapId)),
-        ];
         dispatch({ type: 'AUTO_INTAKE_SAP', candidates: merged, incidents });
         return incidents.map((i) => i.id);
       },
@@ -736,7 +748,7 @@ export function AppStoreProvider({
         let detail = `Channels: ${input.channels.join(' + ') || 'none'}.`;
         if (incident?.confirmedAt) {
           const mins = Math.round((Date.parse(at) - Date.parse(incident.confirmedAt)) / 60000);
-          const met = Date.parse(at) - Date.parse(incident.confirmedAt) <= 10 * 60 * 1000;
+          const met = Date.parse(at) - Date.parse(incident.confirmedAt) <= FIRST_COMM_TARGET_MS;
           detail = `${mins} min from confirmation — target ${met ? 'met' : 'exceeded'}. ${detail}`;
         }
         dispatch({ type: 'PUBLISH_COMMS', id, draft: toCommsDraft(input, at), detail, at });

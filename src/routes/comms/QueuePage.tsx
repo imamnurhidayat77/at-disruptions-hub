@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { OpStatusBadge, SeverityBadge } from '../../components/badges.js';
 import { FioriButton } from '../../components/Button.js';
@@ -10,17 +10,8 @@ import {
   needsFirstPublication,
 } from '../../domain/comms.js';
 import { firstCommunicationKpi, formatMmSs, formatNzdtShort } from '../../domain/kpi.js';
+import { useNowTick } from '../../components/useNowTick.js';
 import { useAppStore } from '../../state/AppStore.js';
-
-function useNowTick(active: boolean): string {
-  const [now, setNow] = useState(() => new Date().toISOString());
-  useEffect(() => {
-    if (!active) return;
-    const t = setInterval(() => setNow(new Date().toISOString()), 1000);
-    return () => clearInterval(t);
-  }, [active]);
-  return now;
-}
 
 function opStatusText(status: Incident['operationalStatus']): string {
   return status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, ' ');

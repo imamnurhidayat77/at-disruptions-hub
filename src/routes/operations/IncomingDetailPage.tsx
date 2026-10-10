@@ -220,7 +220,7 @@ export function IncomingDetailPage(): React.JSX.Element {
             `Route ${incident.route} — ${incident.disruptionType} · ${incident.location}`,
           ]}
           requireCheck={false}
-          disclaimer="Demo request only · Illustrative workflow."
+          disclaimer="Request information from the operator."
           confirmLabel="Request information"
           tone="primary"
           onConfirm={onConfirmRequest}

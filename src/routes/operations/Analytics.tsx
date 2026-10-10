@@ -7,7 +7,6 @@ import { DataTable, type DataColumn } from '../../components/DataTable.js';
 import { formatMmSs, queueKpis } from '../../domain/kpi.js';
 import type { Severity } from '../../domain/types.js';
 import { useAppStore } from '../../state/AppStore.js';
-import { SapIntegrationPanel } from './SapIntegrationPanel.js';
 
 const LEVELS: Severity[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 
@@ -119,8 +118,6 @@ export function Analytics(): React.JSX.Element {
           />
         )}
       </Section>
-
-      <SapIntegrationPanel />
     </div>
   );
 }

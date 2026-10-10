@@ -336,7 +336,9 @@ page.
 
 # Phase 7 — SAP Integration Layer
 
-Status: CONNECTED — live sandbox verified (07 Oct 2026).
+Status: CONNECTED — live sandbox verified (07 Oct 2026). All SAP records
+treated as finished incidents (Oct 2026): auto-intake builds a CLOSED
+archive per record with deterministic dummy data.
 
 Completed code (live-verified 07 Oct 2026, plus unit tests):
 - [x] Server-side proxy (`server/sapProxy.ts` Vite plugin): same-origin

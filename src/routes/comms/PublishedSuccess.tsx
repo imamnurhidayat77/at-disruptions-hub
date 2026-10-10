@@ -85,9 +85,15 @@ export function PublishedSuccess(): React.JSX.Element {
         </p>
       </div>
 
-      <div className="success" role="status">
-        Published within the 10-minute communication target.
-      </div>
+      {kpi.targetMet ? (
+        <div className="success" role="status">
+          Published within the 10-minute communication target.
+        </div>
+      ) : (
+        <div className="note warn" role="status">
+          Published after the 10-minute communication target.
+        </div>
+      )}
 
       <div className="kpi-grid kpi-grid-3">
         <KpiCard

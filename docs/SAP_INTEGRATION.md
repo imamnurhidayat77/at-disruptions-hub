@@ -164,9 +164,10 @@ records mirroring the Figma rows 123456–123460):
 ## Automatic intake (no clicks, no forms)
 
 SAP intake is fully automatic — there is no Sync button and no enrich
-form. Opening Operations → **Incoming** fetches up to 5 live records,
-auto-enriches them, and turns each one directly into a VALIDATED shared
-incident (`AUTO_INTAKE_SAP`, one atomic dispatch):
+form. Opening Operations → **Incoming** fetches up to 5 live records and
+treats every one as a finished incident: each record completes directly
+as a CLOSED shared archive (`AUTO_INTAKE_SAP`, one atomic dispatch),
+with the remaining lifecycle filled from deterministic dummy data:
 
 - `fetchLiveEnriched` (`sapIncidentService.ts`) — fetch + enrich only.
   Null when SAP is unconfigured/unreachable; the labelled demo seed then
@@ -176,18 +177,19 @@ incident (`AUTO_INTAKE_SAP`, one atomic dispatch):
   `/Date(...)/` payloads are normalised to ISO via `toIsoDate` so a bad
   timestamp can never blank a view (formatters also render `—` instead
   of throwing).
-- `autoEnrichInput` + `dummyScenarioFor` + `disruptionTypeFor`
-  (`domain/intake.ts`) — deterministic Auckland dummy scenarios per SAP
-  ID (5 rute/lokasi/tipe/delay/impact koheren; ID sama → skenario sama).
-  Teks SAP asli menang bila ada; sisanya dari skenario. Operator selalu
-  `SAP EHS Import` (view kontraktor tetap bersih). `buildLinkedIncident
-  (..., auto=true)` menulis timeline "auto-linked".
+- `buildArchivedIncident` (`domain/intake.ts`) — deterministic Auckland
+  dummy scenarios per SAP ID (5 rute/lokasi/tipe/delay/impact koheren; ID
+  sama → skenario sama; `dummyScenarioFor` + `disruptionTypeFor`).
+  Severity comes from the real `assessSeverity` rules, owner from the
+  roster, publish/recovery/review timestamps stagger from `receivedAt`.
+  Operator always `SAP EHS Import` (contractor views stay clean). Result:
+  CLOSED + PUBLISHED + RESTORED, corrective DONE, 12-event timeline.
 - `autoIntakeSap` (AppStore) skips already-linked records, so refreshes
-  never duplicate; linked history survives via `mergeCandidates`.
-- Severity assessment and owner assignment stay manual in the incident
-  workspace — automation stops at VALIDATED.
+  never duplicate; linked history survives via `mergeCandidates`. When live
+  SAP connects, the fresh live set replaces the unlinked demo seed (seed
+  stays only as the unreachable fallback).
 - The manual enrich page (`/operations/sap/:sapId`) is deleted; intake
-  rows link straight to the created incident. The Analytics → SAP
+  rows link straight to the created archive. The Analytics → SAP
   Integration panel is status + records only.
 
 ## Status (07 Oct 2026)

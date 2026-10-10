@@ -7,6 +7,7 @@ import {
   TEMPLATE_KINDS,
   buildTemplateMessage,
   buildTemplateTitle,
+  needsFirstPublication,
   type TemplateKind,
 } from '../../domain/comms.js';
 import { useAppStore } from '../../state/AppStore.js';
@@ -25,15 +26,21 @@ export function TemplatesPage(): React.JSX.Element {
     setRole('CUSTOMER_INFORMATION');
   }, [setRole]);
 
+  // Preview example prefers an incident that actually needs a publication;
+  // INC-1043 is only the fallback demo reference.
   const example =
+    state.incidents.find(needsFirstPublication) ??
     state.incidents.find((i) => i.id === 'INC-1043') ??
     state.incidents.find((i) => i.operationalStatus !== 'REPORTED') ??
     state.incidents[0];
 
-  function onUseTemplate(): void {
-    const target = state.incidents.find((i) => i.id === 'INC-1043') ?? example;
-    if (target) navigate(`/comms/incident/${target.id}`, { state: { template: kind } });
+  function openComposer(kindToUse: TemplateKind): void {
+    if (example) navigate(`/comms/incident/${example.id}`, { state: { template: kindToUse } });
     else navigate('/comms/queue');
+  }
+
+  function onUseTemplate(): void {
+    openComposer(kind);
   }
 
   type TemplateRow = (typeof TEMPLATE_KINDS)[number];
@@ -74,7 +81,7 @@ export function TemplatesPage(): React.JSX.Element {
       key: 'action',
       label: 'Action',
       render: (t) => (
-        <button type="button" className="tbl-link" onClick={() => setKind(t.kind)}>
+        <button type="button" className="tbl-link" onClick={() => openComposer(t.kind)}>
           Use Template
         </button>
       ),
@@ -118,7 +125,7 @@ export function TemplatesPage(): React.JSX.Element {
         {example ? (
           <>
             <div className="preview">
-              <p className="muted small">BUS SERVICE ALERT · DEMO · AT Mobile App + Website</p>
+              <p className="muted small">BUS SERVICE ALERT · AT Mobile App + Website</p>
               <h3>{buildTemplateTitle(example, kind)}</h3>
               <p>{buildTemplateMessage(example, kind)}</p>
             </div>

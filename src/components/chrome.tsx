@@ -58,7 +58,6 @@ const SIDE_LINKS: Record<Role, { section: string; links: SideLink[] }> = {
       { to: '/operations', label: 'Overview', icon: 'dashboard' },
       { to: '/operations/incoming', label: 'Incoming', icon: 'inbox', match: ['/operations/incoming/'] },
       { to: '/operations/incidents', label: 'Incidents', icon: 'clipboard', match: ['/operations/incident'] },
-      { to: '/operations/recovery', label: 'Recovery', icon: 'wrench' },
       { to: '/operations/reviews', label: 'Reviews', icon: 'checks' },
       { to: '/operations/analytics', label: 'Analytics', icon: 'chart' },
     ],
@@ -70,7 +69,7 @@ const SIDE_LINKS: Record<Role, { section: string; links: SideLink[] }> = {
       { to: '/comms/queue', label: 'Communication Queue', icon: 'messages', match: ['/comms/incident'] },
       { to: '/comms/published', label: 'Published Updates', icon: 'send', match: ['/comms/published/'] },
       { to: '/comms/templates', label: 'Templates', icon: 'files' },
-      { to: '/comms/analytics', label: 'Analytics', icon: 'chart' },
+      { to: '/comms/analytics', label: 'Reports', icon: 'chart' },
     ],
   },
 };
@@ -446,30 +445,6 @@ export function TopNav(): React.JSX.Element {
         />
       )}
     </header>
-  );
-}
-
-/** Role side navigation. */
-export function SideNav({ role }: { role: Role }): React.JSX.Element {
-  const { pathname } = useLocation();
-  const { section, links } = SIDE_LINKS[role];
-  return (
-    <nav className="sidenav" aria-label={`${section} navigation`}>
-      <p className="sidenav-label">{section}</p>
-      {links.map((l) => (
-        <NavLink
-          key={l.to}
-          to={l.to}
-          end
-          className={isLinkActive(pathname, l) ? 'active' : undefined}
-        >
-          <span className="sidenav-icon" aria-hidden="true">
-            <Icon name={l.icon} size={16} />
-          </span>
-          {l.label}
-        </NavLink>
-      ))}
-    </nav>
   );
 }
 

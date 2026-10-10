@@ -178,7 +178,18 @@ function hashId(sapId: string): number {
   return hash;
 }
 
-/** Shift an NZ ISO timestamp by minutes, keeping the +13:00 NZDT offset. */
+/** Shift an NZ ISO timestamp by minutes, keeping the correct NZ offset (NZST/NZDT). */
+function nzOffsetLabel(d: Date): string {
+  const parts = new Intl.DateTimeFormat('en-NZ', {
+    timeZone: 'Pacific/Auckland',
+    timeZoneName: 'shortOffset',
+  }).formatToParts(d);
+  const raw = parts.find((p) => p.type === 'timeZoneName')?.value ?? 'GMT+13';
+  const m = /GMT([+-])(\d{1,2})(?::(\d{2}))?/.exec(raw);
+  if (!m) return '+13:00';
+  return `${m[1] === '-' ? '-' : '+'}${m[2].padStart(2, '0')}:${m[3] ?? '00'}`;
+}
+
 function shiftNzdt(iso: string, minutes: number): string {
   const d = new Date(Date.parse(iso) + minutes * 60000);
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -192,7 +203,21 @@ function shiftNzdt(iso: string, minutes: number): string {
   }).formatToParts(d);
   const get = (t: string): string => parts.find((p) => p.type === t)?.value ?? '00';
   const hour = get('hour') === '24' ? '00' : get('hour');
-  return `${get('year')}-${get('month')}-${get('day')}T${hour}:${get('minute')}:00+13:00`;
+  return `${get('year')}-${get('month')}-${get('day')}T${hour}:${get('minute')}:00${nzOffsetLabel(d)}`;
+}
+
+/**
+ * Back-history rule: records received more than 24h ago are historical —
+ * they complete as CLOSED archives. Fresh arrivals stay actionable so a
+ * genuinely new SAP incident can still enter the assessment workflow.
+ */
+const BACK_HISTORY_MS = 24 * 60 * 60 * 1000;
+
+export function isBackHistory(receivedAt: string, nowIso: string): boolean {
+  const received = Date.parse(receivedAt);
+  const now = Date.parse(nowIso);
+  if (!Number.isFinite(received) || !Number.isFinite(now)) return false;
+  return now - received > BACK_HISTORY_MS;
 }
 
 function rootCauseFor(disruptionType: string): string {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { OpStatusBadge, SeverityBadge } from '../../components/badges.js';
 import { FioriButton } from '../../components/Button.js';
@@ -13,17 +13,8 @@ import {
 } from '../../domain/comms.js';
 import { firstCommunicationKpi, formatMmSs, queueKpis } from '../../domain/kpi.js';
 import type { Incident } from '../../domain/types.js';
+import { useNowTick } from '../../components/useNowTick.js';
 import { useAppStore } from '../../state/AppStore.js';
-
-function useNowTick(active: boolean): string {
-  const [now, setNow] = useState(() => new Date().toISOString());
-  useEffect(() => {
-    if (!active) return;
-    const t = setInterval(() => setNow(new Date().toISOString()), 1000);
-    return () => clearInterval(t);
-  }, [active]);
-  return now;
-}
 
 /**
  * Customer Information Overview — Figma "04 Customer Information".

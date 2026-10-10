@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useSearchParams } from 'react-router-dom';
 import { Footer, MenuBar, TopNav } from './components/chrome.js';
 import { ContractorOverview } from './routes/contractor/ContractorOverview.js';
 import { ContractorHelp } from './routes/contractor/Help.js';
@@ -21,10 +21,20 @@ import { SeverityPage } from './routes/operations/SeverityPage.js';
 import { OperationsOverview } from './routes/operations/OperationsOverview.js';
 import { Incoming } from './routes/operations/Incoming.js';
 import { Incidents } from './routes/operations/Incidents.js';
-import { Recovery } from './routes/operations/Recovery.js';
 import { Reviews } from './routes/operations/Reviews.js';
 import { Analytics } from './routes/operations/Analytics.js';
 import { AppStoreProvider, useAppStore } from './state/AppStore.js';
+
+/**
+ * Legacy /operations/recovery route — recovery now lives inside the
+ * incident workspace. Old links land on the workspace recovery section
+ * (or the incident list without an id).
+ */
+function RecoveryRedirect(): React.JSX.Element {
+  const [params] = useSearchParams();
+  const id = params.get('incident');
+  return <Navigate to={id ? `/operations/incident/${id}#recovery` : '/operations/incidents'} replace />;
+}
 
 function Shell(): React.JSX.Element {
   const { state } = useAppStore();
@@ -45,7 +55,7 @@ function Shell(): React.JSX.Element {
           <Route path="/operations" element={<OperationsOverview />} />
           <Route path="/operations/incoming" element={<Incoming />} />
           <Route path="/operations/incidents" element={<Incidents />} />
-          <Route path="/operations/recovery" element={<Recovery />} />
+          <Route path="/operations/recovery" element={<RecoveryRedirect />} />
           <Route path="/operations/reviews" element={<Reviews />} />
           <Route path="/operations/analytics" element={<Analytics />} />
           <Route path="/operations/incident/:id" element={<IncidentWorkspace />} />

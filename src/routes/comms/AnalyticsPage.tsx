@@ -1,10 +1,11 @@
 import { useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Crumbs, Section } from '../../components/chrome.js';
 import { DataTable, type DataColumn } from '../../components/DataTable.js';
 import { KpiCard } from '../../components/KpiCard.js';
 import { CommsTargetBadge } from '../../components/badges.js';
 import { communicationCoverage } from '../../domain/comms.js';
-import { firstCommunicationKpi, formatMmSs, queueKpis } from '../../domain/kpi.js';
+import { firstCommunicationKpi, formatMmSs, formatNzdtShort, queueKpis } from '../../domain/kpi.js';
 import type { Incident } from '../../domain/types.js';
 import { useAppStore } from '../../state/AppStore.js';
 
@@ -26,21 +27,25 @@ export function AnalyticsPage(): React.JSX.Element {
       label: 'Incident',
       sortable: true,
       sortValue: (i) => i.id,
-      render: (i) => <strong>{i.id}</strong>,
+      render: (i) => (
+        <Link to={`/comms/incident/${i.id}`}>
+          <strong>{i.id}</strong>
+        </Link>
+      ),
     },
     {
       key: 'confirmed',
       label: 'Confirmed',
       sortable: true,
       sortValue: (i) => i.confirmedAt ?? '',
-      render: (i) => i.confirmedAt ?? '—',
+      render: (i) => (i.confirmedAt ? formatNzdtShort(i.confirmedAt) : '—'),
     },
     {
       key: 'firstPublished',
       label: 'First published',
       sortable: true,
       sortValue: (i) => i.firstPublishedAt ?? '',
-      render: (i) => i.firstPublishedAt ?? '—',
+      render: (i) => (i.firstPublishedAt ? formatNzdtShort(i.firstPublishedAt) : '—'),
     },
     {
       key: 'firstComm',
@@ -64,8 +69,8 @@ export function AnalyticsPage(): React.JSX.Element {
   return (
     <div>
       <div className="pagehead">
-        <Crumbs trail={['Customer Information', 'Analytics']} />
-        <h1>Analytics</h1>
+        <Crumbs trail={['Customer Information', 'Reports']} />
+        <h1>Communication Reports</h1>
         <p className="lede">
           Communication performance derived from confirmation and publication
           timestamps — never hard-coded.

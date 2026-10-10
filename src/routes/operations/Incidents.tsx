@@ -4,7 +4,6 @@ import { CommsTargetBadge, OpStatusBadge, SeverityBadge } from '../../components
 import { Crumbs, Section } from '../../components/chrome.js';
 import { FioriButton } from '../../components/Button.js';
 import { DataTable, type DataColumn } from '../../components/DataTable.js';
-import { formatNzdtShort } from '../../domain/kpi.js';
 import { operationalStatusLabel } from '../../domain/operations.js';
 import type { Incident } from '../../domain/types.js';
 import { useAppStore } from '../../state/AppStore.js';
@@ -21,8 +20,6 @@ export function Incidents(): React.JSX.Element {
   }, [setRole]);
 
   const rows: Incident[] = state.incidents;
-
-  const selected = rows[0] ?? null;
 
   const columns: Array<DataColumn<Incident>> = [
     {
@@ -126,51 +123,6 @@ export function Incidents(): React.JSX.Element {
         />
         <p className="table-foot">Showing all records</p>
       </Section>
-
-      {selected && (
-        <Section title={`Selected incident · ${selected.id}`}>
-          <dl className="facts-grid">
-            <div className="fact">
-              <dt>Disruption Type</dt>
-              <dd>{selected.disruptionType}</dd>
-            </div>
-            <div className="fact">
-              <dt>Estimated Delay</dt>
-              <dd>{selected.estimatedDelayMinutes} min</dd>
-            </div>
-            <div className="fact">
-              <dt>Estimated Restoration</dt>
-              <dd>
-                {selected.estimatedRestorationAt
-                  ? formatNzdtShort(selected.estimatedRestorationAt)
-                  : 'Not yet confirmed'}
-              </dd>
-            </div>
-            <div className="fact">
-              <dt>First Communication</dt>
-              <dd>
-                {selected.firstPublishedAt ? (
-                  <CommsTargetBadge incident={selected} />
-                ) : (
-                  <span className="muted">Not yet published</span>
-                )}
-              </dd>
-            </div>
-          </dl>
-          <p className="muted small">
-            Operational status: {operationalStatusLabel(selected.operationalStatus)} ·
-            Owner: {selected.owner ?? 'Unassigned'}
-          </p>
-          <div className="actions-bar">
-            <FioriButton design="emphasized" icon="view" to={`/operations/incident/${selected.id}`}>
-              View Incident
-            </FioriButton>
-            <FioriButton icon="wrench" to="/operations/recovery">
-              Update Recovery
-            </FioriButton>
-          </div>
-        </Section>
-      )}
     </div>
   );
 }

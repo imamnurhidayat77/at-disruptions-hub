@@ -9,7 +9,7 @@ import { FIRST_COMM_TARGET_MS, firstCommunicationKpi } from './kpi.js';
  */
 
 /** Prototype publication channels (illustrative — no live channel connected). */
-export const CHANNELS = ['AT Mobile App', 'Website', 'Social Media'] as const;
+export const CHANNELS = ['AT Mobile App', 'Website', 'Social Media', 'Bus Stop Displays'] as const;
 
 export type Channel = (typeof CHANNELS)[number];
 

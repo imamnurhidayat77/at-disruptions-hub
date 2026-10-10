@@ -1,13 +1,14 @@
 import { useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { OpStatusBadge, SeverityBadge } from '../../components/badges.js';
 import { Crumbs, Section } from '../../components/chrome.js';
 import { FioriButton } from '../../components/Button.js';
 import { Timeline } from '../../components/Timeline.js';
+import { useNowTick } from '../../components/useNowTick.js';
 import { targetProgress } from '../../domain/comms.js';
 import { firstCommunicationKpi, formatMmSs, formatNzdtShort } from '../../domain/kpi.js';
-import { lastOperatorUpdateAt, hasOperatorUpdates } from '../../domain/contractor.js';
 import { useAppStore } from '../../state/AppStore.js';
+import { RecoveryPanel } from './RecoveryPanel.js';
 
 /**
  * AT Operations incident workspace — Figma "03 AT Operations" frames.
@@ -18,12 +19,22 @@ import { useAppStore } from '../../state/AppStore.js';
 export function IncidentWorkspace(): React.JSX.Element {
   const { id } = useParams<{ id: string }>();
   const { setRole, getIncident } = useAppStore();
+  const { hash } = useLocation();
 
   useEffect(() => {
     setRole('OPERATIONS');
   }, [setRole]);
 
+  // Deep links (e.g. …/incident/INC-1#recovery) scroll to the section —
+  // React Router does not do this automatically.
+  useEffect(() => {
+    if (hash) {
+      document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'start' });
+    }
+  }, [hash, id]);
+
   const incident = id ? getIncident(id) : undefined;
+  const nowIso = useNowTick(incident?.communicationStatus !== 'PUBLISHED');
 
   if (!incident) {
     return (
@@ -98,28 +109,15 @@ export function IncidentWorkspace(): React.JSX.Element {
   }
 
   const published = incident.communicationStatus === 'PUBLISHED';
-  const kpi = firstCommunicationKpi(incident);
+  const kpi = firstCommunicationKpi(incident, nowIso);
   const progress = targetProgress(kpi.elapsedMs);
-  const lastUpdate = lastOperatorUpdateAt(incident);
-  const doneTasks = incident.recoveryTasks.filter((t) => t.doneAt !== null).length;
   const timeline = [...incident.timeline].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
 
   return (
     <div>
       <div className="pagehead">
         <Crumbs trail={['Operations', 'Incidents', incident.id]} />
-        <div className="pagehead-with-action">
-          <h1>{incident.id}</h1>
-          <div className="actions-bar">
-            <FioriButton
-              design="emphasized"
-              icon="wrench"
-              to={`/operations/recovery?incident=${incident.id}`}
-            >
-              Update Recovery
-            </FioriButton>
-          </div>
-        </div>
+        <h1>{incident.id}</h1>
         <p className="lede">
           Incident Workspace ·{' '}
           {published ? 'Passenger communication published' : 'One shared incident record'}
@@ -229,51 +227,9 @@ export function IncidentWorkspace(): React.JSX.Element {
         </div>
       </Section>
 
-      <Section title="Operational Recovery" id="recovery">
-        <p>
-          {incident.recoveryStatus === 'RESTORED' ? (
-            <span className="badge tg-good">✓ Complete</span>
-          ) : incident.recoveryStatus === 'IN_PROGRESS' ? (
-            <span className="badge st-ops">◈ In Progress</span>
-          ) : (
-            <span className="badge st-idle">○ Not Started</span>
-          )}
-        </p>
-        <ul className="checklist">
-          {incident.recoveryTasks.map((t) => (
-            <li key={t.id} className={t.doneAt !== null ? 'ok' : undefined}>
-              <span aria-hidden="true">{t.doneAt !== null ? '☑' : '☐'}</span> {t.label}
-              <span className="muted small"> — {t.responsible}</span>
-            </li>
-          ))}
-        </ul>
-        <dl className="facts-grid">
-          <div className="fact">
-            <dt>Estimated Restoration</dt>
-            <dd>
-              {incident.estimatedRestorationAt
-                ? formatNzdtShort(incident.estimatedRestorationAt)
-                : 'Not yet confirmed'}
-            </dd>
-          </div>
-          <div className="fact">
-            <dt>Last Operator Update</dt>
-            <dd>
-              {lastUpdate && hasOperatorUpdates(incident)
-                ? formatNzdtShort(lastUpdate)
-                : '—'}
-            </dd>
-          </div>
-        </dl>
-        <p className="muted small">
-          {doneTasks}/{incident.recoveryTasks.length} tasks complete
-        </p>
-        <div className="actions-bar">
-          <FioriButton icon="wrench" to={`/operations/recovery?incident=${incident.id}`}>
-            Update Recovery
-          </FioriButton>
-        </div>
-      </Section>
+      <div id="recovery">
+        <RecoveryPanel key={incident.id} incident={incident} />
+      </div>
 
       <Section title="Passenger Communication" id="comms">
         <p>

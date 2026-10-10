@@ -12,7 +12,7 @@ import { buildDemoSeed, buildSapSeed } from './demoSeed.js';
  * UI or domain code.
  */
 
-const STORAGE_KEY = 'at-disruption-hub/demo-state/v6';
+const STORAGE_KEY = 'at-disruption-hub/demo-state/v8';
 
 export interface DemoState {
   incidents: Incident[];

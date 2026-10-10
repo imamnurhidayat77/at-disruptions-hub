@@ -39,7 +39,17 @@ export function OperationsOverview(): React.JSX.Element {
       label: 'Incident',
       sortable: true,
       sortValue: (i) => i.id,
-      render: (i) => <Link to={`/operations/incident/${i.id}`}>{i.id}</Link>,
+      render: (i) => (
+        <Link
+          to={
+            i.operationalStatus === 'REPORTED'
+              ? `/operations/incoming/${i.id}`
+              : `/operations/incident/${i.id}`
+          }
+        >
+          {i.id}
+        </Link>
+      ),
     },
     {
       key: 'route',
@@ -116,7 +126,15 @@ export function OperationsOverview(): React.JSX.Element {
       key: 'actions',
       label: 'Actions',
       render: (i) => (
-        <FioriButton small icon="view" to={`/operations/incident/${i.id}`}>
+        <FioriButton
+          small
+          icon="view"
+          to={
+            i.operationalStatus === 'REPORTED'
+              ? `/operations/incoming/${i.id}`
+              : `/operations/incident/${i.id}`
+          }
+        >
           View
         </FioriButton>
       ),

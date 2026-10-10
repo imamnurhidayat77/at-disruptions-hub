@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FioriButton } from './Button.js';
 import { Icon } from './icons.js';
 
@@ -34,6 +34,14 @@ export function ConfirmDialog({
   onCancel: () => void;
 }): React.JSX.Element {
   const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent): void {
+      if (e.key === 'Escape') onCancel();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onCancel]);
 
   return (
     <div className="dialog-backdrop" role="presentation" onClick={onCancel}>

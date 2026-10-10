@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Crumbs, Section } from '../../components/chrome.js';
 import { EmptyState } from '../../components/EmptyState.js';
 import { FioriButton } from '../../components/Button.js';
 import { DataTable, type DataColumn } from '../../components/DataTable.js';
+import { SkeletonTable } from '../../components/Skeleton.js';
 import { formatNzdtDate, formatNzdtShort } from '../../domain/kpi.js';
 import type { Incident } from '../../domain/types.js';
 import { fetchLiveEnriched } from '../../services/sap/sapIncidentService.ts';
@@ -40,21 +41,26 @@ interface IntakeRow {
 
 export function Incoming(): React.JSX.Element {
   const { state, setRole, autoIntakeSap } = useAppStore();
+  const [syncing, setSyncing] = useState(true);
+  const [sapOffline, setSapOffline] = useState(false);
 
   useEffect(() => {
     setRole('OPERATIONS');
   }, [setRole]);
 
-  // Fully automatic SAP intake — no clicks, no forms. Live records are
-  // fetched, enriched and turned into VALIDATED incidents on open; the
-  // labelled cached-records path builds complete CLOSED archives instead.
+  // Fully automatic SAP intake — no clicks, no forms. Every SAP record is
+  // treated as a finished incident: each one completes as a CLOSED archive
+  // with deterministic dummy operational data on open.
   // Idempotent: already-linked records are skipped.
   useEffect(() => {
     let cancelled = false;
+    setSyncing(true);
     void (async () => {
       const live = await fetchLiveEnriched();
       if (!cancelled) {
-        autoIntakeSap(live ? live.candidates : state.sapCandidates, !live);
+        autoIntakeSap(live ? live.candidates : state.sapCandidates);
+        setSapOffline(live === null);
+        setSyncing(false);
       }
     })();
     return () => {
@@ -65,9 +71,12 @@ export function Incoming(): React.JSX.Element {
 
   const reported: Incident[] = state.incidents.filter((i) => i.operationalStatus === 'REPORTED');
   const active = state.incidents.filter((i) => i.operationalStatus !== 'CLOSED').length;
-  const unlinked = state.sapCandidates.filter((c) => c.linkedIncidentId === null);
+  // Finished SAP archives (linked) do not belong in intake — only
+  // unlinked candidates awaiting auto-intake are shown here.
+  const incomingSap = state.sapCandidates.filter((c) => c.linkedIncidentId === null);
+  const unlinked = incomingSap;
 
-  const intakeItems = reported.length + state.sapCandidates.length;
+  const intakeItems = reported.length + incomingSap.length;
 
   const rows: IntakeRow[] = [
     ...reported.map((i): IntakeRow => ({
@@ -81,7 +90,7 @@ export function Incoming(): React.JSX.Element {
       kind: 'contractor',
       incidentId: i.id,
     })),
-    ...state.sapCandidates.map((c): IntakeRow => ({
+    ...incomingSap.map((c): IntakeRow => ({
       key: c.sapId,
       title: `${c.sapId} · ${c.title}`,
       sub: `${c.category} · SAP: ${c.sapStatus}`,
@@ -117,8 +126,6 @@ export function Incoming(): React.JSX.Element {
       sortValue: (r) => r.statusLabel,
       render: (r) => {
         if (r.kind === 'contractor') return contractorStatus();
-        if (r.linkedIncidentId !== null && r.linkedIncidentId !== undefined)
-          return <IntakeStatus tone="tg-good" icon="✓" label="Accepted" />;
         return <IntakeStatus tone="tg-warn" icon="◷" label="Queued" />;
       },
     },
@@ -149,13 +156,6 @@ export function Incoming(): React.JSX.Element {
             </FioriButton>
           );
         }
-        if (r.kind === 'sap' && r.linkedIncidentId) {
-          return (
-            <FioriButton small icon="view" to={`/operations/incident/${r.linkedIncidentId}`}>
-              Open
-            </FioriButton>
-          );
-        }
         return <span className="muted">Auto-intake…</span>;
       },
     },
@@ -170,10 +170,18 @@ export function Incoming(): React.JSX.Element {
       </div>
 
       <Section title="Incoming Worklist">
+        {syncing && (
+          <SkeletonTable
+            label="Syncing SAP records"
+            columns={['Summary', 'Status', 'Received', 'Intake Route', 'Action']}
+            rows={4}
+          />
+        )}
         <p className="muted small">
           {intakeItems} intake items · {reported.length} notification · {unlinked.length} SAP
           candidates
         </p>
+        {sapOffline && <p className="muted small">SAP unavailable — showing cached records.</p>}
         {intakeItems === 0 ? (
           <EmptyState
             illustration="☰"
