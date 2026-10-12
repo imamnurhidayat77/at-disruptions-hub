@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FioriButton } from '../../components/Button.js';
 import { Crumbs, Section } from '../../components/chrome.js';
 import { DataTable, type DataColumn } from '../../components/DataTable.js';
@@ -10,17 +10,34 @@ import {
   needsFirstPublication,
   type TemplateKind,
 } from '../../domain/comms.js';
+import type { Incident } from '../../domain/types.js';
 import { useAppStore } from '../../state/AppStore.js';
 
+function selectPreviewExample(incidents: Incident[]): Incident | undefined {
+  return (
+    incidents.find(needsFirstPublication) ??
+    incidents.find((i) => i.id === 'INC-1043') ??
+    incidents.find((i) => i.operationalStatus !== 'REPORTED') ??
+    incidents[0]
+  );
+}
+
+function openComposerFor(
+  navigate: (to: string, options?: { state?: unknown }) => void,
+  example: Incident | undefined,
+  kindToUse: TemplateKind,
+): void {
+  if (example) navigate(`/comms/incident/${example.id}`, { state: { template: kindToUse } });
+  else navigate('/comms/queue');
+}
+
 /**
- * Templates — Figma "04 Customer Information". Three static wording
- * patterns; the preview renders the selected pattern with shared
- * incident values, and Use Template opens the composer prefilled.
+ * Templates — scenario wording patterns for passenger updates. Use Template
+ * opens the composer prefilled.
  */
 export function TemplatesPage(): React.JSX.Element {
   const { state, setRole } = useAppStore();
   const navigate = useNavigate();
-  const [kind, setKind] = useState<TemplateKind>('breakdown');
 
   useEffect(() => {
     setRole('CUSTOMER_INFORMATION');
@@ -28,19 +45,10 @@ export function TemplatesPage(): React.JSX.Element {
 
   // Preview example prefers an incident that actually needs a publication;
   // INC-1043 is only the fallback demo reference.
-  const example =
-    state.incidents.find(needsFirstPublication) ??
-    state.incidents.find((i) => i.id === 'INC-1043') ??
-    state.incidents.find((i) => i.operationalStatus !== 'REPORTED') ??
-    state.incidents[0];
+  const example = selectPreviewExample(state.incidents);
 
   function openComposer(kindToUse: TemplateKind): void {
-    if (example) navigate(`/comms/incident/${example.id}`, { state: { template: kindToUse } });
-    else navigate('/comms/queue');
-  }
-
-  function onUseTemplate(): void {
-    openComposer(kind);
+    openComposerFor(navigate, example, kindToUse);
   }
 
   type TemplateRow = (typeof TEMPLATE_KINDS)[number];
@@ -51,9 +59,9 @@ export function TemplatesPage(): React.JSX.Element {
       sortable: true,
       sortValue: (t) => t.label,
       render: (t) => (
-        <button type="button" className="tbl-link" onClick={() => setKind(t.kind)}>
+        <Link to={`/comms/templates/${t.kind}`}>
           <strong>{t.label}</strong>
-        </button>
+        </Link>
       ),
     },
     {
@@ -114,26 +122,80 @@ export function TemplatesPage(): React.JSX.Element {
           emptyDescription="Passenger message templates appear here."
         />
       </Section>
+    </div>
+  );
+}
+
+/**
+ * TemplateDetail — dedicated detail page for a single passenger message
+ * template. Shows the same preview previously rendered inline below the
+ * table (title/message/channels/note + Use Template).
+ */
+export function TemplateDetail(): React.JSX.Element {
+  const { kind } = useParams<{ kind: string }>();
+  const { state, setRole } = useAppStore();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setRole('CUSTOMER_INFORMATION');
+  }, [setRole]);
+
+  const template = TEMPLATE_KINDS.find((t) => t.kind === kind);
+
+  // Same example-incident preference as the templates list.
+  const example = selectPreviewExample(state.incidents);
+
+  if (!template) {
+    return (
+      <div>
+        <div className="pagehead">
+          <Crumbs trail={['Customer Information', 'Templates']} />
+          <h1>Template not found</h1>
+          <p className="lede">No template found with ID {kind ?? '(unknown)'}.</p>
+        </div>
+        <div className="actions-bar">
+          <FioriButton icon="back" to="/comms/templates">
+            Back to templates
+          </FioriButton>
+        </div>
+      </div>
+    );
+  }
+
+  const templateKind: TemplateKind = template.kind;
+
+  function onUseTemplate(): void {
+    openComposerFor(navigate, example, templateKind);
+  }
+
+  return (
+    <div>
+      <div className="pagehead">
+        <Crumbs trail={['Customer Information', 'Templates', template.label]} />
+        <h1>{template.label}</h1>
+        <p className="lede">{template.purpose}</p>
+      </div>
 
       <Section
         title={
-          example
-            ? `${TEMPLATE_KINDS.find((t) => t.kind === kind)?.label} · ${example.route} preview`
-            : 'Template preview'
+          example ? `${template.label} · ${example.route} preview` : 'Template preview'
         }
       >
         {example ? (
           <>
             <div className="preview">
               <p className="muted small">BUS SERVICE ALERT · AT Mobile App + Website</p>
-              <h3>{buildTemplateTitle(example, kind)}</h3>
-              <p>{buildTemplateMessage(example, kind)}</p>
+              <h3>{buildTemplateTitle(example, template.kind)}</h3>
+              <p>{buildTemplateMessage(example, template.kind)}</p>
             </div>
             <div className="note" role="note">
               Templates supply wording only. Route, location and recovery estimates come
               from the validated shared incident.
             </div>
             <div className="actions-bar">
+              <FioriButton icon="back" to="/comms/templates">
+                Back to templates
+              </FioriButton>
               <FioriButton design="emphasized" icon="arrowRight" onClick={onUseTemplate}>
                 Use Template
               </FioriButton>

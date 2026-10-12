@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import { OpStatusBadge, SeverityBadge } from '../../components/badges.js';
 import { Crumbs, Section } from '../../components/chrome.js';
@@ -18,7 +18,7 @@ import { RecoveryPanel } from './RecoveryPanel.js';
  */
 export function IncidentWorkspace(): React.JSX.Element {
   const { id } = useParams<{ id: string }>();
-  const { setRole, getIncident } = useAppStore();
+  const { setRole, getIncident, requestComms } = useAppStore();
   const { hash } = useLocation();
 
   useEffect(() => {
@@ -113,6 +113,34 @@ export function IncidentWorkspace(): React.JSX.Element {
   const progress = targetProgress(kpi.elapsedMs);
   const timeline = [...incident.timeline].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
 
+  const anchorSections = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'recovery', label: 'Recovery' },
+    { id: 'comms', label: 'Passenger Communication' },
+    { id: 'timeline', label: 'Timeline' },
+    ...(incident.sapLink ? [{ id: 'source', label: 'Source context' }] : []),
+    { id: 'review', label: 'Review' },
+  ];
+  const [activeAnchor, setActiveAnchor] = useState('overview');
+
+  // Scroll-spy: highlight the tab of the section currently in view.
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) setActiveAnchor(entry.target.id);
+        }
+      },
+      { rootMargin: '-30% 0px -60% 0px' },
+    );
+    for (const s of anchorSections) {
+      const el = document.getElementById(s.id);
+      if (el) observer.observe(el);
+    }
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
   return (
     <div>
       <div className="pagehead">
@@ -125,12 +153,16 @@ export function IncidentWorkspace(): React.JSX.Element {
       </div>
 
       <nav className="anchor-tabs" aria-label="Workspace sections">
-        <a href="#overview">Overview</a>
-        <a href="#recovery">Recovery</a>
-        <a href="#comms">Passenger Communication</a>
-        <a href="#timeline">Timeline</a>
-        {incident.sapLink && <a href="#source">Source context</a>}
-        <a href="#review">Review</a>
+        {anchorSections.map((s) => (
+          <a
+            key={s.id}
+            href={`#${s.id}`}
+            className={activeAnchor === s.id ? 'active' : undefined}
+            aria-current={activeAnchor === s.id ? 'true' : undefined}
+          >
+            {s.label}
+          </a>
+        ))}
       </nav>
 
       <Section title={`Route ${incident.route} — ${incident.disruptionType}`} id="overview">
@@ -279,6 +311,19 @@ export function IncidentWorkspace(): React.JSX.Element {
           Read-only for Operations. Customer Information prepares and publishes passenger
           notices.
         </div>
+        {!published && incident.commsRequestedAt === null && (
+          <div className="actions-bar">
+            <FioriButton icon="send" onClick={() => requestComms(incident.id)}>
+              Notify Customer Info
+            </FioriButton>
+          </div>
+        )}
+        {!published && incident.commsRequestedAt !== null && (
+          <p className="muted small" role="status">
+            Customer Information notified at {formatNzdtShort(incident.commsRequestedAt)} — flagged
+            in the communication queue.
+          </p>
+        )}
         {!published && incident.commsDraft && (
           <p className="muted small">
             Message draft is in progress. Recovery can continue independently.

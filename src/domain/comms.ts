@@ -48,35 +48,121 @@ export function buildMessageTemplate(incident: Incident): string {
   );
 }
 
-export type TemplateKind = 'breakdown' | 'recovery' | 'restored';
+export type TemplateKind =
+  | 'breakdown'
+  | 'road-blocked'
+  | 'diversion'
+  | 'cancellation'
+  | 'delays'
+  | 'stop-closure'
+  | 'emergency'
+  | 'weather'
+  | 'recovery'
+  | 'restored';
 
 export const TEMPLATE_KINDS: { kind: TemplateKind; label: string; purpose: string }[] = [
   { kind: 'breakdown', label: 'Vehicle Breakdown', purpose: 'First passenger notice' },
+  { kind: 'road-blocked', label: 'Road Blocked', purpose: 'First passenger notice' },
+  { kind: 'diversion', label: 'Detour in Place', purpose: 'First passenger notice' },
+  { kind: 'cancellation', label: 'Service Cancellations', purpose: 'First passenger notice' },
+  { kind: 'delays', label: 'Major Delays', purpose: 'First passenger notice' },
+  { kind: 'stop-closure', label: 'Bus Stop Closure', purpose: 'First passenger notice' },
+  { kind: 'emergency', label: 'Emergency Incident', purpose: 'First passenger notice' },
+  { kind: 'weather', label: 'Severe Weather', purpose: 'First passenger notice' },
   { kind: 'recovery', label: 'Service Recovery Update', purpose: 'Progress update' },
   { kind: 'restored', label: 'Normal Service Restored', purpose: 'Final passenger notice' },
 ];
 
 /** Template wording variants (Figma Templates page). */
 export function buildTemplateTitle(incident: Incident, kind: TemplateKind): string {
-  if (kind === 'recovery') return `Route ${incident.route} Service Recovery`;
-  if (kind === 'restored') return `Route ${incident.route} Services Restored`;
-  return buildTitle(incident);
+  const route = `Route ${incident.route}`;
+  switch (kind) {
+    case 'road-blocked':
+      return `${route} Road Blockage`;
+    case 'diversion':
+      return `${route} Detour in Place`;
+    case 'cancellation':
+      return `${route} Service Cancellations`;
+    case 'delays':
+      return `${route} Major Delays`;
+    case 'stop-closure':
+      return `Bus Stop Closure near ${shortLocation(incident.location)}`;
+    case 'emergency':
+      return `${route} Services Suspended`;
+    case 'weather':
+      return `${route} Weather Disruption`;
+    case 'recovery':
+      return `${route} Service Recovery`;
+    case 'restored':
+      return `${route} Services Restored`;
+    case 'breakdown':
+    default:
+      return buildTitle(incident);
+  }
 }
 
 export function buildTemplateMessage(incident: Incident, kind: TemplateKind): string {
-  if (kind === 'breakdown') return buildMessageTemplate(incident);
+  const route = `Route ${incident.route}`;
   const place = `near ${shortLocation(incident.location)}`;
   const cause = `following an earlier ${lowerFirst(incident.disruptionType)}`;
-  if (kind === 'recovery') {
-    return (
-      `Route ${incident.route} services are recovering ${place} ${cause}. ` +
-      `Please continue to allow additional travel time.`
-    );
+  switch (kind) {
+    case 'road-blocked':
+      return (
+        `${route} buses are currently unable to serve ${place} due to a road blockage. ` +
+        `Services are delayed and some trips may be cancelled. Please consider alternative ` +
+        `travel options while we work with the operator to restore normal services.`
+      );
+    case 'diversion':
+      return (
+        `${route} buses are detouring around ${place} ${cause}. Some bus stops may be ` +
+        `missed — please use the nearest alternative stop and allow additional travel time.`
+      );
+    case 'cancellation':
+      return (
+        `Some ${route} trips are cancelled ${cause}. Please check live departures in the ` +
+        `AT Mobile App before travelling and allow additional travel time.`
+      );
+    case 'delays': {
+      const delay =
+        incident.estimatedDelayMinutes > 0
+          ? ` of up to ${incident.estimatedDelayMinutes} minutes`
+          : '';
+      return (
+        `${route} services are running with major delays${delay} ${place} ${cause}. ` +
+        `Please allow additional travel time.`
+      );
+    }
+    case 'stop-closure':
+      return (
+        `The bus stop at ${shortLocation(incident.location)} is temporarily closed ${cause}. ` +
+        `Please use the nearest alternative stop and allow additional travel time.`
+      );
+    case 'emergency':
+      return (
+        `Due to an emergency services incident ${place}, ${route} services are suspended ` +
+        `until further notice. Please follow directions from emergency services on site ` +
+        `and avoid the area if possible.`
+      );
+    case 'weather':
+      return (
+        `Due to severe weather, ${route} services may be delayed, detoured or cancelled ` +
+        `at short notice. Please check live departures before travelling and allow ` +
+        `additional travel time.`
+      );
+    case 'recovery':
+      return (
+        `${route} services are recovering ${place} ${cause}. ` +
+        `Please continue to allow additional travel time.`
+      );
+    case 'restored':
+      return (
+        `${route} services have returned to normal ${place} ${cause}. ` +
+        `Thank you for your patience.`
+      );
+    case 'breakdown':
+    default:
+      return buildMessageTemplate(incident);
   }
-  return (
-    `Route ${incident.route} services have returned to normal ${place} ${cause}. ` +
-    `Thank you for your patience.`
-  );
 }
 
 function lowerFirst(value: string): string {

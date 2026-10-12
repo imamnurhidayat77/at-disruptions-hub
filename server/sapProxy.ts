@@ -25,6 +25,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 
 const SERVICE_PATH = '/sap/opu/odata/sap/API_EHS_REPORT_INCIDENT_SRV';
 const DEMO_MAX_RECORDS = 5;
+/** Location navigation expanded so rows carry real SAP location data. */
+const LOCATION_EXPAND = 'to_Location';
 /** Spec-exact A_Incident fields requested from the sandbox. */
 const INCIDENT_SELECT = [
   'IncidentID',
@@ -100,28 +102,26 @@ export function sapProxyPlugin(env: ProxyEnv): Plugin {
           });
           return;
         }
-        const url = `${base}${SERVICE_PATH}/${entitySet}?$top=${DEMO_MAX_RECORDS}&$format=json&$select=${encodeURIComponent(INCIDENT_SELECT)}`;
-        try {
-          const upstream = await fetch(url, {
-            headers: { APIKey: key, Accept: 'application/json' },
-          });
-          if (!upstream.ok) {
-            memory.lastResult = 'error';
-            memory.lastError = `Upstream responded with HTTP ${upstream.status}.`;
-            memory.lastSync = new Date().toISOString();
-            sendJson(res, 502, {
-              code: 'UPSTREAM_ERROR',
-              message: 'SAP Incident Service is temporarily unavailable.',
+        const listBase = `${base}${SERVICE_PATH}/${entitySet}?$top=${DEMO_MAX_RECORDS}&$format=json&$select=${encodeURIComponent(INCIDENT_SELECT)}`;
+        // Prefer the location navigation expanded (real location data);
+        // fall back to the plain list when the sandbox rejects $expand.
+        const urls = [`${listBase}&$expand=${LOCATION_EXPAND}`, listBase];
+        let data: unknown = null;
+        let ok = false;
+        for (const url of urls) {
+          try {
+            const upstream = await fetch(url, {
+              headers: { APIKey: key, Accept: 'application/json' },
             });
-            return;
+            if (!upstream.ok) continue;
+            data = (await upstream.json()) as unknown;
+            ok = true;
+            break;
+          } catch {
+            continue;
           }
-          const data: unknown = await upstream.json();
-          memory.lastResult = 'ok';
-          memory.lastError = null;
-          memory.lastCount = countRecords(data);
-          memory.lastSync = new Date().toISOString();
-          sendJson(res, 200, { data, syncedAt: memory.lastSync });
-        } catch {
+        }
+        if (!ok) {
           memory.lastResult = 'error';
           memory.lastError = 'Network or fetch failure reaching the SAP host.';
           memory.lastSync = new Date().toISOString();
@@ -129,10 +129,16 @@ export function sapProxyPlugin(env: ProxyEnv): Plugin {
             code: 'UPSTREAM_UNREACHABLE',
             message: 'SAP Incident Service is temporarily unavailable.',
           });
+          return;
         }
+        memory.lastResult = 'ok';
+        memory.lastError = null;
+        memory.lastCount = countRecords(data);
+        memory.lastSync = new Date().toISOString();
+        sendJson(res, 200, { data, syncedAt: memory.lastSync });
       });
     },
   };
 }
 
-export const SAP_PROXY_CONSTANTS = { SERVICE_PATH, DEMO_MAX_RECORDS, INCIDENT_SELECT };
+export const SAP_PROXY_CONSTANTS = { SERVICE_PATH, DEMO_MAX_RECORDS, INCIDENT_SELECT, LOCATION_EXPAND };

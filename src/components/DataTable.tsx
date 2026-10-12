@@ -44,6 +44,8 @@ interface DataTableProps<T> {
   emptyDescription?: string;
   /** Notified (via effect) whenever the filtered row count changes. */
   onFilteredCount?: (count: number) => void;
+  /** Row key of the selected row (master-detail highlight). */
+  selectedKey?: string | null;
 }
 
 type SortDir = 'asc' | 'desc' | null;
@@ -61,6 +63,7 @@ export function DataTable<T>({
   emptyTitle = 'No records to show',
   emptyDescription = 'Adjust the filters or check back later.',
   onFilteredCount,
+  selectedKey = null,
 }: DataTableProps<T>): React.JSX.Element {
   const [query, setQuery] = useState('');
   const [selects, setSelects] = useState<Record<string, string>>({});
@@ -229,7 +232,7 @@ export function DataTable<T>({
             </thead>
             <tbody>
               {visible.map((row) => (
-                <tr key={rowKey(row)}>
+                <tr key={rowKey(row)} className={selectedKey === rowKey(row) ? 'selected' : undefined}>
                   {columns.map((col) => (
                     <td key={col.key}>{col.render(row)}</td>
                   ))}

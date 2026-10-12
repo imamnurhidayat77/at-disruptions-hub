@@ -182,6 +182,7 @@ export function buildReportedIncident(input: ReportInput, id: string): Incident 
     recoveryTasks: defaultRecoveryTasks(),
     commsDraft: null,
     infoRequested: false,
+    commsRequestedAt: null,
     estimatedRestorationAt: null,
     restoredAt: null,
     firstPublishedAt: null,

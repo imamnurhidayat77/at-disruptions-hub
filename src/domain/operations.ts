@@ -38,6 +38,9 @@ export function normalizeIncident(incident: Incident): Incident {
   if (typeof (next as { infoRequested?: unknown }).infoRequested !== 'boolean') {
     next = { ...next, infoRequested: false };
   }
+  if (!('commsRequestedAt' in next) || next.commsRequestedAt === undefined) {
+    next = { ...next, commsRequestedAt: null };
+  }
   if (!('sapLink' in next) || next.sapLink === undefined) {
     next = { ...next, sapLink: null };
   }

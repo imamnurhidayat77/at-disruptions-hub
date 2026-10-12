@@ -814,6 +814,10 @@ table.records tbody tr:hover td {
   background: var(--sapList_Hover_Background);
 }
 
+table.records tbody tr.selected td {
+  background: var(--sapList_SelectionBackgroundColor);
+}
+
 table.records td:last-child {
   white-space: nowrap;
 }
@@ -1422,25 +1426,47 @@ input.check {
   background: var(--target-good-fg);
 }
 
-/* ---------- Workspace anchor tabs (Figma) ---------- */
+/* ---------- Workspace anchor tabs (Fiori IconTabBar) ---------- */
 .anchor-tabs {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 20px;
+  align-items: stretch;
+  gap: 4px;
   margin: 0 0 16px;
-  padding: 4px 0;
+  padding: 0 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  box-shadow: var(--sapContent_Shadow0);
+  overflow-x: auto;
 }
 
 .anchor-tabs a {
-  font-size: 13px;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 14px;
+  font-size: var(--sapFontSize);
+  font-weight: 400;
   color: var(--muted);
   text-decoration: none;
-  padding: 6px 0;
+  white-space: nowrap;
+  border-bottom: 0.125rem solid transparent;
+  margin-bottom: -1px;
 }
 
 .anchor-tabs a:hover {
-  color: var(--brand-dark);
+  color: var(--sapLink_HoverColor);
+  background: var(--sapButton_Hover_Background);
+  text-decoration: none;
+}
+
+.anchor-tabs a.active {
+  color: var(--sapBrandColor);
+  font-weight: 600;
+  border-bottom-color: var(--sapBrandColor);
+}
+
+.anchor-tabs a.active:visited {
+  color: var(--sapBrandColor);
 }
 
 /* ---------- KPI cards (operations overview + contractor portal) ---------- */

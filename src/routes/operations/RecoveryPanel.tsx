@@ -26,6 +26,8 @@ export function RecoveryPanel({ incident }: { incident: Incident }): React.JSX.E
   const [ert, setErt] = useState(incident.estimatedRestorationAt?.slice(0, 16) ?? '');
   const [actual, setActual] = useState(incident.restoredAt?.slice(0, 16) ?? '');
   const [completeError, setCompleteError] = useState<string | undefined>(undefined);
+  const [completeWarning, setCompleteWarning] = useState<string | undefined>(undefined);
+  const [earlyConfirmed, setEarlyConfirmed] = useState(false);
   const [noteError, setNoteError] = useState<string | undefined>(undefined);
   const [saved, setSaved] = useState(false);
 
@@ -36,6 +38,13 @@ export function RecoveryPanel({ incident }: { incident: Incident }): React.JSX.E
   const pct = total === 0 ? 0 : Math.round((done / total) * 100);
 
   function onSave(): void {
+    if (ert.trim() !== '' && !Number.isNaN(Date.parse(ert))) {
+      if (Date.parse(`${ert}:00+13:00`) < Date.parse(incident.detectedAt)) {
+        setNoteError('Estimated restoration cannot be earlier than detection.');
+        setSaved(false);
+        return;
+      }
+    }
     updateRestoration(
       incident.id,
       ert.trim() === '' ? null : `${ert}:00+13:00`,
@@ -63,7 +72,25 @@ export function RecoveryPanel({ incident }: { incident: Incident }): React.JSX.E
       setCompleteError('Record the actual restoration time to complete recovery.');
       return;
     }
+    const actualMs = Date.parse(`${actual}:00+13:00`);
+    if (actualMs < Date.parse(incident.detectedAt)) {
+      setCompleteError('Actual restoration cannot be earlier than detection.');
+      return;
+    }
+    if (
+      !earlyConfirmed &&
+      incident.estimatedRestorationAt !== null &&
+      actualMs < Date.parse(incident.estimatedRestorationAt)
+    ) {
+      setCompleteError(undefined);
+      setCompleteWarning(
+        'Actual restoration is earlier than the estimate — click Complete Recovery again to confirm.',
+      );
+      setEarlyConfirmed(true);
+      return;
+    }
     setCompleteError(undefined);
+    setCompleteWarning(undefined);
     completeRecovery(incident.id, `${actual}:00+13:00`);
   }
 
@@ -200,6 +227,8 @@ export function RecoveryPanel({ incident }: { incident: Incident }): React.JSX.E
                 onChange={(v) => {
                   setActual(v);
                   setCompleteError(undefined);
+                  setCompleteWarning(undefined);
+                  setEarlyConfirmed(false);
                 }}
                 error={completeError}
               />
@@ -230,6 +259,11 @@ export function RecoveryPanel({ incident }: { incident: Incident }): React.JSX.E
             {saved && (
               <p className="success-inline" role="status">
                 Recovery update saved.
+              </p>
+            )}
+            {completeWarning && (
+              <p className="note warn" role="status">
+                {completeWarning}
               </p>
             )}
             <div className="actions-bar">

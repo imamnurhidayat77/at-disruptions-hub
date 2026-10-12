@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { OpStatusBadge, SeverityBadge } from '../../components/badges.js';
-import { FioriButton } from '../../components/Button.js';
 import { Crumbs, Section } from '../../components/chrome.js';
 import { DataTable, type DataColumn } from '../../components/DataTable.js';
 import type { Incident } from '../../domain/types.js';
@@ -9,7 +8,7 @@ import {
   awaitingSeverityAssessment,
   needsFirstPublication,
 } from '../../domain/comms.js';
-import { firstCommunicationKpi, formatMmSs, formatNzdtShort } from '../../domain/kpi.js';
+import { firstCommunicationKpi, formatMmSs } from '../../domain/kpi.js';
 import { useNowTick } from '../../components/useNowTick.js';
 import { useAppStore } from '../../state/AppStore.js';
 
@@ -25,7 +24,7 @@ interface QueueRow {
 /**
  * Communication Queue — Figma "04 Customer Information". Validated and
  * severity-assessed incidents needing a first publication, riskiest
- * first, with a readiness filter and the selected-incident card.
+ * first, with a readiness filter. Every row navigates to its composer.
  */
 export function QueuePage(): React.JSX.Element {
   const { state, setRole } = useAppStore();
@@ -58,12 +57,9 @@ export function QueuePage(): React.JSX.Element {
       label: 'Incident',
       sortable: true,
       sortValue: (r) => r.incident.id,
-      render: (r) =>
-        r.blocked ? (
-          <span className="muted">{r.incident.id}</span>
-        ) : (
-          <Link to={`/comms/incident/${r.incident.id}`}>{r.incident.id}</Link>
-        ),
+      render: (r) => (
+        <Link to={`/comms/incident/${r.incident.id}`}>{r.incident.id}</Link>
+      ),
     },
     {
       key: 'route',
@@ -104,12 +100,22 @@ export function QueuePage(): React.JSX.Element {
       key: 'commStatus',
       label: 'Communication Status',
       filter: 'select',
-      filterValue: (r) => (r.blocked ? 'Blocked' : 'Passenger Notice Required'),
+      filterValue: (r) =>
+        r.blocked
+          ? 'Blocked'
+          : r.incident.commsRequestedAt !== null
+            ? 'Requested by Operations'
+            : 'Passenger Notice Required',
       render: (r) =>
         r.blocked ? (
           <span className="muted">Blocked</span>
         ) : (
-          <span className="badge tg-warn">▲ Passenger Notice Required</span>
+          <span>
+            <span className="badge tg-warn">▲ Passenger Notice Required</span>{' '}
+            {r.incident.commsRequestedAt !== null && (
+              <span className="badge st-ops">◈ Requested by Operations</span>
+            )}
+          </span>
         ),
     },
     {
@@ -125,17 +131,11 @@ export function QueuePage(): React.JSX.Element {
     {
       key: 'action',
       label: 'Action',
-      render: (r) =>
-        r.blocked ? (
-          <span className="muted">—</span>
-        ) : (
-          <Link to={`/comms/incident/${r.incident.id}`}>Prepare Update</Link>
-        ),
+      render: (r) => (
+        <Link to={`/comms/incident/${r.incident.id}`}>Prepare Update</Link>
+      ),
     },
   ];
-
-  const selected = queue[0] ?? null;
-  const selectedKpi = selected ? firstCommunicationKpi(selected, nowIso) : null;
 
   return (
     <div>
@@ -163,49 +163,6 @@ export function QueuePage(): React.JSX.Element {
           emptyDescription="Validated incidents appear here while the communication clock is running."
         />
       </Section>
-
-      {selected && selectedKpi && (
-        <Section title={`Selected incident · ${selected.id}`}>
-          <dl className="facts-grid">
-            <div className="fact">
-              <dt>Estimated Delay</dt>
-              <dd>{selected.estimatedDelayMinutes} min</dd>
-            </div>
-            <div className="fact">
-              <dt>Estimated Restoration</dt>
-              <dd>
-                {selected.estimatedRestorationAt
-                  ? formatNzdtShort(selected.estimatedRestorationAt)
-                  : 'Not yet confirmed'}
-              </dd>
-            </div>
-            <div className="fact">
-              <dt>Owner</dt>
-              <dd>{selected.owner ?? '— unassigned'}</dd>
-            </div>
-            <div className="fact">
-              <dt>Time Remaining</dt>
-              <dd>
-                {selectedKpi.remainingMs === null
-                  ? '—'
-                  : `${formatMmSs(Math.max(0, selectedKpi.remainingMs))}`}
-              </dd>
-            </div>
-          </dl>
-          <div className="note" role="note">
-            First Publication: Not yet published · Target: ≤10 min
-          </div>
-          <div className="actions-bar">
-            <FioriButton
-              design="emphasized"
-              icon="arrowRight"
-              to={`/comms/incident/${selected.id}`}
-            >
-              Prepare Update
-            </FioriButton>
-          </div>
-        </Section>
-      )}
     </div>
   );
 }

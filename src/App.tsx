@@ -12,7 +12,7 @@ import { CommsOverview } from './routes/comms/CommsOverview.js';
 import { PublishedPage } from './routes/comms/PublishedPage.js';
 import { PublishedSuccess } from './routes/comms/PublishedSuccess.js';
 import { QueuePage } from './routes/comms/QueuePage.js';
-import { TemplatesPage } from './routes/comms/TemplatesPage.js';
+import { TemplatesPage, TemplateDetail } from './routes/comms/TemplatesPage.js';
 import { CloseIncidentPage } from './routes/operations/CloseIncidentPage.js';
 import { IncidentWorkspace } from './routes/operations/IncidentWorkspace.js';
 import { IncomingDetailPage } from './routes/operations/IncomingDetailPage.js';
@@ -21,7 +21,7 @@ import { SeverityPage } from './routes/operations/SeverityPage.js';
 import { OperationsOverview } from './routes/operations/OperationsOverview.js';
 import { Incoming } from './routes/operations/Incoming.js';
 import { Incidents } from './routes/operations/Incidents.js';
-import { Reviews } from './routes/operations/Reviews.js';
+import { Reviews, ReviewDetail } from './routes/operations/Reviews.js';
 import { Analytics } from './routes/operations/Analytics.js';
 import { AppStoreProvider, useAppStore } from './state/AppStore.js';
 
@@ -57,6 +57,7 @@ function Shell(): React.JSX.Element {
           <Route path="/operations/incidents" element={<Incidents />} />
           <Route path="/operations/recovery" element={<RecoveryRedirect />} />
           <Route path="/operations/reviews" element={<Reviews />} />
+          <Route path="/operations/reviews/:id" element={<ReviewDetail />} />
           <Route path="/operations/analytics" element={<Analytics />} />
           <Route path="/operations/incident/:id" element={<IncidentWorkspace />} />
           <Route path="/operations/incident/:id/close" element={<CloseIncidentPage />} />
@@ -68,6 +69,7 @@ function Shell(): React.JSX.Element {
           <Route path="/comms/published" element={<PublishedPage />} />
           <Route path="/comms/published/:id" element={<PublishedSuccess />} />
           <Route path="/comms/templates" element={<TemplatesPage />} />
+          <Route path="/comms/templates/:kind" element={<TemplateDetail />} />
           <Route path="/comms/analytics" element={<AnalyticsPage />} />
           <Route path="/comms/incident/:id" element={<Composer />} />
           <Route path="*" element={<Navigate to="/contractor" replace />} />

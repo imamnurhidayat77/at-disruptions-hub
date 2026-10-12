@@ -59,6 +59,8 @@ export function Composer(): React.JSX.Element {
   const [form, setForm] = useState<DraftInput | null>(null);
   const [errors, setErrors] = useState<DraftErrors>({});
   const [reviewing, setReviewing] = useState(false);
+  const [correctionReason, setCorrectionReason] = useState('');
+  const [correctionError, setCorrectionError] = useState<string | undefined>(undefined);
   const [kind, setKind] = useState<TemplateKind>(() => kindFromLocation(locationState));
   const [followUp, setFollowUp] = useState(locationState.followUp === true);
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
@@ -98,6 +100,8 @@ export function Composer(): React.JSX.Element {
       setForm(null);
     }
     setErrors({});
+    setCorrectionReason('');
+    setCorrectionError(undefined);
     setReviewing(false);
     setFollowUp(locationState.followUp === true);
     setDraftSavedAt(null);
@@ -190,6 +194,7 @@ export function Composer(): React.JSX.Element {
   const record = incident;
   const published = record.communicationStatus === 'PUBLISHED';
   const editable = !published || followUp;
+  const isCorrection = published && followUp;
   const kpi = firstCommunicationKpi(record, nowIso);
 
   const set =
@@ -231,11 +236,16 @@ export function Composer(): React.JSX.Element {
     const found = validateDraft(draft);
     setErrors(found);
     if (Object.keys(found).length > 0) return;
+    if (isCorrection && correctionReason.trim() === '') {
+      setCorrectionError('Give a reason for the correction — it is recorded in the audit trail.');
+      return;
+    }
+    setCorrectionError(undefined);
     setReviewing(true);
   }
 
   function onPublishConfirm(): void {
-    publishComms(record.id, draft);
+    publishComms(record.id, draft, isCorrection ? correctionReason : undefined);
     setReviewing(false);
     setFollowUp(false);
     navigate(`/comms/published/${record.id}`);
@@ -333,6 +343,20 @@ export function Composer(): React.JSX.Element {
                 {errors.channels}
               </p>
             )}
+            {isCorrection && (
+              <SapInput
+                id="c-correction"
+                label="Correction Reason"
+                required
+                value={correctionReason}
+                onChange={(e) => {
+                  setCorrectionReason(e.target.value);
+                  setCorrectionError(undefined);
+                }}
+                error={correctionError}
+                hint="Recorded in the audit trail alongside the corrected notice."
+              />
+            )}
             <div className="note" role="note">
               Use validated disruption information. Keep the notice concise and
               passenger-focused.
@@ -402,7 +426,7 @@ export function Composer(): React.JSX.Element {
               Preview
             </FioriButton>
             <FioriButton design="emphasized" icon="send" onClick={onReview}>
-              Approve &amp; Publish
+              {isCorrection ? 'Publish Correction' : 'Approve & Publish'}
             </FioriButton>
           </div>
         </div>
@@ -421,7 +445,7 @@ export function Composer(): React.JSX.Element {
               <span className="dialog-icon info" aria-hidden="true">
                 ℹ
               </span>{' '}
-              Review &amp; Publish
+              {isCorrection ? 'Review & Publish Correction' : 'Review & Publish'}
             </h2>
             <p className="muted small">{record.id} · Check the notice, then publish</p>
             <button
@@ -446,6 +470,12 @@ export function Composer(): React.JSX.Element {
                   <dt>Channels</dt>
                   <dd>{draft.channels.join(' · ') || '—'}</dd>
                 </div>
+                {isCorrection && (
+                  <div className="fact">
+                    <dt>Correction Reason</dt>
+                    <dd>{correctionReason}</dd>
+                  </div>
+                )}
                 <div className="fact">
                   <dt>First Communication</dt>
                   <dd>
@@ -464,7 +494,7 @@ export function Composer(): React.JSX.Element {
                 Back to Edit
               </FioriButton>
               <FioriButton design="emphasized" icon="send" onClick={onPublishConfirm}>
-                Approve &amp; Publish
+                {isCorrection ? 'Publish Correction' : 'Approve & Publish'}
               </FioriButton>
             </div>
           </div>

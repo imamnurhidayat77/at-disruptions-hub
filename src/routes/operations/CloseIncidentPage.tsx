@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { SeverityBadge } from '../../components/badges.js';
 import { Crumbs, Section } from '../../components/chrome.js';
 import { EmptyState } from '../../components/EmptyState.js';
@@ -369,6 +369,10 @@ export function CloseIncidentPage(): React.JSX.Element {
 
 function ClosedRecord({ incident }: { incident: Incident }): React.JSX.Element {
   const nowIso = useNowTick(incident.communicationStatus !== 'PUBLISHED');
+  const { reopenIncident } = useAppStore();
+  const navigate = useNavigate();
+  const [reason, setReason] = useState('');
+  const [reasonError, setReasonError] = useState<string | undefined>(undefined);
   const kpi = firstCommunicationKpi(incident, nowIso);
   const durationMs =
     incident.restoredAt && incident.detectedAt
@@ -484,6 +488,40 @@ function ClosedRecord({ incident }: { incident: Incident }): React.JSX.Element {
         <p className="muted small">
           {openActions} open action{openActions === 1 ? '' : 's'} · Showing all records
         </p>
+      </Section>
+
+      <Section title="Reopen Incident">
+        <p className="muted small">
+          Wrongly closed? Reopen with a reason — the closure stays in the audit trail and
+          follow-up continues on the same record.
+        </p>
+        <SapInput
+          id="reopen-reason"
+          label="Reopen Reason"
+          required
+          value={reason}
+          onChange={(e) => {
+            setReason(e.target.value);
+            setReasonError(undefined);
+          }}
+          error={reasonError}
+          hint="Recorded in the audit trail."
+        />
+        <div className="actions-bar">
+          <FioriButton
+            icon="refresh"
+            onClick={() => {
+              if (reason.trim() === '') {
+                setReasonError('Give a reason for reopening.');
+                return;
+              }
+              reopenIncident(incident.id, reason.trim());
+              navigate(`/operations/incident/${incident.id}`);
+            }}
+          >
+            Reopen Incident
+          </FioriButton>
+        </div>
       </Section>
     </div>
   );

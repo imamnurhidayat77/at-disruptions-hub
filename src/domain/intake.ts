@@ -133,6 +133,7 @@ export function buildLinkedIncident(
     recoveryTasks: defaultRecoveryTasks(),
     commsDraft: null,
     infoRequested: false,
+    commsRequestedAt: null,
     estimatedRestorationAt: null,
     restoredAt: null,
     firstPublishedAt: null,
@@ -287,7 +288,9 @@ export function buildArchivedIncident(sap: SapCandidate, id: string): Incident {
 
   const rootCause = rootCauseFor(disruptionType);
   const correctiveAction = correctiveFor(disruptionType);
-  const dueDate = shiftNzdt(restoreAt, 24 * 60).slice(0, 10);
+  // Due dates stay relative to TODAY so archives never look stale, even
+  // when the source SAP timestamps are years old.
+  const dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const rationale = assessment.factors.join('; ');
   const place = scenario.location.split('—')[0].trim();
   const busNo = 2100 + (hash % 800);
@@ -335,6 +338,7 @@ export function buildArchivedIncident(sap: SapCandidate, id: string): Incident {
     recoveryTasks: tasksDone,
     commsDraft: draft,
     infoRequested: false,
+    commsRequestedAt: null,
     estimatedRestorationAt: shiftNzdt(restoreAt, -8),
     restoredAt: restoreAt,
     firstPublishedAt: publishedAt,

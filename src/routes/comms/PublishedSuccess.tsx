@@ -133,6 +133,9 @@ export function PublishedSuccess(): React.JSX.Element {
           </div>
         </dl>
         <div className="actions-bar">
+          <FioriButton icon="back" to="/comms/published">
+            Back to published updates
+          </FioriButton>
           <FioriButton icon="view" to={`/comms/incident/${incident.id}`}>
             View Incident
           </FioriButton>

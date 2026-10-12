@@ -146,6 +146,8 @@ export interface Incident {
   restoredAt: string | null;
   /** ISO-8601 first passenger publication. KPI clock stops here. */
   firstPublishedAt: string | null;
+  /** ISO-8601 when Operations requested passenger communication. Null until requested. */
+  commsRequestedAt: string | null;
   selectedChannels: string[];
   reviewRequired: boolean;
   rootCause: string | null;

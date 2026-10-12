@@ -1,22 +1,20 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { CommsTargetBadge, SeverityBadge } from '../../components/badges.js';
-import { FioriButton } from '../../components/Button.js';
 import { Crumbs, Section } from '../../components/chrome.js';
 import { DataTable, type DataColumn } from '../../components/DataTable.js';
 import type { Incident } from '../../domain/types.js';
 import { firstCommunicationKpi, formatMmSs, formatNzdtShort } from '../../domain/kpi.js';
-import { operationalStatusLabel } from '../../domain/operations.js';
 import { useAppStore } from '../../state/AppStore.js';
 
 /**
  * Published Updates — Figma "04 Customer Information". Filterable record
- * of first publications with the selected-notice detail card.
+ * of first publications. Every row navigates to its published-notice
+ * detail page.
  */
 export function PublishedPage(): React.JSX.Element {
   const { state, setRole } = useAppStore();
   const navigate = useNavigate();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     setRole('CUSTOMER_INFORMATION');
@@ -37,9 +35,9 @@ export function PublishedPage(): React.JSX.Element {
       sortable: true,
       sortValue: (i) => i.id,
       render: (i) => (
-        <button type="button" className="tbl-link" onClick={() => setSelectedId(i.id)}>
+        <Link to={`/comms/published/${i.id}`}>
           <strong>{i.id}</strong>
-        </button>
+        </Link>
       ),
     },
     {
@@ -103,8 +101,6 @@ export function PublishedPage(): React.JSX.Element {
       ),
     },
   ];
-  const selected = published.find((i) => i.id === selectedId) ?? published[0] ?? null;
-
   return (
     <div>
       <div className="pagehead">
@@ -130,44 +126,6 @@ export function PublishedPage(): React.JSX.Element {
           emptyDescription="First publications appear here with timing and target results."
         />
       </Section>
-
-      {selected?.commsDraft && (
-        <Section title={selected.commsDraft.title}>
-          <p>
-            <span className="badge tg-good">✓ Published</span>
-          </p>
-          <p>{selected.commsDraft.message}</p>
-          <dl className="facts-grid">
-            <div className="fact">
-              <dt>Next Update Time</dt>
-              <dd>{selected.commsDraft.nextUpdateBy || '—'}</dd>
-            </div>
-            <div className="fact">
-              <dt>Operational Status</dt>
-              <dd>{operationalStatusLabel(selected.operationalStatus)}</dd>
-            </div>
-            <div className="fact">
-              <dt>Estimated Restoration</dt>
-              <dd>
-                {selected.estimatedRestorationAt
-                  ? formatNzdtShort(selected.estimatedRestorationAt)
-                  : 'Not yet confirmed'}
-              </dd>
-            </div>
-          </dl>
-          <div className="actions-bar">
-            <FioriButton
-              design="emphasized"
-              icon="send"
-              onClick={() =>
-                navigate(`/comms/incident/${selected.id}`, { state: { followUp: true } })
-              }
-            >
-              Publish Follow-Up
-            </FioriButton>
-          </div>
-        </Section>
-      )}
     </div>
   );
 }

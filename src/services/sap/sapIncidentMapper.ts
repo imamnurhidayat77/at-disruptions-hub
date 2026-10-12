@@ -47,6 +47,40 @@ function firstString(entry: Record<string, unknown>, keys: string[]): string | n
   return null;
 }
 
+const LOCATION_NAV_KEYS = [
+  'LocationDescription',
+  'Description',
+  'LocationName',
+  'Name',
+  'AddressLine',
+  'Street',
+  'City',
+  'Plant',
+  'LocationID',
+];
+
+/**
+ * Location text from an expanded `to_Location` navigation property
+ * (OData V2 single object, `{results:[...]}`, or bare array).
+ */
+function locationFromNav(entry: Record<string, unknown>): string | null {
+  const nav = entry['to_Location'];
+  let obj: unknown = nav;
+  if (Array.isArray(nav)) obj = nav[0] ?? null;
+  else if (isRecord(nav)) {
+    const results = nav['results'];
+    obj = Array.isArray(results) ? (results[0] ?? null) : nav;
+  }
+  if (!isRecord(obj)) return null;
+  const direct = firstString(obj, LOCATION_NAV_KEYS);
+  if (direct) return direct;
+  // Compose "Street, City" style fallbacks from address fragments.
+  const street = firstString(obj, ['Street', 'AddressLine', 'Address']);
+  const city = firstString(obj, ['City', 'District', 'Region']);
+  if (street && city) return `${street}, ${city}`;
+  return null;
+}
+
 /** Extract the entry list from any supported OData envelope (or [] when none). */
 export function normalizeEnvelope(payload: unknown): Record<string, unknown>[] {
   if (Array.isArray(payload)) return payload.filter(isRecord);
@@ -74,7 +108,7 @@ export function normalizeEntry(entry: Record<string, unknown>, index: number): S
     updatedAt: firstString(entry, UPDATED_KEYS),
     category: firstString(entry, CATEGORY_KEYS),
     incidentUtc,
-    locationDescription: firstString(entry, ['IncidentLocationDescription']),
+    locationDescription: firstString(entry, ['IncidentLocationDescription']) ?? locationFromNav(entry),
     rawSource: entry,
   };
 }

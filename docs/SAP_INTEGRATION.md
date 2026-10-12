@@ -48,10 +48,18 @@ sandbox server
 
 The proxy requests entity set `A_Incident` with an explicit spec-exact
 `$select` (plus `$top=5`, `$format=json`):
-
 `IncidentID`, `IncidentUUID`, `IncidentUTCDateTime`, `IncidentTitle`,
 `IncidentStatus`, `IncidentLocationDescription`,
-`IncidentDescriptionOfEvents`, `IncidentCategory`, `EHSLocationUUID`.
+`IncidentDescriptionOfEvents`, `IncidentCategory`, `EHSLocationUUID`
+(`EHSLocationUUID` is requested but currently unread — candidate for
+removal from `$select`).
+
+The list request prefers `$expand=to_Location` so rows carry real SAP
+location data (single object, `{results}`, or array all accepted;
+street+city composed when no single label exists). When the sandbox
+rejects `$expand`, the proxy falls back to the plain list and the
+mapper falls back to the deterministic dummy scenario — location is
+never blank.
 
 The frontend mapper (`src/services/sap/sapIncidentMapper.ts`) reads
 those keys first (OData V2 `{d:{results}}`, OData V4 `{value}`,

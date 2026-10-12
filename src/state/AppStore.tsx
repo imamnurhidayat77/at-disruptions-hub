@@ -50,6 +50,7 @@ export type AppAction =
     }
   | { type: 'VALIDATE_INCIDENT'; id: string; at: string }
   | { type: 'REQUEST_INFO'; id: string; at: string }
+  | { type: 'REQUEST_COMMS'; id: string; at: string }
   | {
       type: 'CONFIRM_SEVERITY';
       id: string;
@@ -67,7 +68,7 @@ export type AppAction =
   | { type: 'UPDATE_RESTORATION'; id: string; estimatedRestorationAt: string | null; at: string }
   | { type: 'COMPLETE_RECOVERY'; id: string; actualRestorationAt: string; at: string }
   | { type: 'SAVE_DRAFT'; id: string; draft: CommsDraft; at: string }
-  | { type: 'PUBLISH_COMMS'; id: string; draft: CommsDraft; detail: string; at: string }
+  | { type: 'PUBLISH_COMMS'; id: string; draft: CommsDraft; detail: string; at: string; correction: string | null }
   | { type: 'SET_REVIEW'; id: string; rootCause: string; reviewRequired: boolean; closureNotes: string | null; at: string }
   | {
       type: 'ADD_CORRECTIVE';
@@ -76,7 +77,7 @@ export type AppAction =
       at: string;
     }
   | { type: 'CLOSE_INCIDENT'; id: string; at: string }
-  | { type: 'REOPEN_INCIDENT'; id: string; at: string }
+  | { type: 'REOPEN_INCIDENT'; id: string; at: string; reason: string }
   | { type: 'CREATE_LINKED_INCIDENT'; incident: Incident; sapId: string }
   | { type: 'SET_SAP_CANDIDATES'; candidates: SapCandidate[] }
   | { type: 'AUTO_INTAKE_SAP'; candidates: SapCandidate[]; incidents: Incident[] }
@@ -270,6 +271,24 @@ export function reducer(state: AppState, action: AppAction): AppState {
           ],
         };
       });
+    case 'REQUEST_COMMS':
+      return updateIncident(state, action.id, (i) => {
+        if (i.operationalStatus === 'CLOSED') return i;
+        if (i.communicationStatus === 'PUBLISHED') return i;
+        if (i.commsRequestedAt !== null) return i;
+        return {
+          ...i,
+          commsRequestedAt: action.at,
+          timeline: [
+            ...i.timeline,
+            {
+              ...event(i, 1, action.at, 'Passenger communication requested', ''),
+              detail:
+                'AT Operations asked Customer Information for a passenger update — visible in the communication queue.',
+            },
+          ],
+        };
+      });
     case 'CONFIRM_SEVERITY':
       return updateIncident(state, action.id, (i) => ({
         ...i,
@@ -412,11 +431,12 @@ export function reducer(state: AppState, action: AppAction): AppState {
         if (i.communicationStatus === 'PUBLISHED') {
           // Follow-up publication: new audit event, same firstPublishedAt —
           // the first-communication KPI always measures the FIRST publish.
+          // A correction reason relabels the audit event but never rewrites history.
           return {
             ...i,
             commsDraft: action.draft,
             selectedChannels: action.draft.channels,
-            timeline: [...i.timeline, commsEvent(i, action.at, 'Follow-up passenger update published', action.detail)],
+            timeline: [...i.timeline, commsEvent(i, action.at, action.correction ? 'Passenger update corrected' : 'Follow-up passenger update published', action.detail)],
           };
         }
         return {
@@ -543,7 +563,7 @@ export function reducer(state: AppState, action: AppAction): AppState {
             ...i.timeline,
             {
               ...event(i, 1, action.at, 'Incident reopened', ''),
-              detail: 'Closure reversed — follow-up continues on the same record.',
+              detail: `Closure reversed — reason: ${action.reason}. Follow-up continues on the same record.`,
             },
           ],
         };
@@ -577,6 +597,8 @@ interface Store {
   validateIncident: (id: string) => void;
   /** Operations: ask the operator for more information (contractor-visible status). */
   requestInfo: (id: string) => void;
+  /** Operations: ask Customer Information for a passenger update (comms-queue badge). */
+  requestComms: (id: string) => void;
   /** Operations: confirm or override severity (override needs a reason). */
   confirmSeverity: (id: string, level: Severity, rationale: string, overrideReason: string | null) => void;
   assignOwner: (id: string, owner: string) => void;
@@ -590,7 +612,7 @@ interface Store {
   /** Comms: save a draft (REQUIRED → DRAFT). */
   saveDraft: (id: string, input: DraftInput) => void;
   /** Comms: approve & publish (records firstPublishedAt + stops the response timer). */
-  publishComms: (id: string, input: DraftInput) => void;
+  publishComms: (id: string, input: DraftInput, correctionReason?: string) => void;
   /** Operations: record root cause + review decision. */
   setReview: (id: string, rootCause: string, reviewRequired: boolean, closureNotes?: string | null) => void;
   /** Operations: record the actual restoration time. */
@@ -602,7 +624,8 @@ interface Store {
   addCorrective: (id: string, corrective: { action: string; owner: string; dueDate: string }) => void;
   /** Operations: close a restored incident (requires root cause). */
   closeIncident: (id: string) => void;
-  reopenIncident: (id: string) => void;
+  /** Operations: reopen a closed incident with a mandatory reason (audited). */
+  reopenIncident: (id: string, reason: string) => void;
 }
 
 const AppStoreContext = createContext<Store | null>(null);
@@ -705,6 +728,8 @@ export function AppStoreProvider({
         dispatch({ type: 'VALIDATE_INCIDENT', id, at: new Date().toISOString() }),
       requestInfo: (id: string) =>
         dispatch({ type: 'REQUEST_INFO', id, at: new Date().toISOString() }),
+      requestComms: (id: string) =>
+        dispatch({ type: 'REQUEST_COMMS', id, at: new Date().toISOString() }),
       confirmSeverity: (id: string, level: Severity, rationale: string, overrideReason: string | null) => {
         const incident = state.incidents.find((i) => i.id === id);
         if (!incident) return;
@@ -742,16 +767,18 @@ export function AppStoreProvider({
         const at = new Date().toISOString();
         dispatch({ type: 'SAVE_DRAFT', id, draft: toCommsDraft(input, at), at });
       },
-      publishComms: (id: string, input: DraftInput) => {
+      publishComms: (id: string, input: DraftInput, correctionReason?: string) => {
         const at = new Date().toISOString();
         const incident = state.incidents.find((i) => i.id === id);
+        const reason = correctionReason?.trim() ? correctionReason.trim() : null;
         let detail = `Channels: ${input.channels.join(' + ') || 'none'}.`;
         if (incident?.confirmedAt) {
           const mins = Math.round((Date.parse(at) - Date.parse(incident.confirmedAt)) / 60000);
           const met = Date.parse(at) - Date.parse(incident.confirmedAt) <= FIRST_COMM_TARGET_MS;
           detail = `${mins} min from confirmation — target ${met ? 'met' : 'exceeded'}. ${detail}`;
         }
-        dispatch({ type: 'PUBLISH_COMMS', id, draft: toCommsDraft(input, at), detail, at });
+        if (reason) detail = `Correction: ${reason}. ${detail}`;
+        dispatch({ type: 'PUBLISH_COMMS', id, draft: toCommsDraft(input, at), detail, at, correction: reason });
       },
       setReview: (id: string, rootCause: string, reviewRequired: boolean, closureNotes?: string | null) =>
         dispatch({ type: 'SET_REVIEW', id, rootCause, reviewRequired, closureNotes: closureNotes ?? null, at: new Date().toISOString() }),
@@ -765,8 +792,8 @@ export function AppStoreProvider({
         dispatch({ type: 'ADD_CORRECTIVE', id, corrective, at: new Date().toISOString() }),
       closeIncident: (id: string) =>
         dispatch({ type: 'CLOSE_INCIDENT', id, at: new Date().toISOString() }),
-      reopenIncident: (id: string) =>
-        dispatch({ type: 'REOPEN_INCIDENT', id, at: new Date().toISOString() }),
+      reopenIncident: (id: string, reason: string) =>
+        dispatch({ type: 'REOPEN_INCIDENT', id, at: new Date().toISOString(), reason }),
     }),
     [state],
   );

@@ -109,17 +109,79 @@ export function TopNav(): React.JSX.Element {
 
   const { links } = SIDE_LINKS[state.role];
 
-  const results = useMemo(() => {
+  interface SearchHit {
+    key: string;
+    title: string;
+    sub: string;
+    kind: string;
+    run: () => void;
+  }
+
+  const goDetail = (id: string): void => {
+    setQuery('');
+    navigate(detailPath(state.role, id));
+  };
+
+  const results: SearchHit[] = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (q.length < 2) return [];
-    return state.incidents
+    const hits: SearchHit[] = state.incidents
       .filter((i) =>
         [i.id, i.route, i.location, i.disruptionType].some((v) =>
           String(v ?? '').toLowerCase().includes(q),
         ),
       )
-      .slice(0, 6);
-  }, [query, state.incidents]);
+      .slice(0, 4)
+      .map((i) => ({
+        key: `inc-${i.id}`,
+        title: i.id,
+        sub: `Route ${i.route} · ${i.location}`,
+        kind: 'Incident',
+        run: () => goDetail(i.id),
+      }));
+    for (const i of state.incidents) {
+      const ca = i.correctiveActions.find(
+        (c) =>
+          c.action.toLowerCase().includes(q) ||
+          c.owner.toLowerCase().includes(q) ||
+          c.id.toLowerCase().includes(q),
+      );
+      if (ca && hits.length < 6) {
+        const id = i.id;
+        hits.push({
+          key: `ca-${ca.id}`,
+          title: ca.action,
+          sub: `${id} · Owner ${ca.owner}`,
+          kind: 'Corrective',
+          run: () => {
+            setQuery('');
+            navigate(`/operations/reviews/${id}`);
+          },
+        });
+      }
+    }
+    for (const c of state.sapCandidates) {
+      if (
+        hits.length < 6 &&
+        [c.sapId, c.title, c.category, c.sapStatus].some((v) =>
+          String(v ?? '').toLowerCase().includes(q),
+        )
+      ) {
+        hits.push({
+          key: `sap-${c.sapId}`,
+          title: `${c.sapId} · ${c.title}`,
+          sub: `${c.category} · SAP ${c.sapStatus}`,
+          kind: 'SAP',
+          run: () => {
+            setQuery('');
+            navigate('/operations/incoming');
+          },
+        });
+      }
+    }
+    return hits;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, state.incidents, state.sapCandidates]);
 
   const notifCount = state.incidents.filter((i) => i.operationalStatus !== 'CLOSED').length;
 
@@ -196,28 +258,25 @@ export function TopNav(): React.JSX.Element {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search"
-              aria-label="Search incidents"
+              placeholder="Search incidents, reviews, SAP"
+              aria-label="Search incidents, reviews and SAP records"
             />
             <span className="shell-search-icon" aria-hidden="true">
               <Icon name="search" size={15} />
             </span>
             {query.trim().length >= 2 && (
-              <div className="shell-pop search-pop" role="listbox" aria-label="Incident results">
-                {results.length === 0 && <p className="muted small">No incidents match “{query.trim()}”.</p>}
-                {results.map((i) => (
+              <div className="shell-pop search-pop" role="listbox" aria-label="Search results">
+                {results.length === 0 && <p className="muted small">No matches for “{query.trim()}”.</p>}
+                {results.map((h) => (
                   <button
-                    key={i.id}
+                    key={h.key}
                     type="button"
                     className="search-hit"
-                    onClick={() => {
-                      setQuery('');
-                      navigate(detailPath(state.role, i.id));
-                    }}
+                    onClick={h.run}
                   >
-                    <strong>{i.id}</strong>
+                    <strong>{h.title}</strong>
                     <span className="muted small">
-                      Route {i.route} · {i.location}
+                      {h.kind} · {h.sub}
                     </span>
                   </button>
                 ))}
@@ -384,8 +443,8 @@ export function TopNav(): React.JSX.Element {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search"
-              aria-label="Search incidents"
+              placeholder="Search incidents, reviews, SAP"
+              aria-label="Search incidents, reviews and SAP records"
             />
             <span className="shell-search-icon" aria-hidden="true">
               <Icon name="search" size={15} />
