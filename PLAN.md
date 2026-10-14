@@ -338,7 +338,9 @@ page.
 
 Status: CONNECTED — live sandbox verified (07 Oct 2026). All SAP records
 treated as finished incidents (Oct 2026): auto-intake builds a CLOSED
-archive per record with deterministic dummy data.
+archive per record with deterministic dummy data. Vercel-ready (Oct 2026):
+`api/sap/*` serverless functions mirror the dev proxy; `vercel.json`
+SPA fallback; no own backend server needed.
 
 Completed code (live-verified 07 Oct 2026, plus unit tests):
 - [x] Server-side proxy (`server/sapProxy.ts` Vite plugin): same-origin

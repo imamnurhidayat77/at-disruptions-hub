@@ -137,8 +137,7 @@ DEMO data: `src/services/sap/sapDemoEnrichment.ts`
 
 ## Demo Steps
 
-1. Start the app (`npm run dev`). Route 70 flow works with or without SAP.
-2. As AT Operations, open **Analytics** → **SAP Integration**.
+1. Start the app (`npm run dev`). Route 70 flow works with or without SAP.2. As AT Operations, open **Analytics** → **SAP Integration**.
 3. Without credentials: Status shows "Not configured"; Sync shows the
    guidance message. This *is* the honest demo until credentials exist.
 4. With credentials (`SAP_API_BASE_URL` + `SAP_API_KEY` in `.env.local`,
@@ -232,3 +231,23 @@ prototype GETs the incident list only. The sandbox is EHS safety
 data (Option-2 partial fit), so AT-specific fields (route, severity,
 owner, comms) stay demo-local and SAP references render read-only with
 a SAP badge in Operations → Analytics → SAP Integration.
+
+## Deploy (Vercel — no own backend server)
+
+The app hosts fully on Vercel (static SPA + 2 serverless functions):
+
+- `api/sap/incidents.ts` + `api/sap/status.ts` (shared `api/sap/_lib.ts`)
+  are Vercel Functions with behaviour identical to the local dev plugin
+  (`server/sapProxy.ts`, still used by `npm run dev`): same paths, same
+  503/502 mapping, same 5-record cap. Files starting with `_` are never
+  routed. No new dependency — request/response shapes are structural.
+- `vercel.json` rewrites every non-`/api/*` path to `/index.html` so
+  React Router deep links work; `/api/*` routes to the functions.
+- Set `SAP_API_BASE_URL` + `SAP_API_KEY` (+ optional
+  `SAP_API_ENTITY_SET`) in the Vercel project dashboard — the key stays
+  server-side and is never bundled. Without them the app still runs on
+  the labelled demo fallback (`NOT_CONFIGURED`).
+- Stateless note: serverless instances share no memory, so `/api/sap/status`
+  runs a cheap `$top=1` probe instead of reusing the dev plugin's sync
+  memory. The frontend calls the same same-origin `/api/sap/*` in both
+  environments — no client change needed.
