@@ -145,6 +145,8 @@ export function PublishedSuccess(): React.JSX.Element {
             onClick={() =>
               navigate(`/comms/incident/${incident.id}`, { state: { followUp: true } })
             }
+            disabled={incident.operationalStatus === 'CLOSED'}
+            title={incident.operationalStatus === 'CLOSED' ? 'Incident closed — follow-up disabled' : undefined}
           >
             Publish Follow-Up
           </FioriButton>
