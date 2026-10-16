@@ -7,6 +7,7 @@ import { Timeline } from '../../components/Timeline.js';
 import { useNowTick } from '../../components/useNowTick.js';
 import { targetProgress } from '../../domain/comms.js';
 import { firstCommunicationKpi, formatMmSs, formatNzdtShort } from '../../domain/kpi.js';
+import { markViewed, unreadOperatorUpdates } from '../../services/viewedState.js';
 import { useAppStore } from '../../state/AppStore.js';
 import { RecoveryPanel } from './RecoveryPanel.js';
 
@@ -32,6 +33,11 @@ export function IncidentWorkspace(): React.JSX.Element {
       document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'start' });
     }
   }, [hash, id]);
+
+  // Opening the workspace marks operator updates as read.
+  useEffect(() => {
+    if (id) markViewed(id);
+  }, [id]);
 
   const incident = id ? getIncident(id) : undefined;
   const nowIso = useNowTick(incident?.communicationStatus !== 'PUBLISHED');
@@ -332,7 +338,7 @@ export function IncidentWorkspace(): React.JSX.Element {
       </Section>
 
       <Section title="Shared Incident Timeline" id="timeline">
-        <Timeline events={timeline} />
+        <Timeline events={timeline} unreadIds={unreadOperatorUpdates(incident)} />
       </Section>
 
       {incident.sapLink && (

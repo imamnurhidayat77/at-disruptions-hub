@@ -733,6 +733,7 @@ hr.receipt-sep {
 .sev-none { color: var(--status-idle-fg); }
 
 .st-ops { color: var(--status-ops-fg); }
+.st-new { color: var(--sapBrandColor); font-weight: 700; }
 .st-done { color: var(--status-done-fg); }
 .st-idle { color: var(--status-idle-fg); }
 
@@ -853,6 +854,21 @@ table.records td:last-child {
 .timeline .t-detail {
   color: var(--muted);
   font-size: 13px;
+}
+
+/* Operator updates stand out: full message in an info-tinted card. */
+.timeline li.t-operator-update {
+  background: var(--sapInformationBackground);
+  border: 0.0625rem solid var(--sapInformativeColor);
+  border-left-width: 0.25rem;
+  border-radius: var(--control-radius);
+  padding: 10px 12px;
+}
+
+.timeline li.t-operator-update .t-detail {
+  color: var(--ink);
+  font-size: 14px;
+  margin-top: 4px;
 }
 
 /* ---------- MessageStrip (Fiori: tinted bg, semantic border, icon) ---------- */
