@@ -6,6 +6,7 @@ import { Crumbs, Section } from '../../components/chrome.js';
 import { FioriButton } from '../../components/Button.js';
 import { DataTable, type DataColumn } from '../../components/DataTable.js';
 import { Field, SapSelect } from '../../components/forms.js';
+import { formatNzdtShort } from '../../domain/kpi.js';
 import { OWNER_ROSTER } from '../../domain/operations.js';
 import type { Incident } from '../../domain/types.js';
 import { useAppStore } from '../../state/AppStore.js';
@@ -224,6 +225,45 @@ export function ReviewDetail(): React.JSX.Element {
             <Link to={`/operations/incident/${selected.id}`}>Open workspace</Link>
           </span>
         </p>
+
+        <dl className="facts-grid">
+          <div className="fact">
+            <dt>Root Cause</dt>
+            <dd>{selected.rootCause ?? '—'}</dd>
+          </div>
+          <div className="fact">
+            <dt>Closure Notes</dt>
+            <dd>{selected.closureNotes ?? '—'}</dd>
+          </div>
+          <div className="fact">
+            <dt>Owner</dt>
+            <dd>{selected.owner ?? '— unassigned'}</dd>
+          </div>
+          <div className="fact">
+            <dt>Duration</dt>
+            <dd>
+              {selected.restoredAt && selected.detectedAt
+                ? `${Math.round((Date.parse(selected.restoredAt) - Date.parse(selected.detectedAt)) / 60000)} min`
+                : '—'}
+            </dd>
+          </div>
+          <div className="fact">
+            <dt>First Communication</dt>
+            <dd>
+              {selected.firstPublishedAt
+                ? `${formatNzdtShort(selected.firstPublishedAt)} · ${selected.communicationStatus === 'PUBLISHED' ? 'published' : ''}`
+                : 'Not published'}
+            </dd>
+          </div>
+          <div className="fact">
+            <dt>Corrective Progress</dt>
+            <dd>
+              {selected.correctiveActions.length === 0
+                ? 'No actions yet'
+                : `${doneCountFor(selected)} of ${selected.correctiveActions.length} done`}
+            </dd>
+          </div>
+        </dl>
 
         <ol className="steps" aria-label="Review progress">
           <li className={`step${started || completed ? ' done' : ' current'}`}>

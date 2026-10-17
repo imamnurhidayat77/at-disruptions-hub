@@ -4,6 +4,8 @@ import { EmptyState } from '../../components/EmptyState.js';
 import { FioriButton } from '../../components/Button.js';
 import { DataTable, type DataColumn } from '../../components/DataTable.js';
 import { SkeletonTable } from '../../components/Skeleton.js';
+import { hasOperatorUpdates, lastOperatorUpdateAt } from '../../domain/contractor.js';
+import { unreadOperatorUpdates } from '../../services/viewedState.js';
 import { formatNzdtDate, formatNzdtShort } from '../../domain/kpi.js';
 import type { Incident } from '../../domain/types.js';
 import { fetchLiveEnriched } from '../../services/sap/sapIncidentService.ts';
@@ -30,6 +32,7 @@ interface IntakeRow {
   title: string;
   sub: string;
   statusLabel: string;
+  unread: number;
   receivedLabel: string;
   receivedMs: number;
   route: string;
@@ -79,22 +82,30 @@ export function Incoming(): React.JSX.Element {
   const intakeItems = reported.length + incomingSap.length;
 
   const rows: IntakeRow[] = [
-    ...reported.map((i): IntakeRow => ({
-      key: i.id,
-      title: `${i.id} · Route ${i.route}`,
-      sub: `${i.disruptionType} · ${i.location}`,
-      statusLabel: 'Awaiting Assessment',
-      receivedLabel: `${formatNzdtDate(i.detectedAt)}, ${formatNzdtShort(i.detectedAt)}`,
-      receivedMs: Date.parse(i.detectedAt),
-      route: `Route ${i.route}`,
-      kind: 'contractor',
-      incidentId: i.id,
-    })),
+    ...reported.map((i): IntakeRow => {
+      const updatedAt = hasOperatorUpdates(i) ? lastOperatorUpdateAt(i) : null;
+      const unread = unreadOperatorUpdates(i).length;
+      return {
+        key: i.id,
+        title: `${i.id} · Route ${i.route}`,
+        sub:
+          `${i.disruptionType} · ${i.location}` +
+          (updatedAt ? ` · Updated ${formatNzdtShort(updatedAt)}` : ''),
+        statusLabel: unread > 0 ? 'New Operator Update' : updatedAt ? 'Updated by Operator' : 'Awaiting Assessment',
+        unread,
+        receivedLabel: `${formatNzdtDate(i.detectedAt)}, ${formatNzdtShort(i.detectedAt)}`,
+        receivedMs: Date.parse(i.detectedAt),
+        route: `Route ${i.route}`,
+        kind: 'contractor',
+        incidentId: i.id,
+      };
+    }),
     ...incomingSap.map((c): IntakeRow => ({
       key: c.sapId,
       title: `${c.sapId} · ${c.title}`,
       sub: `${c.category} · SAP: ${c.sapStatus}`,
       statusLabel: c.linkedIncidentId !== null ? 'Accepted' : 'Queued',
+      unread: 0,
       receivedLabel: `${formatNzdtDate(c.receivedAt)}, ${formatNzdtShort(c.receivedAt)}`,
       receivedMs: Date.parse(c.receivedAt),
       route: '-',
@@ -125,7 +136,20 @@ export function Incoming(): React.JSX.Element {
       filterValue: (r) => r.statusLabel,
       sortValue: (r) => r.statusLabel,
       render: (r) => {
-        if (r.kind === 'contractor') return contractorStatus();
+        if (r.kind === 'contractor') {
+          return (
+            <span>
+              {contractorStatus()}{' '}
+              {r.unread > 0 ? (
+                <span className="badge st-new">● New update</span>
+              ) : (
+                r.statusLabel === 'Updated by Operator' && (
+                  <span className="badge st-ops">◈ Updated</span>
+                )
+              )}
+            </span>
+          );
+        }
         return <IntakeStatus tone="tg-warn" icon="◷" label="Queued" />;
       },
     },

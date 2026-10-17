@@ -6,6 +6,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog.js';
 import { Timeline } from '../../components/Timeline.js';
 import { lastOperatorUpdateAt, hasOperatorUpdates } from '../../domain/contractor.js';
 import { formatNzdtShort, formatNzdtTime } from '../../domain/kpi.js';
+import { markViewed } from '../../services/viewedState.js';
 import { useAppStore } from '../../state/AppStore.js';
 
 /**
@@ -21,6 +22,10 @@ export function IncomingDetailPage(): React.JSX.Element {
   useEffect(() => {
     setRole('OPERATIONS');
   }, [setRole]);
+
+  useEffect(() => {
+    if (id) markViewed(id);
+  }, [id]);
 
   const [confirmingRequest, setConfirmingRequest] = useState(false);
 

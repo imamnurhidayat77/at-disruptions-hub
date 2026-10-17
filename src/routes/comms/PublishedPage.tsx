@@ -90,15 +90,18 @@ export function PublishedPage(): React.JSX.Element {
     {
       key: 'action',
       label: 'Action',
-      render: (i) => (
-        <button
-          type="button"
-          className="tbl-link"
-          onClick={() => navigate(`/comms/incident/${i.id}`, { state: { followUp: true } })}
-        >
-          Publish Follow-Up
-        </button>
-      ),
+      render: (i) =>
+        i.operationalStatus === 'CLOSED' ? (
+          <span className="muted">Closed</span>
+        ) : (
+          <button
+            type="button"
+            className="tbl-link"
+            onClick={() => navigate(`/comms/incident/${i.id}`, { state: { followUp: true } })}
+          >
+            Publish Follow-Up
+          </button>
+        ),
     },
   ];
   return (

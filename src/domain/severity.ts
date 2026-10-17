@@ -73,10 +73,10 @@ export function assessSeverity(input: SeverityInput): SeverityAssessment {
   }
 
   let level: Severity;
-  // The canonical Route 70 demo (maximal inputs) scores 8 and MUST stay
-  // HIGH: the demo scenario, docs and tests depend on it. CRITICAL is
-  // therefore reachable only through Duty Manager override, never by
-  // score; this matches the proposal (exceptional cases escalated).
+  // Score ceiling is 2+2+2+1+1 = 8, so the canonical Route 70 demo
+  // (maximal inputs) stays HIGH. CRITICAL (≥9) is therefore reserved:
+  // it is assigned only via AT override for exceptional escalation,
+  // never by calculation. The override flow records the reason in audit.
   if (score >= 9) level = 'CRITICAL';
   else if (score >= 5) level = 'HIGH';
   else if (score >= 3) level = 'MEDIUM';

@@ -103,7 +103,7 @@ function incident1039(): Incident {
     severity: 'CRITICAL',
     severityScore: 8,
     severityReason: 'Estimated delay 40 min (≥ 20 min); High passenger impact; Major interchange affected',
-    severityOverrideReason: 'No service in both directions at a major interchange.',
+    severityOverrideReason: 'Duty manager escalation: multi-route city-wide impact.',
     owner: 'L. Patel',
     operationalStatus: 'RECOVERY_IN_PROGRESS',
     communicationStatus: 'PUBLISHED',

@@ -4,6 +4,9 @@ import { CommsTargetBadge, OpStatusBadge, SeverityBadge } from '../../components
 import { Crumbs, Section } from '../../components/chrome.js';
 import { FioriButton } from '../../components/Button.js';
 import { DataTable, type DataColumn } from '../../components/DataTable.js';
+import { hasOperatorUpdates, lastOperatorUpdateAt } from '../../domain/contractor.js';
+import { formatNzdtShort } from '../../domain/kpi.js';
+import { unreadOperatorUpdates } from '../../services/viewedState.js';
 import { operationalStatusLabel } from '../../domain/operations.js';
 import type { Incident } from '../../domain/types.js';
 import { useAppStore } from '../../state/AppStore.js';
@@ -87,6 +90,23 @@ export function Incidents(): React.JSX.Element {
       sortable: true,
       sortValue: (i) => i.owner ?? '',
       render: (i) => i.owner ?? 'Unassigned',
+    },
+    {
+      key: 'update',
+      label: 'Operator Update',
+      sortable: true,
+      sortValue: (i) => lastOperatorUpdateAt(i) ?? '',
+      render: (i) => {
+        const at = lastOperatorUpdateAt(i);
+        if (unreadOperatorUpdates(i).length > 0) {
+          return <span className="badge st-new">● New update</span>;
+        }
+        return hasOperatorUpdates(i) && at ? (
+          <span className="badge st-ops">◈ Updated {formatNzdtShort(at)}</span>
+        ) : (
+          '—'
+        );
+      },
     },
     {
       key: 'action',

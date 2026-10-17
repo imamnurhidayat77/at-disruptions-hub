@@ -171,6 +171,31 @@ export function Composer(): React.JSX.Element {
     );
   }
 
+  if (incident.operationalStatus === 'CLOSED') {
+    return (
+      <div>
+        <div className="pagehead">
+          <Crumbs trail={['Customer Information', 'Communication Queue', incident.id]} />
+          <h1>Passenger Message Workspace</h1>
+          <p className="lede">
+            Incident {incident.id} · Route {incident.route} · closed.
+          </p>
+        </div>
+        <Section title={`${incident.id} — closed`}>
+          <p className="muted">
+            This incident is closed — published notices are read-only history. Reopen the
+            incident from Operations before preparing new communication.
+          </p>
+          <div className="actions-bar">
+            <FioriButton icon="back" to="/comms/published">
+              Back to Published Updates
+            </FioriButton>
+          </div>
+        </Section>
+      </div>
+    );
+  }
+
   if (incident.operationalStatus === 'REPORTED') {
     return (
       <div>
