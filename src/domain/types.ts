@@ -1,5 +1,5 @@
 /**
- * Shared incident domain types — the single source of truth for
+ * Shared incident domain types: the single source of truth for
  * AT Disruption Hub. All three roles read and act on this one record.
  *
  * Field definitions: docs/PRODUCT_REQUIREMENTS.md §5.
@@ -55,7 +55,7 @@ export interface CorrectiveAction {
 }
 
 /**
- * SAP intake candidate — a SAP EHS incident record reviewed as an intake
+ * SAP intake candidate: a SAP EHS incident record reviewed as an intake
  * candidate, NOT a separate AT incident. Candidates never enter the AT
  * workflow until enrichment creates a linked shared incident.
  */
@@ -119,7 +119,7 @@ export interface Incident {
   estimatedDelayMinutes: number;
   passengerImpact: PassengerImpact;
   majorInterchangeAffected: boolean;
-  /** Figma "Can Service Continue?" — null when unknown (older records). */
+  /** Figma "Can Service Continue?": null when unknown (older records). */
   serviceContinues: boolean | null;
   /** Final severity, set/confirmed by AT Operations. Null until assessed. */
   severity: Severity | null;
@@ -135,6 +135,11 @@ export interface Incident {
   recoveryTasks: RecoveryTask[];
   /** Passenger communication draft (AT Customer Information). Null until drafted. */
   commsDraft: CommsDraft | null;
+  /**
+   * Unpublished follow-up / correction draft. Kept apart from commsDraft so
+   * the published notice never changes until the follow-up is published.
+   */
+  followUpDraft: CommsDraft | null;
   /**
    * AT Operations asked the operator for more information. Shown to the
    * contractor as "More Information Requested"; cleared by a contractor

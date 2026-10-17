@@ -1,5 +1,5 @@
 /**
- * Lucide-style outline icons (ISC, hand-copied paths) — Figma uses
+ * Lucide-style outline icons (ISC, hand-copied paths): Figma uses
  * Lucide throughout the shell and sidebar. Stroke icons keep the
  * enterprise look without an icon font or new dependency.
  */

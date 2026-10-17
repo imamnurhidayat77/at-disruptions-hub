@@ -121,9 +121,12 @@ export function DataTable<T>({
     onFilteredCount?.(filtered.length);
   }, [filtered.length, onFilteredCount]);
 
+  // Only a filter change returns to the first page. Row updates (a live
+  // timer re-rendering the parent hands over a new array every second)
+  // keep the current page; safePage clamps it when the set shrinks.
   useEffect(() => {
     setPage(0);
-  }, [query, selects, rows]);
+  }, [query, selects]);
 
   const pageCount = pageSize > 0 ? Math.max(1, Math.ceil(filtered.length / pageSize)) : 1;
   const safePage = Math.min(page, pageCount - 1);

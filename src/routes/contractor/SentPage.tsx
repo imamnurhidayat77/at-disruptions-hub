@@ -6,7 +6,7 @@ import { formatNzdtTime } from '../../domain/kpi.js';
 import { useAppStore } from '../../state/AppStore.js';
 
 /**
- * Notification Sent — Figma "02 Bus Contractor" confirmation screen.
+ * Notification Sent: Figma "02 Bus Contractor" confirmation screen.
  * Read-only receipt for the submitted notification with a path back
  * into the shared incident record.
  */
@@ -54,7 +54,7 @@ export function SentPage(): React.JSX.Element {
             <span className="badge sev-none">◌ Awaiting AT Assessment</span>
           </p>
           <p className="muted">
-            Route {incident.route} — {incident.disruptionType} · {incident.location}
+            Route {incident.route}: {incident.disruptionType} · {incident.location}
           </p>
           <div className="actions-bar empty-action">
             <FioriButton

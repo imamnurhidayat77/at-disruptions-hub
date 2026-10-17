@@ -11,35 +11,35 @@ import type { PassengerImpact } from './types.ts';
 const AUTO_SCENARIOS = [
   {
     route: '70',
-    location: 'Newmarket — Broadway near Newmarket interchange',
+    location: 'Newmarket, Broadway near Newmarket interchange',
     disruptionType: 'Vehicle breakdown',
     estimatedDelayMinutes: '25',
     passengerImpact: 'HIGH',
   },
   {
     route: '18',
-    location: 'Great North Road — both directions',
-    disruptionType: 'Road blocked — no service',
+    location: 'Great North Road, both directions',
+    disruptionType: 'Road blocked, no service',
     estimatedDelayMinutes: '40',
     passengerImpact: 'HIGH',
   },
   {
     route: '22N',
-    location: 'New North Road — citybound',
+    location: 'New North Road, citybound',
     disruptionType: 'Vehicle unavailable',
     estimatedDelayMinutes: '15',
     passengerImpact: 'MEDIUM',
   },
   {
     route: '75',
-    location: 'Symonds Street — citybound',
-    disruptionType: 'Congestion — delays',
+    location: 'Symonds Street, citybound',
+    disruptionType: 'Congestion, delays',
     estimatedDelayMinutes: '12',
     passengerImpact: 'LOW',
   },
   {
     route: '95B',
-    location: 'Dominion Road — both directions',
+    location: 'Dominion Road, both directions',
     disruptionType: 'Vehicle breakdown',
     estimatedDelayMinutes: '20',
     passengerImpact: 'MEDIUM',
@@ -69,9 +69,9 @@ export function dummyScenarioFor(sapId: string): AutoScenario {
 export function disruptionTypeFor(title: string, scenario: AutoScenario): string {
   const t = title.toLowerCase();
   if (/breakdown|fault/.test(t)) return 'Vehicle breakdown';
-  if (/blocked|closure|closed/.test(t)) return 'Road blocked — no service';
+  if (/blocked|closure|closed/.test(t)) return 'Road blocked, no service';
   if (/unavailable/.test(t)) return 'Vehicle unavailable';
-  if (/congest|delay/.test(t)) return 'Congestion — delays';
+  if (/congest|delay/.test(t)) return 'Congestion, delays';
   if (/inspect/.test(t)) return 'Facility inspection';
   if (/safety|observation/.test(t)) return 'Safety observation';
   if (/maintenance/.test(t)) return 'Maintenance report';

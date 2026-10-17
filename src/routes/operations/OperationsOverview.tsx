@@ -11,7 +11,7 @@ import type { Incident } from '../../domain/types.js';
 import { useAppStore } from '../../state/AppStore.js';
 
 /**
- * Operations Overview — Figma "03 AT Operations" frame.
+ * Operations Overview: Figma "03 AT Operations" frame.
  * Monitoring only: alert strip, KPI cards (comms cards drill into
  * Analytics) and a filter-free "Needs attention" preview. Accept &
  * assess happens in one place only: the Incoming worklist.
@@ -167,7 +167,7 @@ export function OperationsOverview(): React.JSX.Element {
         />
         <KpiCard
           title="Average First Communication"
-          value={kpis.averageFirstCommMs === null ? '—' : formatMmSs(kpis.averageFirstCommMs)}
+          value={kpis.averageFirstCommMs === null ? '-' : formatMmSs(kpis.averageFirstCommMs)}
           context={
             kpis.publishedCount === 0
               ? 'No first publication yet'
@@ -178,7 +178,7 @@ export function OperationsOverview(): React.JSX.Element {
         />
         <KpiCard
           title="Within 10-Min Target"
-          value={kpis.achievedPct === null ? '—' : `${kpis.achievedPct}%`}
+          value={kpis.achievedPct === null ? '-' : `${kpis.achievedPct}%`}
           context={
             kpis.publishedCount === 0
               ? 'Awaiting first publication'
@@ -203,7 +203,7 @@ export function OperationsOverview(): React.JSX.Element {
           emptyDescription="No notifications awaiting assessment."
         />
         <p className="muted small">
-          {reported.length} operator notification · {unlinkedSap} SAP source candidates —
+          {reported.length} operator notification · {unlinkedSap} SAP source candidates:
           review and accept in the <Link to="/operations/incoming">Incoming worklist</Link>.
           SAP source candidates are not active AT incidents.
         </p>

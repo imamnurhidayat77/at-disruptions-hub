@@ -96,7 +96,7 @@ export function normalizeEnvelope(payload: unknown): Record<string, unknown>[] {
   return [payload];
 }
 
-/** Normalise one SAP entry. Missing values become null — never invented. */
+/** Normalise one SAP entry. Missing values become null, never invented. */
 export function normalizeEntry(entry: Record<string, unknown>, index: number): SapIncidentReference {
   const incidentUtc = firstString(entry, ['IncidentUTCDateTime']);
   return {
@@ -155,7 +155,7 @@ export function referenceToCandidate(ref: SapIncidentReference, nowIso?: string)
     sapStatus: ref.status ?? 'Open',
     locationDescription: ref.locationDescription ?? dummyScenarioFor(ref.sapId).location,
     description: ref.description ?? title,
-    receivedAt: toIsoDate(ref.incidentUtc, fallback) ?? toIsoDate(ref.createdAt, fallback) ?? fallback,
+    receivedAt: toIsoDate(ref.incidentUtc) ?? toIsoDate(ref.createdAt) ?? fallback,
     intakeRoute: 'SAP EHS intake',
     linkedIncidentId: null,
   };

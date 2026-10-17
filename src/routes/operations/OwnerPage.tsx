@@ -1,7 +1,7 @@
 import { Navigate, useParams } from 'react-router-dom';
 
 /**
- * Owner Assignment — redirect stub.
+ * Owner Assignment: redirect stub.
  * The former standalone owner page is merged into the SeverityPage intake
  * wizard (Step 2); this route redirects there so deep links stay valid.
  */

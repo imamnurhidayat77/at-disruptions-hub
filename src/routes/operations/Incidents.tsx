@@ -9,7 +9,7 @@ import type { Incident } from '../../domain/types.js';
 import { useAppStore } from '../../state/AppStore.js';
 
 /**
- * Incidents — Figma "03 AT Operations" worklist. Status and ownership
+ * Incidents: Figma "03 AT Operations" worklist. Status and ownership
  * overview with drill-through to the workspace; no inline editing here.
  */
 export function Incidents(): React.JSX.Element {

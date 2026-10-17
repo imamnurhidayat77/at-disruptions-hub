@@ -22,7 +22,7 @@ interface QueueRow {
   blocked: boolean;
 }
 /**
- * Communication Queue — Figma "04 Customer Information". Validated and
+ * Communication Queue: Figma "04 Customer Information". Validated and
  * severity-assessed incidents needing a first publication, riskiest
  * first, with a readiness filter. Every row navigates to its composer.
  */
@@ -125,7 +125,7 @@ export function QueuePage(): React.JSX.Element {
       sortValue: (r) => firstCommunicationKpi(r.incident, nowIso).elapsedMs,
       render: (r) => {
         const kpi = firstCommunicationKpi(r.incident, nowIso);
-        return kpi.elapsedMs === null ? '—' : formatMmSs(kpi.elapsedMs);
+        return kpi.elapsedMs === null ? '-' : formatMmSs(kpi.elapsedMs);
       },
     },
     {

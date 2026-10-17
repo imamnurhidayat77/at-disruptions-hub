@@ -32,7 +32,7 @@ function openComposerFor(
 }
 
 /**
- * Templates — scenario wording patterns for passenger updates. Use Template
+ * Templates: scenario wording patterns for passenger updates. Use Template
  * opens the composer prefilled.
  */
 export function TemplatesPage(): React.JSX.Element {
@@ -127,7 +127,7 @@ export function TemplatesPage(): React.JSX.Element {
 }
 
 /**
- * TemplateDetail — dedicated detail page for a single passenger message
+ * TemplateDetail: dedicated detail page for a single passenger message
  * template. Shows the same preview previously rendered inline below the
  * table (title/message/channels/note + Use Template).
  */

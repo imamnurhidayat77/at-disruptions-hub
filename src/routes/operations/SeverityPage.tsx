@@ -6,7 +6,7 @@ import { Field, SapSelect } from '../../components/forms.js';
 import { FioriButton } from '../../components/Button.js';
 import { Timeline } from '../../components/Timeline.js';
 import { assessSeverity, validateSeverityOverride } from '../../domain/severity.js';
-import { OWNER_ROSTER, OWNER_TITLES } from '../../domain/operations.js';
+import { canAssess, OWNER_ROSTER, OWNER_TITLES } from '../../domain/operations.js';
 import { formatNzdtShort } from '../../domain/kpi.js';
 import type { Severity } from '../../domain/types.js';
 import { useAppStore } from '../../state/AppStore.js';
@@ -20,7 +20,7 @@ interface PendingSeverity {
 }
 
 /**
- * Severity + Owner intake wizard — Figma "03 AT Operations" dedicated page.
+ * Severity + Owner intake wizard: Figma "03 AT Operations" dedicated page.
  * Step 1: confirm the severity recommendation (or override with a mandatory
  * reason), Step 2: assign the incident owner. Severity is confirmed in the
  * shared store on Assign, in the same order as the former two-page flow.
@@ -64,7 +64,7 @@ export function SeverityPage(): React.JSX.Element {
           <Crumbs trail={['Operations', 'Incoming', 'Severity Assessment']} />
           <h1>Severity Assessment</h1>
           <p className="lede">
-            {incident.id} · Route {incident.route} — {incident.disruptionType} ·{' '}
+            {incident.id} · Route {incident.route}: {incident.disruptionType} ·{' '}
             {incident.location}
           </p>
         </div>
@@ -75,6 +75,36 @@ export function SeverityPage(): React.JSX.Element {
           <div className="actions-bar">
             <FioriButton design="emphasized" icon="detail" to={`/operations/incoming/${incident.id}`}>
               Open incoming notification
+            </FioriButton>
+          </div>
+        </Section>
+      </div>
+    );
+  }
+
+  if (!canAssess(incident)) {
+    return (
+      <div>
+        <div className="pagehead">
+          <Crumbs trail={['Operations', 'Incidents', incident.id]} />
+          <h1>Severity Assessment</h1>
+          <p className="lede">
+            {incident.id} · Route {incident.route}: {incident.disruptionType} ·{' '}
+            {incident.location}
+          </p>
+        </div>
+        <Section title="Assessment is final">
+          <p className="muted">
+            Severity and ownership are locked once service is restored. They stay on the
+            shared record for the review.
+          </p>
+          <div className="actions-bar">
+            <FioriButton
+              design="emphasized"
+              icon="detail"
+              to={`/operations/incident/${incident.id}`}
+            >
+              Open workspace
             </FioriButton>
           </div>
         </Section>
@@ -126,7 +156,7 @@ export function SeverityPage(): React.JSX.Element {
         <Crumbs trail={['Operations', 'Incoming', 'Severity Assessment']} />
         <h1>{step === 1 ? 'Severity Assessment' : 'Owner Assignment'}</h1>
         <p className="lede">
-          {incident.id} · Route {incident.route} — {incident.disruptionType} ·{' '}
+          {incident.id} · Route {incident.route}: {incident.disruptionType} ·{' '}
           {incident.location}
         </p>
         <p>
@@ -139,7 +169,7 @@ export function SeverityPage(): React.JSX.Element {
           )}
         </p>
         <p className="muted small">
-          Step {step} of 2 — {step === 1 ? 'Severity' : 'Owner'}
+          Step {step} of 2: {step === 1 ? 'Severity' : 'Owner'}
         </p>
       </div>
 
@@ -204,7 +234,7 @@ export function SeverityPage(): React.JSX.Element {
               onChange={setOwnerName}
               options={ownerOptions.map((o) => ({
                 value: o,
-                label: OWNER_TITLES[o] ? `${o} — ${OWNER_TITLES[o]}` : o,
+                label: OWNER_TITLES[o] ? `${o} (${OWNER_TITLES[o]})` : o,
               }))}
             />
             {seniorHint && <p className="muted">Senior owner recommended</p>}
@@ -324,7 +354,7 @@ function OverrideDialog({
           }))}
         />
         {level === calculated && (
-          <p className="muted">Same as recommendation — confirm instead?</p>
+          <p className="muted">Same as recommendation: confirm instead?</p>
         )}
         <Field id="ov-reason" label="Reason for Override" required error={error}>
           <textarea

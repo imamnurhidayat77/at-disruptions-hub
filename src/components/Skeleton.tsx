@@ -1,5 +1,5 @@
 /**
- * Skeleton loading primitives — shimmer placeholders shown while async
+ * Skeleton loading primitives: shimmer placeholders shown while async
  * work (SAP sync) is in flight. All blocks are aria-hidden decoration;
  * containers carry role="status" with a text label so assistive tech
  * announces *what* is loading instead of fake content.
@@ -20,7 +20,7 @@ function toCss(value: string | number | undefined, fallback: string): string {
   return typeof value === 'number' ? `${value}px` : value;
 }
 
-/** Single shimmer block. Decorative — always aria-hidden. */
+/** Single shimmer block. Decorative: always aria-hidden. */
 export function Skeleton({ width, height = 12, radius = 4, className }: SkeletonProps): React.JSX.Element {
   return (
     <span

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
-import { OpStatusBadge, SeverityBadge } from '../../components/badges.js';
+import { OpStatusBadge, SeverityBadge, TargetResultBadge } from '../../components/badges.js';
 import { Crumbs, Section } from '../../components/chrome.js';
 import { FioriButton } from '../../components/Button.js';
 import { Timeline } from '../../components/Timeline.js';
@@ -10,8 +10,11 @@ import { firstCommunicationKpi, formatMmSs, formatNzdtShort } from '../../domain
 import { useAppStore } from '../../state/AppStore.js';
 import { RecoveryPanel } from './RecoveryPanel.js';
 
+/** Anchor targets watched by the scroll-spy (absent sections are skipped). */
+const ANCHOR_IDS = ['overview', 'recovery', 'comms', 'timeline', 'source', 'review'];
+
 /**
- * AT Operations incident workspace — Figma "03 AT Operations" frames.
+ * AT Operations incident workspace: Figma "03 AT Operations" frames.
  * Title card, anchor sections, communication target, read-only recovery
  * and passenger communication as parallel tracks, shared timeline,
  * linked SAP context and review. Assessment lives on dedicated pages.
@@ -25,7 +28,7 @@ export function IncidentWorkspace(): React.JSX.Element {
     setRole('OPERATIONS');
   }, [setRole]);
 
-  // Deep links (e.g. …/incident/INC-1#recovery) scroll to the section —
+  // Deep links (e.g. …/incident/INC-1#recovery) scroll to the section:
   // React Router does not do this automatically.
   useEffect(() => {
     if (hash) {
@@ -35,6 +38,36 @@ export function IncidentWorkspace(): React.JSX.Element {
 
   const incident = id ? getIncident(id) : undefined;
   const nowIso = useNowTick(incident?.communicationStatus !== 'PUBLISHED');
+  const [activeAnchor, setActiveAnchor] = useState('overview');
+
+  // The full workspace (and its anchor sections) renders only once the
+  // incident is accepted, assessed and owned. Every hook stays above the
+  // early returns below: this component is reused when the route id
+  // changes in place, so the hook order must not depend on the record.
+  const workspaceOpen =
+    incident !== undefined &&
+    incident.operationalStatus !== 'REPORTED' &&
+    Boolean(incident.severity) &&
+    Boolean(incident.owner);
+  const hasSource = Boolean(incident?.sapLink);
+
+  // Scroll-spy: highlight the tab of the section currently in view.
+  useEffect(() => {
+    if (!workspaceOpen) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) setActiveAnchor(entry.target.id);
+        }
+      },
+      { rootMargin: '-30% 0px -60% 0px' },
+    );
+    for (const anchorId of ANCHOR_IDS) {
+      const el = document.getElementById(anchorId);
+      if (el) observer.observe(el);
+    }
+    return () => observer.disconnect();
+  }, [id, workspaceOpen, hasSource]);
 
   if (!incident) {
     return (
@@ -60,7 +93,7 @@ export function IncidentWorkspace(): React.JSX.Element {
           <Crumbs trail={['Operations', 'Incidents', incident.id]} />
           <h1>{incident.id}</h1>
           <p className="lede">
-            Route {incident.route} — {incident.disruptionType} · {incident.location}
+            Route {incident.route}: {incident.disruptionType} · {incident.location}
           </p>
         </div>
         <Section title="Accept the notification first">
@@ -93,7 +126,7 @@ export function IncidentWorkspace(): React.JSX.Element {
           <Crumbs trail={['Operations', 'Incidents', incident.id]} />
           <h1>{incident.id}</h1>
           <p className="lede">
-            Route {incident.route} — {incident.disruptionType} · {incident.location}
+            Route {incident.route}: {incident.disruptionType} · {incident.location}
           </p>
         </div>
         <Section title="Continue the intake workflow">
@@ -121,25 +154,6 @@ export function IncidentWorkspace(): React.JSX.Element {
     ...(incident.sapLink ? [{ id: 'source', label: 'Source context' }] : []),
     { id: 'review', label: 'Review' },
   ];
-  const [activeAnchor, setActiveAnchor] = useState('overview');
-
-  // Scroll-spy: highlight the tab of the section currently in view.
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) setActiveAnchor(entry.target.id);
-        }
-      },
-      { rootMargin: '-30% 0px -60% 0px' },
-    );
-    for (const s of anchorSections) {
-      const el = document.getElementById(s.id);
-      if (el) observer.observe(el);
-    }
-    return () => observer.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
 
   return (
     <div>
@@ -165,7 +179,7 @@ export function IncidentWorkspace(): React.JSX.Element {
         ))}
       </nav>
 
-      <Section title={`Route ${incident.route} — ${incident.disruptionType}`} id="overview">
+      <Section title={`Route ${incident.route}: ${incident.disruptionType}`} id="overview">
         <p className="muted small">
           {incident.location} · {incident.id}
         </p>
@@ -207,8 +221,8 @@ export function IncidentWorkspace(): React.JSX.Element {
 
       <Section title="Communication Target">
         <p>
-          {kpi.targetMet ? (
-            <span className="badge tg-good">✓ TARGET MET</span>
+          {published ? (
+            <TargetResultBadge state={kpi.state} />
           ) : (
             <span className="badge tg-warn">▲ Passenger Notice Required</span>
           )}
@@ -282,7 +296,7 @@ export function IncidentWorkspace(): React.JSX.Element {
           </div>
           <div className="fact">
             <dt>Timer</dt>
-            <dd>{kpi.elapsedMs === null ? '—' : formatMmSs(kpi.elapsedMs)}</dd>
+            <dd>{kpi.elapsedMs === null ? '-' : formatMmSs(kpi.elapsedMs)}</dd>
           </div>
           <div className="fact">
             <dt>Target</dt>
@@ -291,7 +305,7 @@ export function IncidentWorkspace(): React.JSX.Element {
           <div className="fact">
             <dt>Remaining</dt>
             <dd>
-              {kpi.remainingMs === null || published ? '—' : formatMmSs(kpi.remainingMs)}
+              {kpi.remainingMs === null || published ? '-' : formatMmSs(kpi.remainingMs)}
             </dd>
           </div>
         </dl>
@@ -303,7 +317,7 @@ export function IncidentWorkspace(): React.JSX.Element {
             <h3>{incident.commsDraft.title}</h3>
             <p>{incident.commsDraft.message}</p>
             <p>
-              <span className="badge tg-good">✓ TARGET MET</span>
+              <TargetResultBadge state={kpi.state} />
             </p>
           </div>
         )}
@@ -320,7 +334,7 @@ export function IncidentWorkspace(): React.JSX.Element {
         )}
         {!published && incident.commsRequestedAt !== null && (
           <p className="muted small" role="status">
-            Customer Information notified at {formatNzdtShort(incident.commsRequestedAt)} — flagged
+            Customer Information notified at {formatNzdtShort(incident.commsRequestedAt)}, flagged
             in the communication queue.
           </p>
         )}
@@ -371,7 +385,7 @@ export function IncidentWorkspace(): React.JSX.Element {
         <Section title="Review">
           <p className="muted">
             {incident.operationalStatus === 'CLOSED'
-              ? 'This incident is closed — open the closed record for the review summary.'
+              ? 'This incident is closed: open the closed record for the review summary.'
               : 'Close the incident to record the post-incident review.'}
           </p>
           <div className="actions-bar">

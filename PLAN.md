@@ -1,4 +1,4 @@
-# AT Disruption Hub — Implementation Plan
+# AT Disruption Hub: Implementation Plan
 
 ## Goal
 
@@ -10,7 +10,7 @@ A presenter can complete the full Route 70 scenario reliably during a five-minut
 
 ---
 
-## Repository Assessment — Phase 0 findings (06 Oct 2026)
+## Repository Assessment: Phase 0 findings (06 Oct 2026)
 
 Inspected: repo root, `AGENTS.md`, `PLAN.md`, `docs/`, `design/`,
 filesystem search for `*.json / *.js / *.ts / *.html`.
@@ -22,17 +22,17 @@ filesystem search for `*.json / *.js / *.ts / *.html`.
 | Styling / component system | None exists. 8 approved PNG screens + UI kit in `design/` are the visual source of truth. Proposed: hand-written CSS with `tokens.css` derived from the UI kit; no component framework. |
 | State management | None exists. Proposed: React context + reducer, single shared incident store. |
 | SAP / API lab code | **None.** No examples, no service name, no endpoint. Phase 7 is adapter-boundary + labelled demo fallback until a confirmed course API is supplied. |
-| Build / lint / test commands | **None** (nothing to run — greenfield). Record `none — greenfield` in summaries until scaffolding lands. |
-| Figma-generated code | No — PNG screens only (Desktop 1440). |
+| Build / lint / test commands | **None** (nothing to run: greenfield). Record `none: greenfield` in summaries until scaffolding lands. |
+| Figma-generated code | No: PNG screens only (Desktop 1440). |
 | Existing docs | `AGENTS.md`, `PLAN.md`, `docs/PRODUCT_REQUIREMENTS.md`, `docs/DEMO_SCENARIO.md` (this task refreshes all four). |
 
 **Consequence:** "Do not replace the current technology stack" is
-vacuous — there is no stack to replace. The proposed stack below is
+vacuous: there is no stack to replace. The proposed stack below is
 chosen to be the smallest thing that satisfies the spec (single SPA,
 no backend, no new services). No dependencies have been installed and
 no application code has been written in this task, per instructions.
 
-### Proposed stack (approval gate — confirm before Phase 1)
+### Proposed stack (approval gate: confirm before Phase 1)
 
 - Vite + React + TypeScript SPA (client-side only, no backend).
 - React Router for role-scoped routes + deep-linkable incident workspace.
@@ -53,9 +53,9 @@ no application code has been written in this task, per instructions.
 
 ---
 
-# Phase 0 — Repository Assessment
+# Phase 0: Repository Assessment
 
-Status: DONE (06 Oct 2026 — this task; findings table above)
+Status: DONE (06 Oct 2026, this task; findings table above)
 
 Tasks:
 - [x] Inspect current application stack.
@@ -68,14 +68,14 @@ Tasks:
 - [x] Document assumptions and technical constraints.
 
 Acceptance Criteria:
-- Current architecture is understood. ✅ (greenfield — nothing to preserve)
+- Current architecture is understood. ✅ (greenfield: nothing to preserve)
 - No unnecessary framework replacement is proposed. ✅ (nothing existed)
 - Build command succeeds before major implementation begins. ⏳ (no build
-  exists yet — first build check moves to end of Phase 1 scaffolding)
+  exists yet: first build check moves to end of Phase 1 scaffolding)
 
 ---
 
-# Phase 1 — Scaffold + Shared Domain Model + Demo State
+# Phase 1: Scaffold + Shared Domain Model + Demo State
 
 Status: DONE (06 Oct 2026)
 
@@ -92,7 +92,7 @@ Implemented (Vite + React + TS + React Router, hand CSS from UI-kit tokens):
 - [x] KPI derivations as domain functions (`firstCommunicationKpi`,
       countdown/elapsed formatting, NZDT formatting).
 - [x] Permission matrix as one domain module (`allowedActions` /
-      `deniedActions` / `can` — no per-role UI branches).
+      `deniedActions` / `can`: no per-role UI branches).
 - [x] Demo seed: INC-1043 (REPORTED, awaiting validation) + INC-1039 +
       INC-1041 background records; `localStorage` persistence + Reset demo.
 - [x] Role switcher in top nav (NavLinks) + deep links drive the demo role.
@@ -116,7 +116,7 @@ Tasks:
       KPI card, badges, table, timeline, banners, dialogs).
 - [ ] Define role type:
       CONTRACTOR | OPERATIONS | CUSTOMER_INFORMATION
-- [ ] Define shared Incident type/model (see PRODUCT_REQUIREMENTS.md §4–5).
+- [ ] Define shared Incident type/model (see PRODUCT_REQUIREMENTS.md §4-5).
 - [ ] Define incident lifecycle + communication lifecycle.
 - [ ] Define audit/timeline event structure.
 - [ ] Implement severity rules as one domain function + override path
@@ -124,7 +124,7 @@ Tasks:
 - [ ] Implement KPI derivations as domain functions (first-communication
       time vs 10-min target; coverage; counts).
 - [ ] Add controlled demo seed for INC-1043 (Route 70, Newmarket,
-      breakdown) + 2–3 background incidents for queue realism.
+      breakdown) + 2-3 background incidents for queue realism.
 - [ ] Implement prototype role switcher (demo mechanism, not auth).
 - [ ] Ensure all roles read the same incident state; role change
       preserves data.
@@ -140,7 +140,7 @@ Acceptance Criteria:
 
 ---
 
-# Phase 2 — Bus Contractor Experience
+# Phase 2: Bus Contractor Experience
 
 Status: DONE (06 Oct 2026)
 
@@ -171,9 +171,9 @@ Verification: `npm run build` passes; `/contractor`, `/contractor/report`,
 
 ---
 
-# Phase 3 — AT Operations Experience
+# Phase 3: AT Operations Experience
 
-Status: DONE, refined (07 Oct 2026) — full role nav (Overview, Incoming,
+Status: DONE, refined (07 Oct 2026), full role nav (Overview, Incoming,
 Incidents, Recovery, Reviews, Analytics), spec dashboards and workspace.
 
 Refinement (per role brief):
@@ -189,7 +189,7 @@ Refinement (per role brief):
   detail ("overridden from HIGH to CRITICAL").
 - Owner roster Sarah Chen / James Wilson / Mia Roberts (demo: Sarah Chen);
   legacy owners preserved in existing records.
-- Workspace header per spec (INC-1043, Route 70 — Vehicle Breakdown,
+- Workspace header per spec (INC-1043, Route 70: Vehicle Breakdown,
   Newmarket; HIGH/ACTIVE; owner; friendly operational status) + shared
   timeline + parallel recovery/comms panels; comms read-only with "View
   Communication Status" expander (no edit/publish for Operations).
@@ -203,15 +203,15 @@ Refinement (per role brief):
   reads "Ready for AT Assessment" (timeline-derived); Accept & Assess jumps
   to #severity-assessment; HIGH SEVERITY display + exact four factors +
   prototype-rule label; override modal (level + mandatory reason, calculated
-  retained in audit); Sarah Chen — Duty Operations Manager with assignment
+  retained in audit); Sarah Chen: Duty Operations Manager with assignment
   timestamp; ERT editor + Update Recovery; comms panel shows
   notice/publication/timer/remaining/target read-only; friendly operational
   status labels. Verified headlessly + screenshots.
 
 Screens (map to `design/Incident assessment and ownership.png`,
 `design/Operational recovery coordination.png`):
-- Operations Dashboard (`/operations` — incoming queue + all records)
-- Incident Workspace (`/operations/incident/:id` — validate, severity,
+- Operations Dashboard (`/operations`: incoming queue + all records)
+- Incident Workspace (`/operations/incident/:id`: validate, severity,
   owner, recovery, read-only comms rail + timeline)
 
 Tasks:
@@ -232,16 +232,16 @@ Acceptance Criteria (headless reducer test + build):
   VALIDATED → ACTIVE → RECOVERY_IN_PROGRESS → RESTORED produces a
   10-event audit trail in order; override path and guards verified.
 - Fixed during verification: recovery-toggle events were built but dropped
-  from state (`timeline: events` missing) — caught by the headless test,
+  from state (`timeline: events` missing): caught by the headless test,
   fixed, re-verified.
 - `npm run build` passes; ops routes serve 200; contractor detail page
   shows confirmed severity/owner read-only (cross-role proof).
 
 ---
 
-# Phase 4 — Customer Information Experience
+# Phase 4: Customer Information Experience
 
-Status: DONE, refined (07 Oct 2026) — full role nav (Overview,
+Status: DONE, refined (07 Oct 2026), full role nav (Overview,
 Communication Queue, Published Updates, Templates, Analytics), spec
 dashboards and composer.
 
@@ -282,14 +282,14 @@ Original implementation (06 Oct 2026):
 
 Screens (map to `design/Passenger communication workspace.png`,
 `design/Published update and active monitoring.png`):
-- Communication Dashboard (`/comms` — queue sorted by risk + target performance)
-- Passenger Message Composer (`/comms/incident/:id` — facts, draft, channels, preview, live countdown, publish dialog)
+- Communication Dashboard (`/comms`: queue sorted by risk + target performance)
+- Passenger Message Composer (`/comms/incident/:id`: facts, draft, channels, preview, live countdown, publish dialog)
 
 Tasks:
 - [x] Customer Information navigation (dashboard / queue / composer routes).
 - [x] Communication queue (validated incidents needing first publication, riskiest first; REPORTED shown as blocked).
 - [x] Live communication timer (1s ticking countdown + elapsed + deadline in composer rail).
-- [x] Operational incident summary (service, location, cause, impact, restoration — "do not promise" when unconfirmed).
+- [x] Operational incident summary (service, location, cause, impact, restoration: "do not promise" when unconfirmed).
 - [x] Message template generated from incident data (title + plain-language body, editable).
 - [x] Message editing, channel selection (3 demo channels, ≥1 required), passenger preview.
 - [x] Confirmation dialog before publish ("Demo publication only" + facts check).
@@ -303,11 +303,11 @@ Acceptance Criteria (headless chain test + build):
 
 ---
 
-# Phase 5 — KPI and Dashboard Behaviour
+# Phase 5: KPI and Dashboard Behaviour
 
-Status: DONE (06 Oct 2026) — `queueKpis()` domain function + KPI cards and
+Status: DONE (06 Oct 2026), `queueKpis()` domain function + KPI cards and
 risk-sorted filterable queue on `/operations` (search, status, severity,
-target, owner + reset). All values derived; achieved % shows "—" when
+target, owner + reset). All values derived; achieved % shows "-" when
 nothing published.
 
 - [x] Active incidents KPI (with critical/high/other breakdown).
@@ -318,9 +318,9 @@ nothing published.
 
 ---
 
-# Phase 6 — Closure and Review
+# Phase 6: Closure and Review
 
-Status: DONE (06 Oct 2026) — `CloseReviewPanel` in the operations workspace
+Status: DONE (06 Oct 2026), `CloseReviewPanel` in the operations workspace
 (map to `design/Incident closure and review.png`): root cause + review
 decision, corrective actions (action/owner/due, OPEN), close via
 confirmation dialog (requires RESTORED + root cause; "does not remove
@@ -334,9 +334,9 @@ page.
 
 ---
 
-# Phase 7 — SAP Integration Layer
+# Phase 7: SAP Integration Layer
 
-Status: CONNECTED — live sandbox verified (07 Oct 2026). All SAP records
+Status: CONNECTED, live sandbox verified (07 Oct 2026). All SAP records
 treated as finished incidents (Oct 2026): auto-intake builds a CLOSED
 archive per record with deterministic dummy data.
 
@@ -351,14 +351,14 @@ Completed code (live-verified 07 Oct 2026, plus unit tests):
 - [x] UI: SAP Integration panel on Operations → Analytics (status, last
       sync, count, Sync action, results table with SAP badge, normalised
       details expander), subtle ops-only nav chip, refactored `SapStatus`.
-- [x] Tests: `npm run test:sap` — 8 passing (valid V2/V4, missing fields,
+- [x] Tests: `npm run test:sap`: 8 passing (valid V2/V4, missing fields,
       empty, HTTP error, unreachable, 503 mapping, store non-mutation).
 - [x] Secrets: `.env.example` + git-ignored `.env*`; no key in `src/`;
       `.env.example` contains blanks only.
 - [x] Docs: `docs/SAP_INTEGRATION.md` (selected API, Option-2 fit,
       adaptation, auth, failure handling, demo steps).
 
-Live-verified (07 Oct 2026 — sandbox key supplied, kept in git-ignored
+Live-verified (07 Oct 2026: sandbox key supplied, kept in git-ignored
 `.env.local`, never committed):
 - `GET …/API_EHS_REPORT_INCIDENT_SRV/A_Incident?$top=5&$format=json`
   returns HTTP 200, OData V2 `d.results` with 5 records (IDs 2, 3, 4,
@@ -369,13 +369,13 @@ Live-verified (07 Oct 2026 — sandbox key supplied, kept in git-ignored
   Full VALUES table lives in `docs/SAP_INTEGRATION.md`.
 - Demo enrichment (07 Oct 2026): `src/services/sap/sapDemoEnrichment.ts`
   attaches labelled demo AT fields (route/location/disruption/delay +
-  `assessSeverity` suggestion) under a nested `demo` key — SAP data
+  `assessSeverity` suggestion) under a nested `demo` key: SAP data
   untouched, display-only in the SAP panel (`Demo` badges), 10/10 tests.
 - "Use as Reference" import deferred (lower priority than working GET).
 
 ---
 
-# Phase 8 — Usability Polish
+# Phase 8: Usability Polish
 
 Status: DONE (06 Oct 2026)
 
@@ -387,13 +387,13 @@ Status: DONE (06 Oct 2026)
 
 ---
 
-# Phase 9 — Demo Hardening
+# Phase 9: Demo Hardening
 
 Status: DONE (06 Oct 2026)
 
 Full Route 70 chain (report → validate → HIGH → Sarah Chen → active →
 draft → publish at +8 min → recovery → restore → review + corrective →
-close) executed headlessly **twice consecutively from reset — both pass**
+close) executed headlessly **twice consecutively from reset: both pass**
 (CLOSED/PUBLISHED, target met, 15-event audit trail, corrective OPEN).
 Publish-when-REPORTED and close-without-root-cause are safely ignored.
 
@@ -418,15 +418,15 @@ Outstanding (needs a browser): visual pass + click-through of the same
 
 ---
 
-# Phase 10 — Final Verification
+# Phase 10: Final Verification
 
 Status: DONE (06 Oct 2026)
 
 - [x] Build passes (`tsc -b && vite build`, 0 errors).
 - [x] Typecheck passes (same command).
-- [x] Lint: none configured (recorded gap — no lint tooling installed by design, no new deps).
+- [x] Lint: none configured (recorded gap, no lint tooling installed by design, no new deps).
 - [x] Critical functional path passes (headless full-chain ×2 + guard checks + route checks).
-- [x] No secrets in repository (scanned `src/`, configs, `package.json` — clean).
+- [x] No secrets in repository (scanned `src/`, configs, `package.json`: clean).
 - [x] README contains run instructions (updated for full scope below).
 - [x] Role labels correct; prototype disclaimers on every screen + dialogs + footer.
 - [x] Implementation follows the Figma screens (capture form, assess/recovery workspace, composer, closure, KPI overview).
@@ -438,14 +438,78 @@ Known simplifications vs the PNGs (documented, not defects):
 
 ---
 
-# Phase 18 — Composition Rebalance (user-directed)
+# Phase 19: Bug-Fix Round (user-directed)
+
+Status: DONE (14 Oct 2026). Three items left open for a decision, see
+the end of this section.
+
+An audit of the running app found defects in the shared workflow.
+Fixed:
+
+- Incident workspace no longer blanks the whole app when the route id
+  changes in place (notification bell, search) or on Reset: every hook
+  now sits above the early returns.
+- Communication target is derived everywhere. A late first publication
+  reads Breached / TARGET EXCEEDED in the tables, the workspace target
+  card, the published-notice preview and the closed record. Follow-up
+  audit events no longer claim a target result.
+- Follow-up drafts live in a new `followUpDraft` field on the shared
+  incident, so typing a follow-up never changes the published notice
+  (`commsDraft`). Older saved state is backfilled on load.
+- Draft auto-save audits one event per drafting round, not one per
+  typing pause.
+- All 10 templates apply from the Templates page (only 3 did).
+- Contractor "update required" and "last operator update" compare
+  instants instead of timestamp text (NZ-offset and UTC strings mix).
+- The Help link no longer switches Operations / Customer Information
+  to the contractor role.
+- Seed and example timestamps sit on the current demo day
+  (`src/domain/demoDay.ts`) instead of a fixed 06 Oct 2026, so the
+  closed-record Duration is measured within the day.
+- Smaller fixes: formatted times in audit details, derived KPI context
+  on the comms overview, pagination on tables that re-render every
+  second, one delay parser shared by validation and storage, assessment
+  locked once service is restored, closed records excluded from
+  awaiting counts, recovery badge on restored records, no audit event
+  when Save changes nothing, SAP `createdAt` fallback, seed INC-1039
+  score.
+- Build: `tsconfig.node.json` had no `target` / `lib` and Node types
+  were missing, so `tsc -b` failed on a clean install. Added
+  `@types/node` as a devDependency (types only, needed to type-check
+  `vite.config.ts` and `server/sapProxy.ts`; nothing in the stack
+  provides them) and set `target`, `lib` and `types`.
+- Writing rule: em and en dashes replaced across `src/` TypeScript and
+  this file (comments, UI copy, seed labels). Seed locations and
+  disruption types now use a comma, and the location short form splits
+  on a comma (records saved with the old separator still work).
+
+Verification: `npm run typecheck` and `npm run build` pass;
+`npm run test:sap` 8/8; headless-Chrome run of 43 checks including the
+full INC-1043 chain (accept, HIGH, owner, publish, target met, recover,
+close), each fixed defect, and a 28-route console sweep, all passing.
+
+Open (needs a decision, not changed in this round):
+
+- The seed already contains INC-1043 as REPORTED, while
+  `docs/DEMO_SCENARIO.md` starts with the incident not yet reported. A
+  contractor following the script creates INC-1044.
+- With SAP unconfigured, opening Incoming archives the five demo seed
+  candidates as CLOSED incidents whose workspace reads "Source: SAP EHS
+  Incident API, Synced". AGENTS.md says fallback data must not be
+  presented as SAP data.
+- The synthetic-data disclosure (demo workspace bar and footer
+  disclaimer) required by AGENTS.md is not rendered.
+
+---
+
+# Phase 18: Composition Rebalance (user-directed)
 
 Status: DONE (07 Oct 2026)
 
 User screenshot showed sidebar/content imbalance vs Figma. Root
 fix: pages now open on a white dynamic-page header band (full content
 width, like Figma 1232×132 headers) instead of floating on grey;
-content column centered capped at 1232px (Fiori launchpad style —
+content column centered capped at 1232px (Fiori launchpad style:
 identical to Figma at 1440px, balanced margins on ultra-wide).
 Follow-up (same phase): sidebar widened 208→248px with roomier items;
 header stripped to logo + role-switch + avatar only (prototype tag and
@@ -453,7 +517,7 @@ bell removed); KPI cards locked to equal height (flex column +
 min-height 148px, verified aligned in re-shoots); pagehead band made
 full-bleed across the content column (attached to sidebar, Fiori
 DynamicPage pattern); cards below center under it (container uncapped,
-direct content blocks capped at 1232px and auto-margined) — sidebar-attached
+direct content blocks capped at 1232px and auto-margined): sidebar-attached
 header plus balanced body.
 Supporting polish: KPI value 40px + roomier cards, card padding
 20/22px, filter actions pinned right, shortened filter helper text,
@@ -465,7 +529,7 @@ passes; `npm run test:sap` 8/8.
 
 ---
 
-# Phase 17 — Screenshot Audit vs Figma (user-directed)
+# Phase 17: Screenshot Audit vs Figma (user-directed)
 
 ---
 
@@ -481,7 +545,7 @@ Bugs caught by the audit (all fixed + verified):
 - Severity +1 recovery factor pushed INC-1043 to CRITICAL and crashed
   the app at runtime (seed invariant). Threshold CRITICAL → ≥9:
   1043 scores 8/10 HIGH per Figma.
-- Wizard Next button morphed into the submit button in place — a
+- Wizard Next button morphed into the submit button in place: a
   single click advanced AND submitted, skipping Review. Submit is now
   a plain button with a direct handler (no form-submit morph).
 - Sidebar multi-select: NavLink prefix matching lit Overview + page.
@@ -511,7 +575,7 @@ Verification: `npm run build` passes; `npm run test:sap` 8/8.
 
 ---
 
-# Phase 16 — Full Figma Rebuild (user-directed)
+# Phase 16: Full Figma Rebuild (user-directed)
 
 Status: DONE (07 Oct 2026)
 
@@ -525,7 +589,7 @@ Design-system corrections from 00: Inter font, hover #0054B5, focus
 with › separators, plain timeline rows, 12px field labels, disabled
 button greys, dialog r8, transparent ObjectStatus, link-style table
 actions/IDs, labeled FilterBars with Go/Clear, IllustratedMessage
-empty states, toast token (unused — no toasts in app).
+empty states, toast token (unused: no toasts in app).
 
 Contractor (02): 3-step report wizard (draft in localStorage, demo
 values kept), Notification Sent screen, detail with restoration field
@@ -549,7 +613,7 @@ list filter + detail card; templates as 3 static patterns wired into
 the composer.
 
 Closure (05): dedicated close route (frames A/B conditional, direct
-close — no dialog per Figma), review lifecycle OPEN→IN_PROGRESS→
+close: no dialog per Figma), review lifecycle OPEN→IN_PROGRESS→
 COMPLETED with Start Review + Mark done, Reviews worklist rebuild.
 New fields: closureNotes, reviewStatus; new actions SET_ACTUAL_
 RESTORATION/START_REVIEW/MARK_CORRECTIVE_DONE; CLOSE now also
@@ -561,7 +625,7 @@ old flows (PLAN is authoritative); browser click-through recommended.
 
 ---
 
-# Phase 15 — Figma SAP Intake + Total Chrome Overhaul (user-directed)
+# Phase 15: Figma SAP Intake + Total Chrome Overhaul (user-directed)
 
 Status: DONE (07 Oct 2026)
 
@@ -572,7 +636,7 @@ a full intake flow. Tokens/values below are literal Figma reads.
 
 Chrome (all roles): white ShellBar (AT mark #0064d9, "AT Disruption
 Hub   Auckland Transport", Prototype tag, Demo Role, Reset, avatar),
-208px sidebar navigation per role (replaces all tab-strip navs —
+208px sidebar navigation per role (replaces all tab-strip navs:
 OpsNav/CommsNav/ContractorNav/IncomingCard deleted), white footer
 bar ("One incident · One shared record · Three role-based experiences"
 + demo disclaimer). Page bg #f5f6f7, cards radius 6, buttons/inputs
@@ -580,7 +644,7 @@ radius 4, table head #eef1f4, transparent icon+text ObjectStatus,
 table actions as text links, plain note text, white default buttons
 with brand border/text.
 
-SAP intake (Operations): `SapCandidate` seed (123456–123460) +
+SAP intake (Operations): `SapCandidate` seed (123456-123460) +
 `sapLink` on Incident; store persists both (localStorage v5);
 `CREATE_LINKED_INCIDENT` builds ONE VALIDATED linked incident
 (KPI clock running → severity next, no duplicate); Incoming page
@@ -594,7 +658,7 @@ Verification: `npm run build` passes; `npm run test:sap` passes
 
 ---
 
-# Phase 14 — Total Fiori Redesign (user-directed)
+# Phase 14: Total Fiori Redesign (user-directed)
 
 Status: DONE (07 Oct 2026)
 
@@ -604,7 +668,7 @@ redesign. Workflow, permissions and domain logic unchanged.
 
 Shared redesign (every page affected):
 - New `EmptyState` (Fiori IllustratedMessage: illustration + title +
-  description + optional action) — all 14 one-line muted empties
+  description + optional action): all 14 one-line muted empties
   replaced across contractor/operations/comms.
 - `.timeline` → Fiori rail with dots (latest entry highlighted).
 - `.steps` → Fiori Wizard (numbered circles, connectors, brand
@@ -623,7 +687,7 @@ Backfilled here (implemented just before this phase):
   second title, avatar last, role-tag removed).
 
 Known simplifications (documented, not defects): text breadcrumbs
-(Fiori Breadcrumb is navigable — ours is a static trail), tables
+(Fiori Breadcrumb is navigable: ours is a static trail), tables
 scroll horizontally on phones instead of pop-ins (demo targets
 desktop 1440 per the design PNGs).
 
@@ -632,7 +696,7 @@ Verification: `npm run build` passes; `npm run test:sap` passes
 
 ---
 
-# Phase 13 — Fiori Redesign via SAP MCP (user-directed)
+# Phase 13: Fiori Redesign via SAP MCP (user-directed)
 
 Status: DONE (07 Oct 2026)
 
@@ -640,7 +704,7 @@ After `opencode.json` connected `@sap-ux/fiori-mcp-server` + `@ui5/mcp-server`,
 pulled the official pattern docs via MCP `search_docs` (criticality →
 ObjectStatus icons, Object Page HeaderInfo Title/Description/TypeName,
 header action order, MessageStrip criticality colours) and applied a
-second Fiori wave through shared patterns only — every page changes,
+second Fiori wave through shared patterns only: every page changes,
 no workflow/permission/domain change:
 
 - `badges.tsx`: per-level Fiori status icons (■ Critical/Negative,
@@ -662,7 +726,7 @@ Browser visual pass still recommended before presenting.
 
 ---
 
-# Phase 12 — Clean & Rapi Pass (user-directed)
+# Phase 12: Clean & Rapi Pass (user-directed)
 
 Status: DONE (07 Oct 2026)
 
@@ -704,19 +768,19 @@ Browser click-through still recommended before presenting.
 
 ---
 
-# Phase 11 — SAP Fiori Restyle (user-directed)
+# Phase 11: SAP Fiori Restyle (user-directed)
 
 Status: DONE (07 Oct 2026)
 
 User explicitly requested a full Fiori redesign, overriding the Figma
 UI-kit source of truth for visuals. Implemented as a Fiori Horizon
-(Quartz Light) theme in hand-written CSS — no new dependencies, no
+(Quartz Light) theme in hand-written CSS: no new dependencies, no
 component framework, domain logic untouched:
 
 - `src/styles/tokens.css`: Fiori tokens (brand #0a6ed1 / hover #0854a0,
   shell #354a5f, background #f5f6f7, "72" font stack, card radius
   .75rem, control radius .5rem, ObjectStatus severity tones).
-- `src/styles/app.css`: Fiori patterns — dark ShellBar (2.75rem +
+- `src/styles/app.css`: Fiori patterns, dark ShellBar (2.75rem +
   shadow), Emphasized/default Button metrics, bordered MessageStrip
   notes/alerts/success, grid-table headers + hover, brand focus ring,
   dotted `:focus-visible`, rectangular ObjectStatus badges (still
@@ -731,14 +795,14 @@ Browser visual pass recommended before presenting.
 
 ---
 
-## Assumptions & Open Questions (log — update as decisions land)
+## Assumptions & Open Questions (log: update as decisions land)
 
 | # | Item | Status |
 |---|------|--------|
-| A1 | Greenfield: no stack to preserve; Vite+React+TS proposed as smallest fit. | Approved — implemented in Phase 1 |
-| A2 | Canonical demo incident is INC-1043 / Route 70 / Newmarket (spec), not the illustrative `BUS-2026-0142` / Dominion Road IDs in the PNGs. | Assumed — confirm |
-| A3 | 10-min KPI measured confirmedAt → firstPublishedAt (NZDT). | Assumed — confirm |
+| A1 | Greenfield: no stack to preserve; Vite+React+TS proposed as smallest fit. | Approved: implemented in Phase 1 |
+| A2 | Canonical demo incident is INC-1043 / Route 70 / Newmarket (spec), not the illustrative `BUS-2026-0142` / Dominion Road IDs in the PNGs. | Assumed: confirm |
+| A3 | 10-min KPI measured confirmedAt → firstPublishedAt (NZDT). | Assumed: confirm |
 | A4 | Roles are a demo switcher, not authentication. | Confirmed by spec |
-| A5 | No confirmed SAP service; demo fallback is the default path. | Open — needs course API pool info |
-| A6 | Severity rules are demo assumptions, not AT policy; must be labelled as such in UI. | Assumed — confirm |
-| A7 | `localStorage` persistence acceptable as demo convenience with reset. | Assumed — confirm |
+| A5 | No confirmed SAP service; demo fallback is the default path. | Open: needs course API pool info |
+| A6 | Severity rules are demo assumptions, not AT policy; must be labelled as such in UI. | Assumed: confirm |
+| A7 | `localStorage` persistence acceptable as demo convenience with reset. | Assumed: confirm |

@@ -4,7 +4,7 @@ import { Icon, type IconName } from './icons.js';
 
 /**
  * Fiori Button (sap.m.Button best practice, hand-built on Horizon tokens).
- * - Exactly ONE `emphasized` action per view/footer/dialog — the single
+ * - Exactly ONE `emphasized` action per view/footer/dialog: the single
  *   primary action. Everything else is `default`, `transparent` or
  *   semantic (`negative` for destructive, `positive` for accept).
  * - Every button carries an SAP-icon-style glyph (`icon`) plus text.
@@ -26,7 +26,7 @@ interface FioriButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>,
   design?: FioriButtonDesign;
   /** SAP-icon-style glyph shown before the label (required by Fiori guidance). */
   icon?: IconName;
-  /** Router destination — renders a Link instead of a button. */
+  /** Router destination: renders a Link instead of a button. */
   to?: string;
   small?: boolean;
   ariaLabel?: string;

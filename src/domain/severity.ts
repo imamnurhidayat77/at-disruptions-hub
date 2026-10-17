@@ -1,7 +1,7 @@
 import type { PassengerImpact, Severity } from './types.js';
 
 /**
- * Prototype severity assessment — ONE reusable domain function.
+ * Prototype severity assessment: ONE reusable domain function.
  *
  * DEMONSTRATION ASSUMPTIONS, not official Auckland Transport policy.
  * The UI must label outputs accordingly. Do not duplicate this logic
@@ -45,7 +45,7 @@ export function assessSeverity(input: SeverityInput): SeverityAssessment {
     factors.push(`Estimated delay ${input.estimatedDelayMinutes} min (≥ 20 min)`);
   } else if (input.estimatedDelayMinutes >= 10) {
     score += 1;
-    factors.push(`Estimated delay ${input.estimatedDelayMinutes} min (10–19 min)`);
+    factors.push(`Estimated delay ${input.estimatedDelayMinutes} min (10-19 min)`);
   }
 
   if (input.passengerImpact === 'HIGH') {
@@ -74,7 +74,7 @@ export function assessSeverity(input: SeverityInput): SeverityAssessment {
 
   let level: Severity;
   // The canonical Route 70 demo (maximal inputs) scores 8 and MUST stay
-  // HIGH — the demo scenario, docs and tests depend on it. CRITICAL is
+  // HIGH: the demo scenario, docs and tests depend on it. CRITICAL is
   // therefore reachable only through Duty Manager override, never by
   // score; this matches the proposal (exceptional cases escalated).
   if (score >= 9) level = 'CRITICAL';

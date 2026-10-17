@@ -2,7 +2,7 @@ import type { Incident } from './types.js';
 
 /**
  * First-communication KPI derivations. All values are computed from
- * incident timestamps — never hard-coded in UI text.
+ * incident timestamps, never hard-coded in UI text.
  *
  * KPI clock: confirmedAt (start) → firstPublishedAt (stop).
  * Target: 10 minutes or less.
@@ -82,7 +82,7 @@ export function formatMmSs(ms: number): string {
 
 /** Format an ISO timestamp for NZDT display, e.g. "09:08 NZDT". */
 /** Parse guard: an Invalid Date throws inside Intl formatting and would
- * blank the whole view — return null so callers can render a placeholder. */
+ * blank the whole view: return null so callers can render a placeholder. */
 function safeDate(iso: string): Date | null {
   const d = new Date(iso);
   return Number.isFinite(d.getTime()) ? d : null;
@@ -90,7 +90,7 @@ function safeDate(iso: string): Date | null {
 
 export function formatNzdtTime(iso: string): string {
   const at = safeDate(iso);
-  if (!at) return '—';
+  if (!at) return '-';
   const parts = new Intl.DateTimeFormat('en-NZ', {
     timeZone: 'Pacific/Auckland',
     hour: '2-digit',
@@ -103,7 +103,7 @@ export function formatNzdtTime(iso: string): string {
 /** Short NZDT time, e.g. "09:08" (the footer carries the NZDT disclaimer). */
 export function formatNzdtShort(iso: string): string {
   const at = safeDate(iso);
-  if (!at) return '—';
+  if (!at) return '-';
   return new Intl.DateTimeFormat('en-NZ', {
     timeZone: 'Pacific/Auckland',
     hour: '2-digit',
@@ -115,7 +115,7 @@ export function formatNzdtShort(iso: string): string {
 /** Short NZDT date, e.g. "07 Oct 2026". */
 export function formatNzdtDate(iso: string): string {
   const at = safeDate(iso);
-  if (!at) return '—';
+  if (!at) return '-';
   return new Intl.DateTimeFormat('en-NZ', {
     timeZone: 'Pacific/Auckland',
     day: '2-digit',
@@ -143,7 +143,7 @@ export interface QueueKpis {
   averageFirstCommMs: number | null;
 }
 
-/** Dashboard KPIs derived from the shared records — never hard-coded. */
+/** Dashboard KPIs derived from the shared records, never hard-coded. */
 export function queueKpis(incidents: Incident[], nowIso?: string): QueueKpis {
   const active = incidents.filter(
     (i) => i.operationalStatus !== 'CLOSED' && i.operationalStatus !== 'RESTORED',
@@ -157,6 +157,8 @@ export function queueKpis(incidents: Incident[], nowIso?: string): QueueKpis {
 
   for (const i of incidents) {
     const kpi = firstCommunicationKpi(i, nowIso);
+    // A record closed without a passenger notice is no longer waiting on one.
+    if (kpi.state === 'COUNTING' && i.operationalStatus === 'CLOSED') continue;
     if (kpi.state === 'MET') {
       achievedCount += 1;
       publishedCount += 1;

@@ -1,7 +1,7 @@
 import type { Role } from './types.js';
 
 /**
- * Role permission matrix — the ONLY place role capabilities are defined.
+ * Role permission matrix: the ONLY place role capabilities are defined.
  * Mirrors docs/PRODUCT_REQUIREMENTS.md §4. UI renders from this; never
  * hard-code per-role `if` branches in components for new actions.
  */

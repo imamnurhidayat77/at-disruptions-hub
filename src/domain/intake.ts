@@ -1,9 +1,10 @@
+import { formatNzdtTime } from './kpi.js';
 import { defaultRecoveryTasks, OWNER_ROSTER } from './operations.js';
 import { assessSeverity } from './severity.js';
 import type { Incident, PassengerImpact, SapCandidate, SapLink, TimelineEvent } from './types.js';
 
 /**
- * SAP intake domain — enriching a SAP EHS source candidate into a linked
+ * SAP intake domain: enriching a SAP EHS source candidate into a linked
  * AT shared incident (Figma "05 SAP Integration"). SAP fields stay
  * read-only; AT operational fields are added by the enrichment form.
  * Enrichment never creates a second incident for the same candidate.
@@ -54,7 +55,7 @@ export {
 } from './sapAutoScenarios.js';
 
 /**
- * Fully automatic enrichment — no form, no clicks. Real SAP text wins
+ * Fully automatic enrichment: no form, no clicks. Real SAP text wins
  * where it exists (route/delay mentions, location); everything else comes
  * from the deterministic dummy scenario for the SAP ID, so rows never
  * render blank. Operator is always the SAP import identity so contractor
@@ -77,7 +78,7 @@ export function autoEnrichInput(sap: SapCandidate, at: string): EnrichInput {
     estimatedDelayMinutes: delay,
     passengerImpact,
     majorInterchangeAffected: /interchange/i.test(`${hay} ${scenario.location}`),
-    notes: `${sap.description} Auto-created from SAP ${sap.sapId} on ${at.slice(0, 10)} — dummy operational fields, awaiting AT severity assessment and owner assignment.`,
+    notes: `${sap.description} Auto-created from SAP ${sap.sapId} on ${at.slice(0, 10)}: dummy operational fields, awaiting AT severity assessment and owner assignment.`,
   };
 }
 
@@ -95,7 +96,7 @@ export function sapLinkOf(sap: SapCandidate, syncedAt: string): SapLink {  retur
 /**
  * Builds the linked AT incident. Enrichment by AT Operations counts as
  * acceptance: the record starts VALIDATED (KPI clock running) so the
- * next step is severity assessment — no duplicate incident is created.
+ * next step is severity assessment: no duplicate incident is created.
  */
 export function buildLinkedIncident(
   sap: SapCandidate,
@@ -132,6 +133,7 @@ export function buildLinkedIncident(
     recoveryStatus: 'NOT_STARTED',
     recoveryTasks: defaultRecoveryTasks(),
     commsDraft: null,
+    followUpDraft: null,
     infoRequested: false,
     commsRequestedAt: null,
     estimatedRestorationAt: null,
@@ -158,8 +160,8 @@ export function buildLinkedIncident(
         actorRole: 'OPERATIONS',
         action: 'Notification validated and accepted',
         detail: auto
-          ? 'SAP intake auto-linked and accepted — communication KPI clock started.'
-          : 'AT Operations enriched and accepted the SAP intake — communication KPI clock started.',
+          ? 'SAP intake auto-linked and accepted: communication KPI clock started.'
+          : 'AT Operations enriched and accepted the SAP intake: communication KPI clock started.',
       },
     ],
   };
@@ -208,7 +210,7 @@ function shiftNzdt(iso: string, minutes: number): string {
 }
 
 /**
- * Back-history rule: records received more than 24h ago are historical —
+ * Back-history rule: records received more than 24h ago are historical,
  * they complete as CLOSED archives. Fresh arrivals stay actionable so a
  * genuinely new SAP incident can still enter the assessment workflow.
  */
@@ -292,11 +294,11 @@ export function buildArchivedIncident(sap: SapCandidate, id: string): Incident {
   // when the source SAP timestamps are years old.
   const dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const rationale = assessment.factors.join('; ');
-  const place = scenario.location.split('—')[0].trim();
+  const place = scenario.location.split(',')[0].trim();
   const busNo = 2100 + (hash % 800);
 
   const draft = {
-    title: `Route ${scenario.route} ${/blocked|no service/i.test(disruptionType) ? 'suspended' : 'delays'} — ${place}`,
+    title: `Route ${scenario.route} ${/blocked|no service/i.test(disruptionType) ? 'suspended' : 'delays'}: ${place}`,
     message:
       `Route ${scenario.route} services were disrupted near ${place} due to ${disruptionType.charAt(0).toLowerCase() + disruptionType.slice(1)}. ` +
       `Normal service has since been restored. Thank you for your patience.`,
@@ -320,7 +322,7 @@ export function buildArchivedIncident(sap: SapCandidate, id: string): Incident {
     vehicleOrServiceId: `Bus ${busNo} · Route ${scenario.route}`,
     location: scenario.location,
     disruptionType,
-    description: `${draft.title}. ${sap.description} Archived SAP intake record — all operational fields are coherent demo data.`,
+    description: `${draft.title}. ${sap.description} Archived SAP intake record: all operational fields are coherent demo data.`,
     detectedAt: receivedAt,
     confirmedAt,
     estimatedDelayMinutes: delay,
@@ -337,6 +339,7 @@ export function buildArchivedIncident(sap: SapCandidate, id: string): Incident {
     recoveryStatus: 'RESTORED',
     recoveryTasks: tasksDone,
     commsDraft: draft,
+    followUpDraft: null,
     infoRequested: false,
     commsRequestedAt: null,
     estimatedRestorationAt: shiftNzdt(restoreAt, -8),
@@ -352,17 +355,17 @@ export function buildArchivedIncident(sap: SapCandidate, id: string): Incident {
     closureNotes: 'Service restored and verified; review completed with corrective action closed.',
     sapLink: sapLinkOf(sap, publishedAt),
     timeline: [
-      ev(closedAt, 'OPERATIONS', 'Incident closed', `Service restored ${restoreAt}; review required; 0 follow-up actions remain open.`, 11),
+      ev(closedAt, 'OPERATIONS', 'Incident closed', `Service restored ${formatNzdtTime(restoreAt)}; review required; 0 follow-up actions remain open.`, 11),
       ev(correctiveDoneAt, 'OPERATIONS', 'Corrective action completed', correctiveAction, 10),
       ev(reviewStartAt, 'OPERATIONS', 'Post-incident review started', 'Review tracks learning and follow-through separately from service recovery.', 9),
-      ev(correctiveAt, 'OPERATIONS', 'Corrective action recorded', `${correctiveAction} — ${owner}, due ${dueDate}.`, 8),
-      ev(reviewAt, 'OPERATIONS', 'Review details recorded', `Root cause: ${rootCause} — review required.`, 7),
-      ev(restoreAt, 'OPERATIONS', 'Service restored', `All recovery tasks complete — normal service restored at ${restoreAt}, verified with operator.`, 6),
-      ev(publishedAt, 'CUSTOMER_INFORMATION', 'Initial passenger update published', `${publishLagMin} min from confirmation — target met.`, 5),
-      ev(ownerAt, 'OPERATIONS', 'Active management started', 'Severity and owner confirmed — recovery and comms tracks open in parallel.', 4),
+      ev(correctiveAt, 'OPERATIONS', 'Corrective action recorded', `${correctiveAction}: ${owner}, due ${dueDate}.`, 8),
+      ev(reviewAt, 'OPERATIONS', 'Review details recorded', `Root cause: ${rootCause}, review required.`, 7),
+      ev(restoreAt, 'OPERATIONS', 'Service restored', `All recovery tasks complete: normal service restored at ${formatNzdtTime(restoreAt)}, verified with operator.`, 6),
+      ev(publishedAt, 'CUSTOMER_INFORMATION', 'Initial passenger update published', `${publishLagMin} min from confirmation, target met.`, 5),
+      ev(ownerAt, 'OPERATIONS', 'Active management started', 'Severity and owner confirmed: recovery and comms tracks open in parallel.', 4),
       ev(ownerAt, 'OPERATIONS', 'Incident owner assigned', `${owner} accepted accountability through restoration and closure.`, 3),
       ev(severityAt, 'OPERATIONS', `Severity confirmed: ${assessment.level}`, `Calculated ${assessment.level} (score ${assessment.score}). ${rationale}`, 2),
-      ev(confirmedAt, 'OPERATIONS', 'Notification validated and accepted', 'Operations accepted the notification — response timer started.', 1),
+      ev(confirmedAt, 'OPERATIONS', 'Notification validated and accepted', 'Operations accepted the notification: response timer started.', 1),
       ev(receivedAt, 'OPERATIONS', 'SAP record attached', `SAP ${sap.sapId} (${sap.title}) attached as supporting information.`, 0),
     ],
   };

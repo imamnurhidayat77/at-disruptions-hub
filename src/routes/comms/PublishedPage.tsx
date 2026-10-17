@@ -8,7 +8,7 @@ import { firstCommunicationKpi, formatMmSs, formatNzdtShort } from '../../domain
 import { useAppStore } from '../../state/AppStore.js';
 
 /**
- * Published Updates — Figma "04 Customer Information". Filterable record
+ * Published Updates: Figma "04 Customer Information". Filterable record
  * of first publications. Every row navigates to its published-notice
  * detail page.
  */
@@ -45,7 +45,7 @@ export function PublishedPage(): React.JSX.Element {
       label: 'Message Title',
       sortable: true,
       sortValue: (i) => i.commsDraft?.title ?? '',
-      render: (i) => i.commsDraft?.title ?? '—',
+      render: (i) => i.commsDraft?.title ?? '-',
     },
     {
       key: 'severity',
@@ -60,15 +60,15 @@ export function PublishedPage(): React.JSX.Element {
       key: 'channels',
       label: 'Channels',
       filter: 'select',
-      filterValue: (i) => i.selectedChannels.join(' · ') || '—',
-      render: (i) => i.selectedChannels.join(' · ') || '—',
+      filterValue: (i) => i.selectedChannels.join(' · ') || '-',
+      render: (i) => i.selectedChannels.join(' · ') || '-',
     },
     {
       key: 'publishedAt',
       label: 'Published',
       sortable: true,
-      sortValue: (i) => i.firstPublishedAt ?? '',
-      render: (i) => (i.firstPublishedAt ? formatNzdtShort(i.firstPublishedAt) : '—'),
+      sortValue: (i) => (i.firstPublishedAt ? Date.parse(i.firstPublishedAt) : null),
+      render: (i) => (i.firstPublishedAt ? formatNzdtShort(i.firstPublishedAt) : '-'),
     },
     {
       key: 'firstComm',
@@ -77,7 +77,7 @@ export function PublishedPage(): React.JSX.Element {
       sortValue: (i) => firstCommunicationKpi(i).elapsedMs,
       render: (i) => {
         const kpi = firstCommunicationKpi(i);
-        return kpi.elapsedMs === null ? '—' : formatMmSs(kpi.elapsedMs);
+        return kpi.elapsedMs === null ? '-' : formatMmSs(kpi.elapsedMs);
       },
     },
     {

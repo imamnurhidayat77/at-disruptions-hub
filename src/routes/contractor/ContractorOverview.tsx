@@ -12,7 +12,7 @@ import { useAppStore } from '../../state/AppStore.js';
 import { ContractorIncidentTable } from './ContractorTable.js';
 
 /**
- * Bus Operator Portal — Contractor Overview (Figma "02 Bus Contractor").
+ * Bus Operator Portal: Contractor Overview (Figma "02 Bus Contractor").
  * KPI cards, filter bar, reported-incidents table and operator actions
  * in operator wording, derived from the shared record. No severity
  * reasoning, no SLA timers, no AT analytics.

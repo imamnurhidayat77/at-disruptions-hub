@@ -2,7 +2,8 @@ import { createContext, useContext, useEffect, useMemo, useReducer } from 'react
 import type { ReactNode } from 'react';
 import { toCommsDraft, type DraftInput } from '../domain/comms.js';
 import { buildArchivedIncident, buildLinkedIncident, type EnrichInput } from '../domain/intake.js';
-import { FIRST_COMM_TARGET_MS } from '../domain/kpi.js';
+import { FIRST_COMM_TARGET_MS, formatNzdtTime } from '../domain/kpi.js';
+import { canAssess } from '../domain/operations.js';
 import { buildReportedIncident, nextIncidentId, type ReportInput } from '../domain/reporting.js';
 import { assessSeverity } from '../domain/severity.js';
 import type {
@@ -23,7 +24,7 @@ import {
 } from '../services/incidentRepository.js';
 
 /**
- * Shared application store — ONE incident record set for all roles.
+ * Shared application store: ONE incident record set for all roles.
  * Role switching changes `role` only; `incidents` are untouched, so every
  * role always sees the same record. Persisted to localStorage as a demo
  * convenience; Reset restores the canonical seed.
@@ -32,7 +33,7 @@ import {
 export interface AppState {
   role: Role;
   incidents: Incident[];
-  /** SAP intake candidates (demo seed) — never AT incidents until enriched. */
+  /** SAP intake candidates (demo seed), never AT incidents until enriched. */
   sapCandidates: SapCandidate[];
 }
 
@@ -230,7 +231,7 @@ export function reducer(state: AppState, action: AppAction): AppState {
             detail:
               action.detail +
               (action.estimatedRestorationAt
-                ? ` Estimated restoration ${action.estimatedRestorationAt}.`
+                ? ` Estimated restoration ${formatNzdtTime(action.estimatedRestorationAt)}.`
                 : ''),
           },
         ],
@@ -248,7 +249,7 @@ export function reducer(state: AppState, action: AppAction): AppState {
             ...i.timeline,
             {
               ...event(i, 1, action.at, 'Notification validated and accepted', ''),
-              detail: 'Operations accepted the notification — response timer started.',
+              detail: 'Operations accepted the notification: response timer started.',
             },
           ],
         };
@@ -266,7 +267,7 @@ export function reducer(state: AppState, action: AppAction): AppState {
             {
               ...event(i, 1, action.at, 'More information requested', ''),
               detail:
-                'AT Operations asked the operator for more information — contractor status set to More Information Requested.',
+                'AT Operations asked the operator for more information: contractor status set to More Information Requested.',
             },
           ],
         };
@@ -284,36 +285,41 @@ export function reducer(state: AppState, action: AppAction): AppState {
             {
               ...event(i, 1, action.at, 'Passenger communication requested', ''),
               detail:
-                'AT Operations asked Customer Information for a passenger update — visible in the communication queue.',
+                'AT Operations asked Customer Information for a passenger update, visible in the communication queue.',
             },
           ],
         };
       });
     case 'CONFIRM_SEVERITY':
-      return updateIncident(state, action.id, (i) => ({
-        ...i,
-        severity: action.level,
-        severityScore: action.score,
-        severityReason: action.rationale,
-        severityOverrideReason: action.overrideReason,
-        infoRequested: false,
-        timeline: [
-          ...i.timeline,
-          {
-            ...event(i, 1, action.at, 'Severity assessed', ''),
-            action:
-              action.overrideReason !== null
-                ? `Severity overridden from ${action.calculated} to ${action.level}`
-                : `Severity confirmed: ${action.level}`,
-            detail:
-              action.overrideReason !== null
-                ? `Reason: ${action.rationale}`
-                : `Calculated ${action.calculated} (score ${action.score}). ${action.rationale}`,
-          },
-        ],
-      }));
+      return updateIncident(state, action.id, (i) => {
+        // Assessment is final once service is restored or the record closed.
+        if (!canAssess(i)) return i;
+        return {
+          ...i,
+          severity: action.level,
+          severityScore: action.score,
+          severityReason: action.rationale,
+          severityOverrideReason: action.overrideReason,
+          infoRequested: false,
+          timeline: [
+            ...i.timeline,
+            {
+              ...event(i, 1, action.at, 'Severity assessed', ''),
+              action:
+                action.overrideReason !== null
+                  ? `Severity overridden from ${action.calculated} to ${action.level}`
+                  : `Severity confirmed: ${action.level}`,
+              detail:
+                action.overrideReason !== null
+                  ? `Reason: ${action.rationale}`
+                  : `Calculated ${action.calculated} (score ${action.score}). ${action.rationale}`,
+            },
+          ],
+        };
+      });
     case 'ASSIGN_OWNER':
       return updateIncident(state, action.id, (i) => {
+        if (!canAssess(i)) return i;
         const becomesActive = i.operationalStatus === 'VALIDATED';
         return {
           ...i,
@@ -330,7 +336,7 @@ export function reducer(state: AppState, action: AppAction): AppState {
                   {
                     ...event(i, 2, action.at, 'Active management started', ''),
                     detail:
-                      'Severity and owner confirmed — recovery and comms tracks open in parallel.',
+                      'Severity and owner confirmed: recovery and comms tracks open in parallel.',
                   },
                 ]
               : []),
@@ -352,7 +358,7 @@ export function reducer(state: AppState, action: AppAction): AppState {
             ...i.timeline,
             {
               ...event(i, 1, action.at, 'Service restored', ''),
-              detail: `All recovery tasks complete — normal service restored at ${action.actualRestorationAt}, verified with operator.`,
+              detail: `All recovery tasks complete: normal service restored at ${formatNzdtTime(action.actualRestorationAt)}, verified with operator.`,
             },
           ],
         };
@@ -373,7 +379,7 @@ export function reducer(state: AppState, action: AppAction): AppState {
           ...i.timeline,
           {
             ...event(i, 1, action.at, 'Recovery task added', ''),
-            detail: `${action.label} — ${action.responsible}.`,
+            detail: `${action.label}: ${action.responsible}.`,
           },
         ],
       }));
@@ -400,8 +406,8 @@ export function reducer(state: AppState, action: AppAction): AppState {
               ...event(i, 1, action.at, 'Restoration estimate updated', ''),
               detail:
                 action.estimatedRestorationAt === null
-                  ? 'Estimated restoration time cleared — not yet confirmed.'
-                  : `Estimated restoration: ${action.estimatedRestorationAt}. Checkpoints are check-ins, not promises.`,
+                  ? 'Estimated restoration time cleared, not yet confirmed.'
+                  : `Estimated restoration: ${formatNzdtTime(action.estimatedRestorationAt)}. Checkpoints are check-ins, not promises.`,
             },
           ],
         };
@@ -409,32 +415,43 @@ export function reducer(state: AppState, action: AppAction): AppState {
     case 'SAVE_DRAFT':
       return updateIncident(state, action.id, (i) => {
         if (i.operationalStatus === 'REPORTED' || i.operationalStatus === 'CLOSED') return i;
+        // Drafts auto-save while typing, so only the first save of a
+        // drafting round is audited; later saves refresh the content.
+        const channels = action.draft.channels.join(' + ') || 'no channels';
         if (i.communicationStatus === 'PUBLISHED') {
-          // Follow-up draft: refresh content without touching the
-          // first-publication record or restarting the response timer.
+          // Follow-up draft: stored apart from commsDraft so the published
+          // notice, the first-publication record and the response timer
+          // stay untouched until the follow-up itself is published.
           return {
             ...i,
-            commsDraft: action.draft,
-            timeline: [...i.timeline, commsEvent(i, action.at, 'Follow-up draft saved', `Draft for ${action.draft.channels.join(' + ') || 'no channels'}. First-publication time unchanged.`)],
+            followUpDraft: action.draft,
+            timeline:
+              i.followUpDraft === null
+                ? [...i.timeline, commsEvent(i, action.at, 'Follow-up draft saved', `Draft for ${channels}. First-publication time unchanged.`)]
+                : i.timeline,
           };
         }
         return {
           ...i,
           commsDraft: action.draft,
           communicationStatus: 'DRAFT',
-          timeline: [...i.timeline, commsEvent(i, action.at, 'Communication draft saved', `Draft for ${action.draft.channels.join(' + ') || 'no channels'}.`)],
+          timeline:
+            i.communicationStatus === 'DRAFT'
+              ? i.timeline
+              : [...i.timeline, commsEvent(i, action.at, 'Communication draft saved', `Draft for ${channels}.`)],
         };
       });
     case 'PUBLISH_COMMS':
       return updateIncident(state, action.id, (i) => {
         if (i.operationalStatus === 'REPORTED' || i.operationalStatus === 'CLOSED') return i;
         if (i.communicationStatus === 'PUBLISHED') {
-          // Follow-up publication: new audit event, same firstPublishedAt —
-          // the first-communication KPI always measures the FIRST publish.
+          // Follow-up publication: new audit event, same firstPublishedAt.
+          // The first-communication KPI always measures the FIRST publish.
           // A correction reason relabels the audit event but never rewrites history.
           return {
             ...i,
             commsDraft: action.draft,
+            followUpDraft: null,
             selectedChannels: action.draft.channels,
             timeline: [...i.timeline, commsEvent(i, action.at, action.correction ? 'Passenger update corrected' : 'Follow-up passenger update published', action.detail)],
           };
@@ -460,8 +477,8 @@ export function reducer(state: AppState, action: AppAction): AppState {
           {
             ...event(i, 1, action.at, 'Review details recorded', ''),
             detail: action.reviewRequired
-              ? `Root cause: ${action.rootCause} — review required.`
-              : `Root cause: ${action.rootCause} — no formal review.`,
+              ? `Root cause: ${action.rootCause}, review required.`
+              : `Root cause: ${action.rootCause}, no formal review.`,
           },
         ],
       }));
@@ -481,7 +498,7 @@ export function reducer(state: AppState, action: AppAction): AppState {
             ...i.timeline,
             {
               ...event(i, 1, action.at, 'Corrective action recorded', ''),
-              detail: `${corrective.action} — ${corrective.owner}, due ${corrective.dueDate}.`,
+              detail: `${corrective.action}: ${corrective.owner}, due ${corrective.dueDate}.`,
             },
           ],
         };
@@ -503,7 +520,7 @@ export function reducer(state: AppState, action: AppAction): AppState {
             ...i.timeline,
             {
               ...event(i, 1, action.at, 'Incident closed', ''),
-              detail: `Service restored${i.restoredAt ? ` ${i.restoredAt}` : ''}; review ${i.reviewRequired ? 'required' : 'not required'}; ${open} follow-up action${open === 1 ? '' : 's'} remain${open === 1 ? 's' : ''} open.`,
+              detail: `Service restored ${formatNzdtTime(i.restoredAt)}; review ${i.reviewRequired ? 'required' : 'not required'}; ${open} follow-up action${open === 1 ? '' : 's'} remain${open === 1 ? 's' : ''} open.`,
             },
           ],
         };
@@ -518,7 +535,7 @@ export function reducer(state: AppState, action: AppAction): AppState {
             ...i.timeline,
             {
               ...event(i, 1, action.at, 'Actual restoration recorded', ''),
-              detail: `Normal service restored at ${action.actualRestorationAt}.`,
+              detail: `Normal service restored at ${formatNzdtTime(action.actualRestorationAt)}.`,
             },
           ],
         };
@@ -563,7 +580,7 @@ export function reducer(state: AppState, action: AppAction): AppState {
             ...i.timeline,
             {
               ...event(i, 1, action.at, 'Incident reopened', ''),
-              detail: `Closure reversed — reason: ${action.reason}. Follow-up continues on the same record.`,
+              detail: `Closure reversed, reason: ${action.reason}. Follow-up continues on the same record.`,
             },
           ],
         };
@@ -580,7 +597,7 @@ interface Store {
   getCandidate: (sapId: string) => SapCandidate | undefined;
   /** SAP intake: replace the candidate list with auto-fetched live records. */
   replaceSapCandidates: (candidates: SapCandidate[]) => void;
-  /** SAP intake: fully automatic — fresh candidates become incidents, no clicks. Returns new IDs. */
+  /** SAP intake: fully automatic, fresh candidates become incidents, no clicks. Returns new IDs. */
   autoIntakeSap: (fresh: SapCandidate[]) => string[];
   /** Operations: enrich a SAP candidate into a linked VALIDATED incident. Returns the new ID. */
   createLinkedIncident: (sapId: string, input: EnrichInput) => string | null;
@@ -772,10 +789,12 @@ export function AppStoreProvider({
         const incident = state.incidents.find((i) => i.id === id);
         const reason = correctionReason?.trim() ? correctionReason.trim() : null;
         let detail = `Channels: ${input.channels.join(' + ') || 'none'}.`;
-        if (incident?.confirmedAt) {
+        // The target result belongs to the FIRST publication only; a
+        // follow-up must not be audited as meeting or missing it.
+        if (incident?.confirmedAt && incident.communicationStatus !== 'PUBLISHED') {
           const mins = Math.round((Date.parse(at) - Date.parse(incident.confirmedAt)) / 60000);
           const met = Date.parse(at) - Date.parse(incident.confirmedAt) <= FIRST_COMM_TARGET_MS;
-          detail = `${mins} min from confirmation — target ${met ? 'met' : 'exceeded'}. ${detail}`;
+          detail = `${mins} min from confirmation, target ${met ? 'met' : 'exceeded'}. ${detail}`;
         }
         if (reason) detail = `Correction: ${reason}. ${detail}`;
         dispatch({ type: 'PUBLISH_COMMS', id, draft: toCommsDraft(input, at), detail, at, correction: reason });

@@ -17,7 +17,7 @@ import { useNowTick } from '../../components/useNowTick.js';
 import { useAppStore } from '../../state/AppStore.js';
 
 /**
- * Customer Information Overview — Figma "04 Customer Information".
+ * Customer Information Overview: Figma "04 Customer Information".
  * Communication KPIs, queue preview and the validated-information
  * explainer. Publishing happens in the composer.
  */
@@ -90,7 +90,7 @@ export function CommsOverview(): React.JSX.Element {
       sortValue: (i) => firstCommunicationKpi(i, nowIso).elapsedMs,
       render: (i) => {
         const kpi = firstCommunicationKpi(i, nowIso);
-        return kpi.elapsedMs === null ? '—' : formatMmSs(kpi.elapsedMs);
+        return kpi.elapsedMs === null ? '-' : formatMmSs(kpi.elapsedMs);
       },
     },
     {
@@ -126,17 +126,21 @@ export function CommsOverview(): React.JSX.Element {
         />
         <KpiCard
           title="Oldest Communication Timer"
-          value={oldestMs === null ? '—' : formatMmSs(oldestMs)}
+          value={oldestMs === null ? '-' : formatMmSs(oldestMs)}
           context={
             oldestMs === null
               ? 'No running timer'
-              : `${oldestRemaining === null ? '—' : formatMmSs(Math.max(0, oldestRemaining))} remaining · Target ≤10 min`
+              : `${oldestRemaining === null ? '-' : formatMmSs(Math.max(0, oldestRemaining))} remaining · Target ≤10 min`
           }
         />
         <KpiCard
           title="Average First Publication"
-          value={kpis.averageFirstCommMs === null ? '—' : formatMmSs(kpis.averageFirstCommMs)}
-          context="No publication yet"
+          value={kpis.averageFirstCommMs === null ? '-' : formatMmSs(kpis.averageFirstCommMs)}
+          context={
+            kpis.publishedCount === 0
+              ? 'No publication yet'
+              : `Across ${kpis.publishedCount} published update${kpis.publishedCount === 1 ? '' : 's'}`
+          }
         />
         <KpiCard
           title="Communication Coverage"

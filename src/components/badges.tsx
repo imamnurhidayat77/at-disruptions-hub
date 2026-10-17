@@ -1,4 +1,4 @@
-import { firstCommunicationKpi, formatMmSs } from '../domain/kpi.js';
+import { firstCommunicationKpi, formatMmSs, type FirstCommState } from '../domain/kpi.js';
 import type { Incident, OperationalStatus, Severity } from '../domain/types.js';
 
 /**
@@ -56,18 +56,31 @@ export function ReviewBadge({ status }: { status: ReviewDisplay }): React.JSX.El
 }
 
 /**
+ * First-publication result (TARGET MET / TARGET EXCEEDED), derived from the
+ * KPI state so a late publication is never shown as met. Renders nothing
+ * before the first publication.
+ */
+export function TargetResultBadge({ state }: { state: FirstCommState }): React.JSX.Element | null {
+  if (state === 'MET') return <span className="badge tg-good">✓ TARGET MET</span>;
+  if (state === 'EXCEEDED') return <span className="badge tg-bad">⚠ TARGET EXCEEDED</span>;
+  return null;
+}
+
+/**
  * Communication-target badge, derived from timestamps via the shared KPI
  * function (Due soon / Breached / Achieved / Not published).
  */
 export function CommsTargetBadge({ incident }: { incident: Incident }): React.JSX.Element {
   const kpi = firstCommunicationKpi(incident);
 
-  if (incident.communicationStatus === 'PUBLISHED' || kpi.state === 'MET') {
-    const mins = kpi.elapsedMs === null ? '–' : Math.round(kpi.elapsedMs / 60000);
+  // Published: the result is fixed by the first-publication timestamps, so
+  // a late publication reads as breached, never as achieved.
+  if (kpi.state === 'MET') {
+    const mins = Math.round((kpi.elapsedMs ?? 0) / 60000);
     return <span className="badge tg-good">✓ Achieved · {mins} min</span>;
   }
   if (kpi.state === 'EXCEEDED') {
-    return <span className="badge tg-bad">⚠ Breached · target exceeded</span>;
+    return <span className="badge tg-bad">⚠ Breached · {formatMmSs(kpi.elapsedMs ?? 0)}</span>;
   }
   if (kpi.state === 'AWAITING_CONFIRMATION') {
     return <span className="badge tg-idle">◷ Not published</span>;

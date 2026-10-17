@@ -3,7 +3,7 @@ import { FioriButton } from '../../components/Button.js';
 import { Crumbs, Section } from '../../components/chrome.js';
 import { useAppStore } from '../../state/AppStore.js';
 
-/** Bus Operator Portal — reporting guidance for operators. */
+/** Bus Operator Portal: reporting guidance for operators. */
 export function ContractorHelp(): React.JSX.Element {
   const { setRole } = useAppStore();
 

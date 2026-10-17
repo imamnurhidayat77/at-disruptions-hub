@@ -26,7 +26,7 @@ import { Analytics } from './routes/operations/Analytics.js';
 import { AppStoreProvider, useAppStore } from './state/AppStore.js';
 
 /**
- * Legacy /operations/recovery route — recovery now lives inside the
+ * Legacy /operations/recovery route: recovery now lives inside the
  * incident workspace. Old links land on the workspace recovery section
  * (or the incident list without an id).
  */

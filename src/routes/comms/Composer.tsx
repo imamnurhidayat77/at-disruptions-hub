@@ -26,13 +26,14 @@ import { useAppStore } from '../../state/AppStore.js';
 
 const TEMPLATE_IDS: TemplateKind[] = TEMPLATE_KINDS.map((t) => t.kind);
 
-function kindFromLocation(state: { template?: unknown }): TemplateKind {
+/** Template explicitly chosen on the Templates page, or null when none was passed. */
+function kindFromLocation(state: { template?: unknown }): TemplateKind | null {
   const t = state.template;
-  return t === 'breakdown' || t === 'recovery' || t === 'restored' ? t : 'breakdown';
+  return TEMPLATE_IDS.find((kind) => kind === t) ?? null;
 }
 
 /**
- * Passenger Message Workspace — Figma "04 Customer Information".
+ * Passenger Message Workspace: Figma "04 Customer Information".
  * Editable title/message (500 chars), next-update time, channels
  * (Mobile App + Website pre-selected), live target strip, read-only
  * incident context, sticky footer actions, preview dialog, publish
@@ -54,16 +55,23 @@ export function Composer(): React.JSX.Element {
   }, [setRole]);
 
   const incident = id ? getIncident(id) : undefined;
-  const existing = incident?.commsDraft;
 
   const [form, setForm] = useState<DraftInput | null>(null);
   const [errors, setErrors] = useState<DraftErrors>({});
   const [reviewing, setReviewing] = useState(false);
   const [correctionReason, setCorrectionReason] = useState('');
   const [correctionError, setCorrectionError] = useState<string | undefined>(undefined);
-  const [kind, setKind] = useState<TemplateKind>(() => kindFromLocation(locationState));
+  const [kind, setKind] = useState<TemplateKind>(
+    () => kindFromLocation(locationState) ?? 'breakdown',
+  );
   const [followUp, setFollowUp] = useState(locationState.followUp === true);
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
+
+  // A follow-up edits its own draft; the published notice (commsDraft)
+  // stays as it is until the follow-up itself is published.
+  const existing = followUp
+    ? (incident?.followUpDraft ?? incident?.commsDraft)
+    : incident?.commsDraft;
 
   useEffect(() => {
     if (!reviewing) return;
@@ -75,21 +83,19 @@ export function Composer(): React.JSX.Element {
   }, [reviewing]);
 
   useEffect(() => {
-    const k = kindFromLocation(locationState);
+    const chosen = kindFromLocation(locationState);
+    const k = chosen ?? 'breakdown';
     setKind(k);
     // An explicitly chosen template (Templates page → composer) must win
     // over a previously saved draft: seed the form with the template
     // wording instead of falling back to the old draft text.
-    const explicitTemplate =
-      locationState.template === 'breakdown' ||
-      locationState.template === 'recovery' ||
-      locationState.template === 'restored';
+    const explicitTemplate = chosen !== null;
     const target = id ? getIncident(id) : undefined;
     const targetEditable =
       target !== undefined &&
       (target.communicationStatus !== 'PUBLISHED' || locationState.followUp === true);
     if (explicitTemplate && targetEditable && target) {
-      const prev = target.commsDraft;
+      const prev = target.followUpDraft ?? target.commsDraft;
       setForm({
         title: buildTemplateTitle(target, k),
         message: buildTemplateMessage(target, k),
@@ -175,10 +181,10 @@ export function Composer(): React.JSX.Element {
             Incident {incident.id} · Route {incident.route} · awaiting validation.
           </p>
         </div>
-        <Section title={`${incident.id} — awaiting validation`}>
+        <Section title={`${incident.id}: awaiting validation`}>
           <p className="muted">
             Customer Information works from validated information. This notification is
-            still REPORTED — AT Operations must validate it (Incoming worklist) before
+            still REPORTED: AT Operations must validate it (Incoming worklist) before
             a draft can be prepared.
           </p>
           <div className="actions-bar">
@@ -237,7 +243,7 @@ export function Composer(): React.JSX.Element {
     setErrors(found);
     if (Object.keys(found).length > 0) return;
     if (isCorrection && correctionReason.trim() === '') {
-      setCorrectionError('Give a reason for the correction — it is recorded in the audit trail.');
+      setCorrectionError('Give a reason for the correction: it is recorded in the audit trail.');
       return;
     }
     setCorrectionError(undefined);
@@ -263,14 +269,14 @@ export function Composer(): React.JSX.Element {
 
       {!published ? (
         <div className="note warn" role="note">
-          {kpi.elapsedMs === null ? '—' : `${formatMmSs(kpi.elapsedMs)} elapsed`} ·{' '}
+          {kpi.elapsedMs === null ? '-' : `${formatMmSs(kpi.elapsedMs)} elapsed`} ·{' '}
           {kpi.remainingMs === null ? 'Target: ≤10 minutes' : `${formatMmSs(Math.max(0, kpi.remainingMs))} remaining · Target: ≤10 minutes`} ·{' '}
           Not yet published
         </div>
       ) : (
         <div className="success" role="status">
           Published{kpi.targetMet ? ' within the 10-minute communication target' : ''} · First
-          communication {kpi.elapsedMs === null ? '—' : formatMmSs(kpi.elapsedMs)}.
+          communication {kpi.elapsedMs === null ? '-' : formatMmSs(kpi.elapsedMs)}.
         </div>
       )}
 
@@ -284,7 +290,7 @@ export function Composer(): React.JSX.Element {
               onChange={(v) => applyTemplate(v as TemplateKind)}
               options={TEMPLATE_KINDS.map((t) => ({
                 value: t.kind,
-                label: `${t.label} — ${t.purpose}`,
+                label: `${t.label} (${t.purpose})`,
               }))}
               disabled={!editable}
             />
@@ -363,7 +369,7 @@ export function Composer(): React.JSX.Element {
             </div>
             {draftSavedAt && (
               <p className="muted small">
-                Draft auto-saved {formatNzdtTime(draftSavedAt)} — saving a draft does not stop
+                Draft auto-saved {formatNzdtTime(draftSavedAt)}. Saving a draft does not stop
                 the clock.
               </p>
             )}
@@ -408,7 +414,7 @@ export function Composer(): React.JSX.Element {
               </div>
               <div className="fact">
                 <dt>Owner</dt>
-                <dd>{record.owner ?? '— unassigned'}</dd>
+                <dd>{record.owner ?? 'Unassigned'}</dd>
               </div>
             </dl>
             <p className="muted small">
@@ -464,11 +470,11 @@ export function Composer(): React.JSX.Element {
               <dl className="facts-grid">
                 <div className="fact">
                   <dt>Next Update</dt>
-                  <dd>{draft.nextUpdateBy || '—'}</dd>
+                  <dd>{draft.nextUpdateBy || '-'}</dd>
                 </div>
                 <div className="fact">
                   <dt>Channels</dt>
-                  <dd>{draft.channels.join(' · ') || '—'}</dd>
+                  <dd>{draft.channels.join(' · ') || '-'}</dd>
                 </div>
                 {isCorrection && (
                   <div className="fact">
@@ -480,7 +486,7 @@ export function Composer(): React.JSX.Element {
                   <dt>First Communication</dt>
                   <dd>
                     {kpi.elapsedMs === null
-                      ? '—'
+                      ? '-'
                       : `${formatMmSs(kpi.elapsedMs)} elapsed · Target ≤10 min`}
                   </dd>
                 </div>

@@ -10,7 +10,7 @@ import { fetchLiveEnriched } from '../../services/sap/sapIncidentService.ts';
 import { useAppStore } from '../../state/AppStore.js';
 
 /**
- * Incoming Worklist — review new arrivals and route them for assessment.
+ * Incoming Worklist: review new arrivals and route them for assessment.
  */
 
 function IntakeStatus({ tone, icon, label }: { tone: string; icon: string; label: string }): React.JSX.Element {
@@ -48,7 +48,7 @@ export function Incoming(): React.JSX.Element {
     setRole('OPERATIONS');
   }, [setRole]);
 
-  // Fully automatic SAP intake — no clicks, no forms. Every SAP record is
+  // Fully automatic SAP intake: no clicks, no forms. Every SAP record is
   // treated as a finished incident: each one completes as a CLOSED archive
   // with deterministic dummy operational data on open.
   // Idempotent: already-linked records are skipped.
@@ -71,7 +71,7 @@ export function Incoming(): React.JSX.Element {
 
   const reported: Incident[] = state.incidents.filter((i) => i.operationalStatus === 'REPORTED');
   const active = state.incidents.filter((i) => i.operationalStatus !== 'CLOSED').length;
-  // Finished SAP archives (linked) do not belong in intake — only
+  // Finished SAP archives (linked) do not belong in intake: only
   // unlinked candidates awaiting auto-intake are shown here.
   const incomingSap = state.sapCandidates.filter((c) => c.linkedIncidentId === null);
   const unlinked = incomingSap;
@@ -97,7 +97,7 @@ export function Incoming(): React.JSX.Element {
       statusLabel: c.linkedIncidentId !== null ? 'Accepted' : 'Queued',
       receivedLabel: `${formatNzdtDate(c.receivedAt)}, ${formatNzdtShort(c.receivedAt)}`,
       receivedMs: Date.parse(c.receivedAt),
-      route: '—',
+      route: '-',
       kind: 'sap',
       sapId: c.sapId,
       linkedIncidentId: c.linkedIncidentId,
@@ -181,7 +181,7 @@ export function Incoming(): React.JSX.Element {
           {intakeItems} intake items · {reported.length} notification · {unlinked.length} SAP
           candidates
         </p>
-        {sapOffline && <p className="muted small">SAP unavailable — showing cached records.</p>}
+        {sapOffline && <p className="muted small">SAP unavailable: showing cached records.</p>}
         {intakeItems === 0 ? (
           <EmptyState
             illustration="☰"

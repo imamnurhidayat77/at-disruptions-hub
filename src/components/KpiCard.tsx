@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { ReactNode } from 'react';
 
-/** Shared KPI card — one markup for every dashboard (Fiori analytical card). */
+/** Shared KPI card: one markup for every dashboard (Fiori analytical card). */
 export function KpiCard({
   title,
   value,

@@ -39,7 +39,7 @@ export function Field({
 export const inputClass = 'input';
 
 /**
- * SAP-style text input with a floating legend label on the top border —
+ * SAP-style text input with a floating legend label on the top border:
  * same visual language as SapSelect so mixed grids stay aligned.
  */
 export function SapInput({

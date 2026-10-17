@@ -1,17 +1,17 @@
+import { demoDay } from '../domain/demoDay.js';
 import { defaultRecoveryTasks } from '../domain/operations.js';
 import { assessSeverity } from '../domain/severity.js';
 import type { Incident, SapCandidate } from '../domain/types.js';
 
 /**
- * Controlled demo seed data. Explicitly synthetic — never presented as
+ * Controlled demo seed data. Explicitly synthetic, never presented as
  * SAP or live operational data. The canonical demo incident is INC-1043
  * (Route 70, Newmarket, vehicle breakdown); two background incidents give
  * the queue/KPI derivations realistic variety in later phases.
  */
 
-const DEMO_DATE = '2026-10-06';
-// NZDT (UTC+13 in October).
-const at = (hhmm: string): string => `${DEMO_DATE}T${hhmm}:00+13:00`;
+// Canonical clock times on the current demo day, NZDT (UTC+13).
+const at = (hhmm: string, daysAgo = 0): string => `${demoDay(daysAgo)}T${hhmm}:00+13:00`;
 
 function baseTimelineSubmit(operator: string, detail: string) {
   return [
@@ -20,7 +20,7 @@ function baseTimelineSubmit(operator: string, detail: string) {
       at: at('09:02'),
       actorRole: 'CONTRACTOR' as const,
       action: 'Operator submitted initial disruption notification',
-      detail: `${operator} — ${detail}`,
+      detail: `${operator}: ${detail}`,
     },
   ];
 }
@@ -42,7 +42,7 @@ function incident1043(): Incident {
     route: '70',
     operator: 'City Bus Operator',
     vehicleOrServiceId: 'Bus 2147 · Route 70 citybound',
-    location: 'Newmarket — Broadway near Newmarket interchange',
+    location: 'Newmarket, Broadway near Newmarket interchange',
     disruptionType: 'Vehicle breakdown',
     description:
       'Bus suffered a mechanical breakdown near Newmarket. Passengers transferred; replacement vehicle requested.',
@@ -52,7 +52,7 @@ function incident1043(): Incident {
     passengerImpact: 'HIGH',
     majorInterchangeAffected: true,
     serviceContinues: false,
-    // Not yet assessed by AT Operations — UI shows the live recommendation.
+    // Not yet assessed by AT Operations: UI shows the live recommendation.
     severity: null,
     severityScore: null,
     severityReason: null,
@@ -63,6 +63,7 @@ function incident1043(): Incident {
     recoveryStatus: 'NOT_STARTED',
     recoveryTasks: defaultRecoveryTasks(),
     commsDraft: null,
+    followUpDraft: null,
     infoRequested: false,
     commsRequestedAt: null,
     estimatedRestorationAt: null,
@@ -88,8 +89,8 @@ function incident1039(): Incident {
     route: '18',
     operator: 'City Bus Operator',
     vehicleOrServiceId: 'Bus 1180 · Route 18',
-    location: 'Great North Road — both directions',
-    disruptionType: 'Road blocked — no service',
+    location: 'Great North Road, both directions',
+    disruptionType: 'Road blocked, no service',
     description: 'Road closure blocked all Route 18 services in both directions.',
     detectedAt: at('07:40'),
     confirmedAt: at('07:44'),
@@ -97,10 +98,12 @@ function incident1039(): Incident {
     passengerImpact: 'HIGH',
     majorInterchangeAffected: true,
     serviceContinues: false,
+    // The rules score this record 8 (HIGH); CRITICAL is reachable only by
+    // override, so the seed carries the override reason.
     severity: 'CRITICAL',
-    severityScore: 9,
+    severityScore: 8,
     severityReason: 'Estimated delay 40 min (≥ 20 min); High passenger impact; Major interchange affected',
-    severityOverrideReason: null,
+    severityOverrideReason: 'No service in both directions at a major interchange.',
     owner: 'L. Patel',
     operationalStatus: 'RECOVERY_IN_PROGRESS',
     communicationStatus: 'PUBLISHED',
@@ -113,13 +116,14 @@ function incident1039(): Incident {
           : t,
     ),
     commsDraft: {
-      title: 'Route 18 suspended — Great North Road',
+      title: 'Route 18 suspended: Great North Road',
       message:
         'Route 18 services are suspended in both directions near Great North Road due to a road closure. Please use alternative routes and allow additional travel time.',
       channels: ['AT Mobile App', 'Website'],
       nextUpdateBy: '08:15',
       updatedAt: at('07:51'),
     },
+    followUpDraft: null,
     infoRequested: false,
     commsRequestedAt: null,
     estimatedRestorationAt: at('09:30'),
@@ -138,7 +142,7 @@ function incident1039(): Incident {
         at: at('07:52'),
         actorRole: 'CUSTOMER_INFORMATION',
         action: 'Initial passenger update published',
-        detail: '8 min from confirmation — target met.',
+        detail: '8 min from confirmation, target met.',
       },
       {
         id: 'evt-1039-conf',
@@ -157,7 +161,7 @@ function incident1041(): Incident {
     route: '22N',
     operator: 'City Bus Operator',
     vehicleOrServiceId: 'Bus 2203 · Route 22N citybound',
-    location: 'New North Road — citybound',
+    location: 'New North Road, citybound',
     disruptionType: 'Vehicle unavailable',
     description: 'Scheduled vehicle unavailable; standby bus being arranged.',
     detectedAt: at('08:40'),
@@ -168,7 +172,7 @@ function incident1041(): Incident {
     serviceContinues: true,
     severity: 'MEDIUM',
     severityScore: 3,
-    severityReason: 'Estimated delay 15 min (10–19 min); Medium passenger impact',
+    severityReason: 'Estimated delay 15 min (10-19 min); Medium passenger impact',
     severityOverrideReason: null,
     owner: 'J. Chen',
     operationalStatus: 'ACTIVE',
@@ -176,13 +180,14 @@ function incident1041(): Incident {
     recoveryStatus: 'NOT_STARTED',
     recoveryTasks: defaultRecoveryTasks(),
     commsDraft: {
-      title: 'Route 22N delays — New North Road',
+      title: 'Route 22N delays: New North Road',
       message:
         'Route 22N citybound services are delayed because a scheduled vehicle is unavailable. Please allow additional travel time while we arrange a standby bus. We do not yet have a confirmed restoration time.',
       channels: ['AT Mobile App', 'Website'],
       nextUpdateBy: '09:10',
       updatedAt: at('08:49'),
     },
+    followUpDraft: null,
     infoRequested: false,
     commsRequestedAt: null,
     estimatedRestorationAt: at('09:30'),
@@ -201,7 +206,7 @@ function incident1041(): Incident {
         at: at('08:50'),
         actorRole: 'CUSTOMER_INFORMATION',
         action: 'Initial passenger update published',
-        detail: '7 min from confirmation — target met.',
+        detail: '7 min from confirmation, target met.',
       },
       {
         id: 'evt-1041-conf',
@@ -223,7 +228,7 @@ export function buildDemoSeed(): Incident[] {
  * SAP intake candidates (demo seed, explicitly synthetic). Figma "05 SAP
  * Integration": 5 SAP EHS source records reviewed as intake candidates.
  * Candidates never enter the AT workflow until enrichment creates a
- * linked shared incident — one shared incident record stays the source
+ * linked shared incident: one shared incident record stays the source
  * of truth.
  */
 export function buildSapSeed(): SapCandidate[] {
@@ -260,7 +265,7 @@ export function buildSapSeed(): SapCandidate[] {
       sapStatus: 'In Process',
       locationDescription: 'Newmarket interchange',
       description: 'Scheduled facility inspection with a follow-up finding.',
-      receivedAt: '2026-10-05T16:15:00+13:00',
+      receivedAt: at('16:15', 1),
       intakeRoute: 'SAP EHS intake',
       linkedIncidentId: null,
     },
@@ -272,7 +277,7 @@ export function buildSapSeed(): SapCandidate[] {
       sapStatus: 'Open',
       locationDescription: 'City depot',
       description: 'Safety observation raised during yard checks.',
-      receivedAt: '2026-10-05T14:30:00+13:00',
+      receivedAt: at('14:30', 1),
       intakeRoute: 'SAP EHS intake',
       linkedIncidentId: null,
     },
@@ -284,7 +289,7 @@ export function buildSapSeed(): SapCandidate[] {
       sapStatus: 'Closed',
       locationDescription: 'Depot workshop',
       description: 'Routine maintenance report already closed in SAP.',
-      receivedAt: '2026-10-04T11:20:00+13:00',
+      receivedAt: at('11:20', 2),
       intakeRoute: 'SAP EHS intake',
       linkedIncidentId: null,
     },

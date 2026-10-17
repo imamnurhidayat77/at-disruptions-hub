@@ -6,7 +6,7 @@ import { contractorIncidents } from '../../domain/contractor.js';
 import { useAppStore } from '../../state/AppStore.js';
 import { ContractorIncidentTable } from './ContractorTable.js';
 
-/** Bus Operator Portal — every incident this operator reported. */
+/** Bus Operator Portal: every incident this operator reported. */
 export function MyIncidents(): React.JSX.Element {
   const { state, setRole } = useAppStore();
 

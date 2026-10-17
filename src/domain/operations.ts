@@ -1,7 +1,7 @@
 import type { Incident, OperationalStatus, RecoveryTask } from './types.js';
 
 /**
- * AT Operations helpers — guards, rosters and recovery-task defaults.
+ * AT Operations helpers: guards, rosters and recovery-task defaults.
  * State transitions themselves live in the store reducer; this module
  * keeps the rules testable and out of components.
  */
@@ -34,6 +34,9 @@ export function normalizeIncident(incident: Incident): Incident {
   }
   if (!('commsDraft' in next) || next.commsDraft === undefined) {
     next = { ...next, commsDraft: null };
+  }
+  if (!('followUpDraft' in next) || next.followUpDraft === undefined) {
+    next = { ...next, followUpDraft: null };
   }
   if (typeof (next as { infoRequested?: unknown }).infoRequested !== 'boolean') {
     next = { ...next, infoRequested: false };
@@ -72,7 +75,7 @@ export function workflowStage(incident: Incident): number {
     incident.communicationStatus === 'PUBLISHED'
   ) {
     // Monitoring runs once service is restored or comms published; both
-    // tracks visible in parallel — restoration takes precedence.
+    // tracks visible in parallel: restoration takes precedence.
     if (incident.operationalStatus === 'RESTORED') return 4;
     return 3;
   }
@@ -108,7 +111,7 @@ export function recoveryOpen(incident: Incident): boolean {
 export function operationalStatusLabel(status: Incident['operationalStatus']): string {
   switch (status) {
     case 'REPORTED':
-      return 'Reported — awaiting validation';
+      return 'Reported, awaiting validation';
     case 'VALIDATED':
       return 'Validated';
     case 'ACTIVE':

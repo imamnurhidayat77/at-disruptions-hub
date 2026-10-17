@@ -9,7 +9,7 @@ import { formatNzdtShort, formatNzdtTime } from '../../domain/kpi.js';
 import { useAppStore } from '../../state/AppStore.js';
 
 /**
- * Incoming notification detail — Figma "03 AT Operations" frame.
+ * Incoming notification detail: Figma "03 AT Operations" frame.
  * Contractor fields are read-only; the only actions are requesting
  * more information or accepting into assessment.
  */
@@ -50,12 +50,12 @@ export function IncomingDetailPage(): React.JSX.Element {
           <Crumbs trail={['Operations', 'Incoming', incident.id]} />
           <h1>{incident.id}</h1>
           <p className="lede">
-            Route {incident.route} — {incident.disruptionType} · {incident.location}
+            Route {incident.route}: {incident.disruptionType} · {incident.location}
           </p>
         </div>
         <Section title="Already accepted">
           <p className="muted">
-            This notification is already accepted — continue in the incident workspace.
+            This notification is already accepted: continue in the incident workspace.
           </p>
           <div className="actions-bar">
             <FioriButton
@@ -109,7 +109,7 @@ export function IncomingDetailPage(): React.JSX.Element {
           </div>
         </div>
         <p className="lede">
-          Route {incident.route} — {incident.disruptionType} · {incident.location}
+          Route {incident.route}: {incident.disruptionType} · {incident.location}
         </p>
         <p>
           <span className="badge st-idle">○ Awaiting AT Assessment</span>{' '}
@@ -155,7 +155,7 @@ export function IncomingDetailPage(): React.JSX.Element {
         <dl className="facts-grid">
           <div className="fact">
             <dt>Can Service Continue?</dt>
-            <dd>{incident.serviceContinues === null ? '—' : incident.serviceContinues ? 'Yes' : 'No'}</dd>
+            <dd>{incident.serviceContinues === null ? '-' : incident.serviceContinues ? 'Yes' : 'No'}</dd>
           </div>
           <div className="fact">
             <dt>Estimated Delay</dt>
@@ -217,7 +217,7 @@ export function IncomingDetailPage(): React.JSX.Element {
           subtitle={`${incident.id} · ${incident.operator}`}
           summary={[
             `Request more information from ${incident.operator} for ${incident.id}.`,
-            `Route ${incident.route} — ${incident.disruptionType} · ${incident.location}`,
+            `Route ${incident.route}: ${incident.disruptionType} · ${incident.location}`,
           ]}
           requireCheck={false}
           disclaimer="Request information from the operator."

@@ -1,5 +1,5 @@
 /**
- * SAP integration types — the boundary between the SAP incident service
+ * SAP integration types: the boundary between the SAP incident service
  * and the AT Disruption Hub domain. SAP data never enters Incident
  * objects directly; it is normalised into SapIncidentReference first.
  */
@@ -19,7 +19,7 @@ export interface SapIncidentReference {
   incidentUtc: string | null;
   /** Extra location text (A_Incident.IncidentLocationDescription). */
   locationDescription: string | null;
-  /** Complete original entry for audit — never rendered raw in normal UI. */
+  /** Complete original entry for audit, never rendered raw in normal UI. */
   rawSource: Record<string, unknown>;
 }
 
@@ -39,7 +39,7 @@ export interface SapStatusInfo {
 
 export class SapNotConfiguredError extends Error {
   constructor() {
-    super('SAP Incident Service is not configured — set SAP_API_BASE_URL and SAP_API_KEY.');
+    super('SAP Incident Service is not configured: set SAP_API_BASE_URL and SAP_API_KEY.');
     this.name = 'SapNotConfiguredError';
   }
 }

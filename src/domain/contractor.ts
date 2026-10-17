@@ -1,7 +1,7 @@
 import type { Incident } from './types.js';
 
 /**
- * Contractor-facing presentation helpers — business wording only, no
+ * Contractor-facing presentation helpers: business wording only, no
  * AT-internal SLA values, severity reasoning or KPI analytics. Pure
  * derivations from the shared record; the store is untouched.
  */
@@ -37,11 +37,14 @@ export function assessedByAT(incident: Incident): boolean {
 
 /** ISO timestamp of the latest contractor-authored timeline event, if any. */
 export function lastOperatorUpdateAt(incident: Incident): string | null {
-  const mine = incident.timeline
-    .filter((e) => e.actorRole === 'CONTRACTOR')
-    .map((e) => e.at)
-    .sort();
-  return mine.length === 0 ? null : mine[mine.length - 1];
+  // Timestamps mix NZ-offset and UTC ("Z") strings, so compare instants,
+  // not text.
+  let latest: string | null = null;
+  for (const e of incident.timeline) {
+    if (e.actorRole !== 'CONTRACTOR') continue;
+    if (latest === null || Date.parse(e.at) > Date.parse(latest)) latest = e.at;
+  }
+  return latest;
 }
 
 /** True once the operator sent at least one confirmed update (not just the submit). */

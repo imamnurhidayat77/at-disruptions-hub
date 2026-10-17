@@ -91,10 +91,10 @@ function detailPath(role: Role, id: string): string {
 type PopId = 'role' | 'notif' | 'overflow' | 'help' | null;
 
 /**
- * Top chrome — SAP Fiori shell-bar pattern (from the reference):
+ * Top chrome: SAP Fiori shell-bar pattern (from the reference):
  * row 1 = ☰ ‹ brand | product · view-switcher … search · bell · help · … · avatar,
  * row 2 = text tabs with a "More" overflow pill on narrow screens.
- * Role switching for evaluation — all roles share the same records.
+ * Role switching for evaluation: all roles share the same records.
  */
 export function TopNav(): React.JSX.Element {
   const { state, setRole, resetDemo } = useAppStore();
@@ -345,9 +345,13 @@ export function TopNav(): React.JSX.Element {
                 <p className="muted small">
                   All times NZDT.
                 </p>
-                <Link to="/contractor/help" onClick={() => setOpen(null)}>
-                  Open help page
-                </Link>
+                {/* The help page belongs to the Bus Operator Portal and asserts
+                    that role on mount, so it is linked for contractors only. */}
+                {state.role === 'CONTRACTOR' && (
+                  <Link to="/contractor/help" onClick={() => setOpen(null)}>
+                    Open help page
+                  </Link>
+                )}
               </div>
             )}
           </div>
@@ -389,7 +393,7 @@ export function TopNav(): React.JSX.Element {
               aria-expanded={open === 'role'}
               aria-haspopup="menu"
               aria-label="Role and user menu"
-              title="Switch role — all roles share the same records."
+              title="Switch role: all roles share the same records."
             >
               <span className="shell-avatar" aria-hidden="true">
                 {INITIALS[state.role]}
@@ -398,7 +402,7 @@ export function TopNav(): React.JSX.Element {
             {open === 'role' && (
               <div className="shell-pop role-popover" role="menu" aria-label="Role">
                 <p className="role-popover-title">Role</p>
-                <p className="muted small">Switch role — all roles share the same records.</p>
+                <p className="muted small">Switch role: all roles share the same records.</p>
                 {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
                   <button
                     key={r}
@@ -520,7 +524,7 @@ function useViewportWidth(): number {
 }
 
 /**
- * Tab bar under the shell bar — text tabs like the reference, with the
+ * Tab bar under the shell bar: text tabs like the reference, with the
  * trailing tabs collapsed into an outlined "More" pill on narrow screens
  * (L ≈ 4 visible, M ≈ 3, S ≈ 2).
  */

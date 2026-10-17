@@ -12,7 +12,7 @@ import {
 import { useAppStore } from '../../state/AppStore.js';
 
 /**
- * Publication Success — Figma "04 Customer Information" landing page
+ * Publication Success: Figma "04 Customer Information" landing page
  * after Approve & Publish. Read-only record of the first publication;
  * follow-ups never reset the first-communication time.
  */
@@ -98,12 +98,12 @@ export function PublishedSuccess(): React.JSX.Element {
       <div className="kpi-grid kpi-grid-3">
         <KpiCard
           title="Published"
-          value={incident.firstPublishedAt ? formatNzdtShort(incident.firstPublishedAt) : '—'}
+          value={incident.firstPublishedAt ? formatNzdtShort(incident.firstPublishedAt) : '-'}
           context={incident.firstPublishedAt ? formatNzdtDate(incident.firstPublishedAt) : ''}
         />
         <KpiCard
           title="First Communication"
-          value={kpi.elapsedMs === null ? '—' : formatMmSs(kpi.elapsedMs)}
+          value={kpi.elapsedMs === null ? '-' : formatMmSs(kpi.elapsedMs)}
           context="Target ≤10 min"
         />
         <KpiCard
@@ -121,11 +121,11 @@ export function PublishedSuccess(): React.JSX.Element {
         <dl className="facts-grid">
           <div className="fact">
             <dt>Channels</dt>
-            <dd>{incident.selectedChannels.join(' · ') || '—'}</dd>
+            <dd>{incident.selectedChannels.join(' · ') || '-'}</dd>
           </div>
           <div className="fact">
             <dt>Next Update Time</dt>
-            <dd>{draft.nextUpdateBy || '—'}</dd>
+            <dd>{draft.nextUpdateBy || '-'}</dd>
           </div>
           <div className="fact">
             <dt>Publication Status</dt>

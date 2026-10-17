@@ -3,11 +3,11 @@ import type { Incident, SapCandidate } from '../domain/types.js';
 import { buildDemoSeed, buildSapSeed } from './demoSeed.js';
 
 /**
- * Incident repository — the adapter boundary between the UI/store and
+ * Incident repository: the adapter boundary between the UI/store and
  * data sources (AGENTS.md: "API Architecture").
  *
  * Demo-backed (localStorage persistence + seed). SAP intake candidates
- * are labelled demo records, explicitly synthetic — never presented as
+ * are labelled demo records, explicitly synthetic, never presented as
  * live SAP data. A future SAP adapter plugs in here without touching
  * UI or domain code.
  */
@@ -67,7 +67,7 @@ export function clearDemoState(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch {
-    // Ignore — see above.
+    // Ignore: see above.
   }
 }
 
@@ -81,7 +81,7 @@ export interface SapConnectionStatus {
   message: string;
 }
 
-/** Phase 1: no confirmed SAP service — always reports unavailable. */
+/** Phase 1: no confirmed SAP service, always reports unavailable. */
 export function sapConnectionStatus(): SapConnectionStatus {
   return {
     connected: false,

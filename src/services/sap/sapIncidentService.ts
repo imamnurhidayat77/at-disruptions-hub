@@ -9,7 +9,7 @@ import {
 import type { SapCandidate } from '../../domain/types.ts';
 
 /**
- * SAP incident service — talks ONLY to the same-origin application proxy
+ * SAP incident service: talks ONLY to the same-origin application proxy
  * (/api/sap/*). Never contacts SAP hosts directly, never holds credentials.
  * Sync results are normalised references kept outside the AT incident
  * store: a failed or successful sync never mutates shared demo incidents.
@@ -29,7 +29,7 @@ async function readJson(response: Response): Promise<unknown> {
   }
 }
 
-/** Current proxy-reported SAP connection state (cheap — no SAP call). */
+/** Current proxy-reported SAP connection state (cheap: no SAP call). */
 export async function fetchSapStatus(endpoint: string = STATUS_ENDPOINT): Promise<SapStatusInfo> {
   let response: Response;
   try {
@@ -90,7 +90,7 @@ export interface SapAutoSyncResult {
 }
 
 export interface LiveEnriched {
-  /** Fresh auto-enriched candidates (unmerged — intake decides). */
+  /** Fresh auto-enriched candidates (unmerged: intake decides). */
   candidates: SapCandidate[];
   syncedAt: string;
   count: number;
@@ -98,7 +98,7 @@ export interface LiveEnriched {
 
 /** Last successful automatic fetch in this page load (null when none yet). */
 let lastAutoSync: { at: string; count: number } | null = null;
-/** In-flight automatic fetch — shared so mount effects never double-fetch. */
+/** In-flight automatic fetch: shared so mount effects never double-fetch. */
 let inflightAutoSync: Promise<SapAutoSyncResult | null> | null = null;
 
 export function getLastAutoSync(): { at: string; count: number } | null {

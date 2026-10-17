@@ -9,14 +9,14 @@ import { Field, SapInput } from '../../components/forms.js';
 import { SapDateTime } from '../../components/DateTimeField.js';
 import { formatNzdtShort } from '../../domain/kpi.js';
 import { lastOperatorUpdateAt, hasOperatorUpdates } from '../../domain/contractor.js';
-import { validateOperatorUpdate } from '../../domain/reporting.js';
+import { parseDelayMinutes, validateOperatorUpdate } from '../../domain/reporting.js';
 import type { TimelineEvent } from '../../domain/types.js';
 import { useAppStore } from '../../state/AppStore.js';
 
 /**
  * Contractor incident detail + operator update (Figma "02 Bus Contractor"
  * detail screen). AT assessment is read-only; confirmed updates append to
- * the shared timeline — visible to all roles.
+ * the shared timeline, visible to all roles.
  */
 export function IncidentDetailPage(): React.JSX.Element {
   const { id } = useParams<{ id: string }>();
@@ -114,7 +114,7 @@ export function IncidentDetailPage(): React.JSX.Element {
     addOperatorUpdate(
       incident!.id,
       detail.trim(),
-      delay.trim() === '' ? null : Number.parseInt(delay, 10),
+      parseDelayMinutes(delay),
       restorationIso,
     );
     setDetail('');
@@ -138,7 +138,7 @@ export function IncidentDetailPage(): React.JSX.Element {
           )}
         </div>
         <p className="lede">
-          Route {incident.route} — {incident.disruptionType} · {incident.location}
+          Route {incident.route}: {incident.disruptionType} · {incident.location}
         </p>
       </div>
 
@@ -169,7 +169,7 @@ export function IncidentDetailPage(): React.JSX.Element {
             <dd>
               {lastUpdate && hasOperatorUpdates(incident)
                 ? formatNzdtShort(lastUpdate)
-                : '—'}
+                : '-'}
             </dd>
           </div>
         </dl>
@@ -178,12 +178,12 @@ export function IncidentDetailPage(): React.JSX.Element {
       <div className="grid-2">
         <Section title="Send Operator Update" id="send-update">
           {closed ? (
-            <p className="muted">This incident is closed — no further operator updates.</p>
+            <p className="muted">This incident is closed: no further operator updates.</p>
           ) : (
             <form onSubmit={onUpdate} noValidate>
               {saved && (
                 <p className="success-inline" role="status">
-                  Update recorded in the shared timeline — visible to all roles.
+                  Update recorded in the shared timeline, visible to all roles.
                 </p>
               )}
               <Field

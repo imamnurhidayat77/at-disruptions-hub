@@ -2,13 +2,13 @@ import type { CommsDraft, Incident } from './types.js';
 import { FIRST_COMM_TARGET_MS, firstCommunicationKpi } from './kpi.js';
 
 /**
- * Passenger communication drafting — templates, channels and validation.
+ * Passenger communication drafting: templates, channels and validation.
  * Publishing itself is a store action (records firstPublishedAt + audit).
  * First-publication KPI model: the first publish stops the 10-minute clock;
  * follow-up publishes never reset firstPublishedAt.
  */
 
-/** Prototype publication channels (illustrative — no live channel connected). */
+/** Prototype publication channels (illustrative: no live channel connected). */
 export const CHANNELS = ['AT Mobile App', 'Website', 'Social Media', 'Bus Stop Displays'] as const;
 
 export type Channel = (typeof CHANNELS)[number];
@@ -33,8 +33,12 @@ export function buildTitle(incident: Incident): string {
   return `Route ${incident.route} Service Disruption`;
 }
 
+/** Em dash as a code point: older saved records used it as the location separator. */
+const LEGACY_SEPARATOR = String.fromCharCode(0x2014);
+
+/** "Newmarket, Broadway near the interchange" reads as "Newmarket" in a notice. */
 function shortLocation(location: string): string {
-  const cut = location.split('—')[0]?.trim() ?? location;
+  const cut = location.split(LEGACY_SEPARATOR)[0].split(',')[0].trim();
   return cut.length > 40 ? `${cut.slice(0, 40)}…` : cut;
 }
 
@@ -115,7 +119,7 @@ export function buildTemplateMessage(incident: Incident, kind: TemplateKind): st
     case 'diversion':
       return (
         `${route} buses are detouring around ${place} ${cause}. Some bus stops may be ` +
-        `missed — please use the nearest alternative stop and allow additional travel time.`
+        `missed. Please use the nearest alternative stop and allow additional travel time.`
       );
     case 'cancellation':
       return (
@@ -242,6 +246,8 @@ export function awaitingFirstUpdate(incidents: Incident[]): Incident[] {
 export function oldestCountingElapsedMs(incidents: Incident[], nowIso?: string): number | null {
   let oldest: number | null = null;
   for (const i of incidents) {
+    // Closed records no longer wait on a first notice.
+    if (i.operationalStatus === 'CLOSED') continue;
     const kpi = firstCommunicationKpi(i, nowIso);
     if (kpi.state === 'COUNTING' && kpi.elapsedMs !== null) {
       oldest = oldest === null ? kpi.elapsedMs : Math.max(oldest, kpi.elapsedMs);
@@ -253,7 +259,7 @@ export function oldestCountingElapsedMs(incidents: Incident[], nowIso?: string):
 export interface CommunicationCoverage {
   published: number;
   inScope: number;
-  /** Share of in-scope incidents published, 0–100. Null when nothing in scope. */
+  /** Share of in-scope incidents published, 0-100. Null when nothing in scope. */
   pct: number | null;
 }
 
@@ -271,7 +277,7 @@ export function communicationCoverage(incidents: Incident[]): CommunicationCover
   };
 }
 
-/** Fraction of the 10-minute target consumed (0–1, clamped) for progress bars. */
+/** Fraction of the 10-minute target consumed (0-1, clamped) for progress bars. */
 export function targetProgress(elapsedMs: number | null): number {
   if (elapsedMs === null) return 0;
   return Math.min(1, Math.max(0, elapsedMs / FIRST_COMM_TARGET_MS));

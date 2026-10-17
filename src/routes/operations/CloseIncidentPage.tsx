@@ -63,7 +63,7 @@ function defaultCorrectiveDue(): string {
 }
 
 /**
- * Close Incident + Incident Closed — Figma "05 Incident Closure & Review".
+ * Close Incident + Incident Closed: Figma "05 Incident Closure & Review".
  * Closure collects actual restoration, root cause, review decision and
  * notes, then closes directly (no dialog in Figma). Closed records show
  * the review summary; corrective actions stay open after closure.
@@ -126,7 +126,7 @@ export function CloseIncidentPage(): React.JSX.Element {
           <Crumbs trail={['Operations', 'Incidents', 'Close Incident']} />
           <h1>Close Incident</h1>
           <p className="lede">
-            {incident.id} · Route {incident.route} — {incident.disruptionType} · Normal
+            {incident.id} · Route {incident.route}: {incident.disruptionType} · Normal
             service restored
           </p>
         </div>
@@ -208,7 +208,7 @@ export function CloseIncidentPage(): React.JSX.Element {
         <Crumbs trail={['Operations', 'Incidents', 'Close Incident']} />
         <h1>Close Incident</h1>
         <p className="lede">
-          {incident.id} · Route {incident.route} — {incident.disruptionType} · Normal
+          {incident.id} · Route {incident.route}: {incident.disruptionType} · Normal
           service restored
         </p>
       </div>
@@ -227,7 +227,7 @@ export function CloseIncidentPage(): React.JSX.Element {
           {missingActual ? (
             <div className="note warn" role="alert">
               Actual restoration time is not recorded yet. Record it in Recovery
-              before closing — restoration time is edited only there.
+              before closing: restoration time is edited only there.
               <div className="actions-bar">
                 <FioriButton design="emphasized" icon="arrowRight" to={`/operations/incident/${incident.id}#recovery`}>
                   Back to Recovery
@@ -238,7 +238,7 @@ export function CloseIncidentPage(): React.JSX.Element {
             <dl className="facts-grid">
               <div className="fact">
                 <dt>Actual Restoration Time</dt>
-                <dd>{incident.restoredAt ? formatNzdtShort(incident.restoredAt) : '—'}</dd>
+                <dd>{incident.restoredAt ? formatNzdtShort(incident.restoredAt) : '-'}</dd>
               </div>
             </dl>
           )}
@@ -391,7 +391,7 @@ function ClosedRecord({ incident }: { incident: Incident }): React.JSX.Element {
           </div>
         </div>
         <p className="lede">
-          Route {incident.route} — {incident.disruptionType} · {incident.location}
+          Route {incident.route}: {incident.disruptionType} · {incident.location}
         </p>
       </div>
 
@@ -402,16 +402,16 @@ function ClosedRecord({ incident }: { incident: Incident }): React.JSX.Element {
       <div className="kpi-grid">
         <KpiCard
           title="Duration"
-          value={durationMs === null ? '—' : `${Math.round(durationMs / 60000)} min`}
+          value={durationMs === null ? '-' : `${Math.round(durationMs / 60000)} min`}
           context={
             incident.restoredAt
-              ? `${formatNzdtShort(incident.detectedAt)}–${formatNzdtShort(incident.restoredAt)}`
-              : '—'
+              ? `${formatNzdtShort(incident.detectedAt)}-${formatNzdtShort(incident.restoredAt)}`
+              : '-'
           }
         />
         <KpiCard
           title="First Passenger Communication"
-          value={kpi.elapsedMs === null ? '—' : formatMmSs(kpi.elapsedMs)}
+          value={kpi.elapsedMs === null ? '-' : formatMmSs(kpi.elapsedMs)}
           context={
             incident.firstPublishedAt
               ? `Published at ${formatNzdtShort(incident.firstPublishedAt)}`
@@ -420,8 +420,8 @@ function ClosedRecord({ incident }: { incident: Incident }): React.JSX.Element {
         />
         <KpiCard
           title="Target"
-          value={kpi.targetMet ? 'Met' : '—'}
-          tone={kpi.targetMet ? 'good' : undefined}
+          value={kpi.state === 'MET' ? 'Met' : kpi.state === 'EXCEEDED' ? 'Exceeded' : '-'}
+          tone={kpi.state === 'MET' ? 'good' : kpi.state === 'EXCEEDED' ? 'bad' : undefined}
           context="≤10 minutes"
         />
         <KpiCard
@@ -439,15 +439,15 @@ function ClosedRecord({ incident }: { incident: Incident }): React.JSX.Element {
         <dl className="facts-grid">
           <div className="fact">
             <dt>Actual Restoration Time</dt>
-            <dd>{incident.restoredAt ? formatNzdtShort(incident.restoredAt) : '—'}</dd>
+            <dd>{incident.restoredAt ? formatNzdtShort(incident.restoredAt) : '-'}</dd>
           </div>
           <div className="fact">
             <dt>Root Cause</dt>
-            <dd>{incident.rootCause ?? '—'}</dd>
+            <dd>{incident.rootCause ?? '-'}</dd>
           </div>
           <div className="fact">
             <dt>Owner</dt>
-            <dd>{incident.owner ?? '— unassigned'}</dd>
+            <dd>{incident.owner ?? 'Unassigned'}</dd>
           </div>
         </dl>
         <p>
@@ -492,7 +492,7 @@ function ClosedRecord({ incident }: { incident: Incident }): React.JSX.Element {
 
       <Section title="Reopen Incident">
         <p className="muted small">
-          Wrongly closed? Reopen with a reason — the closure stays in the audit trail and
+          Wrongly closed? Reopen with a reason: the closure stays in the audit trail and
           follow-up continues on the same record.
         </p>
         <SapInput

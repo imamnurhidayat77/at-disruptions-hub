@@ -1,8 +1,9 @@
+import { demoDay } from './demoDay.js';
 import { defaultRecoveryTasks } from './operations.js';
 import type { Incident, PassengerImpact } from './types.js';
 
 /**
- * Contractor reporting — validation + factory for new disruption
+ * Contractor reporting: validation + factory for new disruption
  * notifications (Figma "02 Bus Contractor" 3-step wizard). Pure domain
  * logic; the form collects strings, this module validates and builds
  * the shared Incident record.
@@ -21,7 +22,7 @@ export interface ReportInput {
   disruptionType: string;
   /** 'YYYY-MM-DDTHH:MM' from the detection-time picker. */
   detectedAt: string;
-  /** Figma "Can Service Continue?" — Yes/No/''. */
+  /** Figma "Can Service Continue?": Yes/No/''. */
   serviceContinues: '' | 'yes' | 'no';
   /** Raw form value; parsed to integer minutes. */
   estimatedDelayMinutes: string;
@@ -51,7 +52,7 @@ export const ROUTE_70_DEMO_VALUES: ReportInput = {
   vehicleOrServiceId: 'BUS-070',
   location: 'Newmarket',
   disruptionType: 'Vehicle breakdown',
-  detectedAt: '2026-10-06T09:02',
+  detectedAt: `${demoDay()}T09:02`,
   serviceContinues: 'no',
   estimatedDelayMinutes: '25',
   passengerImpact: 'HIGH',
@@ -63,7 +64,7 @@ export const ROUTE_70_DEMO_VALUES: ReportInput = {
 export const DISRUPTION_TYPES = [
   'Vehicle breakdown',
   'Vehicle unavailable',
-  'Road blocked — no service',
+  'Road blocked, no service',
   'Service delays',
   'Stop temporarily unavailable',
   'Other (describe in facts)',
@@ -71,13 +72,25 @@ export const DISRUPTION_TYPES = [
 
 export const SERVICE_IMPACTS = [
   'Delay / vehicle out of service',
-  'No service — both directions',
-  'No service — one direction',
+  'No service, both directions',
+  'No service, one direction',
   'Delays across multiple trips',
   'Stop closure only',
 ];
 
 export type ReportErrors = Partial<Record<keyof ReportInput, string>>;
+
+/**
+ * Whole minutes (0-300) from a raw form value, or null when the value is
+ * not a plain whole number in range. Validation and the record builders
+ * share this so what passes validation is exactly what gets stored.
+ */
+export function parseDelayMinutes(raw: string): number | null {
+  const text = raw.trim();
+  if (!/^\d{1,3}$/.test(text)) return null;
+  const minutes = Number.parseInt(text, 10);
+  return minutes <= 300 ? minutes : null;
+}
 
 export function validateReport(input: ReportInput): ReportErrors {
   const errors: ReportErrors = {};
@@ -91,8 +104,7 @@ export function validateReport(input: ReportInput): ReportErrors {
   if (input.estimatedDelayMinutes.trim() === '') {
     errors.estimatedDelayMinutes = 'Estimated delay is required (enter 0 if none).';
   } else {
-    const n = Number(input.estimatedDelayMinutes);
-    if (!Number.isInteger(n) || n < 0 || n > 300) {
+    if (parseDelayMinutes(input.estimatedDelayMinutes) === null) {
       errors.estimatedDelayMinutes = 'Enter whole minutes between 0 and 300.';
     }
   }
@@ -122,8 +134,7 @@ export function validateReportStep2(input: ReportInput): ReportErrors {
   if (input.estimatedDelayMinutes.trim() === '') {
     errors.estimatedDelayMinutes = 'Estimated delay is required (enter 0 if none).';
   } else {
-    const n = Number(input.estimatedDelayMinutes);
-    if (!Number.isInteger(n) || n < 0 || n > 300) {
+    if (parseDelayMinutes(input.estimatedDelayMinutes) === null) {
       errors.estimatedDelayMinutes = 'Enter whole minutes between 0 and 300.';
     }
   }
@@ -153,7 +164,7 @@ export function nextIncidentId(existing: Incident[]): string {
  * passed (defensive parsing still applied).
  */
 export function buildReportedIncident(input: ReportInput, id: string): Incident {
-  const delay = Math.max(0, Math.min(300, Number.parseInt(input.estimatedDelayMinutes, 10) || 0));
+  const delay = parseDelayMinutes(input.estimatedDelayMinutes) ?? 0;
   const detectedAt = `${input.detectedAt}:00+13:00`;
 
   return {
@@ -181,6 +192,7 @@ export function buildReportedIncident(input: ReportInput, id: string): Incident 
     recoveryStatus: 'NOT_STARTED',
     recoveryTasks: defaultRecoveryTasks(),
     commsDraft: null,
+    followUpDraft: null,
     infoRequested: false,
     commsRequestedAt: null,
     estimatedRestorationAt: null,
@@ -199,7 +211,7 @@ export function buildReportedIncident(input: ReportInput, id: string): Incident 
         at: detectedAt,
         actorRole: 'CONTRACTOR',
         action: 'Operator submitted initial disruption notification',
-        detail: `${input.operator.trim()} — Route ${input.route.trim()}, ${input.disruptionType}, ${delay}-min estimated delay.`,
+        detail: `${input.operator.trim()}: Route ${input.route.trim()}, ${input.disruptionType}, ${delay}-min estimated delay.`,
       },
     ],
   };
@@ -222,8 +234,7 @@ export function validateOperatorUpdate(input: OperatorUpdateInput): OperatorUpda
     errors.detail = 'Describe the confirmed update (at least 10 characters).';
   }
   if (input.estimatedDelayMinutes.trim() !== '') {
-    const n = Number(input.estimatedDelayMinutes);
-    if (!Number.isInteger(n) || n < 0 || n > 300) {
+    if (parseDelayMinutes(input.estimatedDelayMinutes) === null) {
       errors.estimatedDelayMinutes = 'Enter whole minutes between 0 and 300, or leave blank.';
     }
   }

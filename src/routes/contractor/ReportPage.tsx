@@ -33,7 +33,7 @@ function loadDraft(): ReportInput {
 }
 
 /**
- * Contractor disruption notification — Figma "02 Bus Contractor"
+ * Contractor disruption notification: Figma "02 Bus Contractor"
  * 3-step wizard (Incident Details → Service Impact → Review).
  * Submitting creates one shared REPORTED incident and opens the
  * Notification Sent screen; it never publishes passenger information.
@@ -225,7 +225,7 @@ export function ReportPage(): React.JSX.Element {
                   required
                   value={form.estimatedDelayMinutes}
                   onChange={set('estimatedDelayMinutes')}
-                  placeholder="e.g. 25 min"
+                  placeholder="Whole minutes, e.g. 25"
                   inputMode="numeric"
                   error={errors.estimatedDelayMinutes}
                 />
@@ -301,27 +301,27 @@ export function ReportPage(): React.JSX.Element {
               <dl className="facts-grid">
                 <div className="fact">
                   <dt>Operator</dt>
-                  <dd>{form.operator || '—'}</dd>
+                  <dd>{form.operator || '-'}</dd>
                 </div>
                 <div className="fact">
                   <dt>Route</dt>
-                  <dd>{form.route || '—'}</dd>
+                  <dd>{form.route || '-'}</dd>
                 </div>
                 <div className="fact">
                   <dt>Vehicle / Service ID</dt>
-                  <dd>{form.vehicleOrServiceId || '—'}</dd>
+                  <dd>{form.vehicleOrServiceId || '-'}</dd>
                 </div>
                 <div className="fact">
                   <dt>Location</dt>
-                  <dd>{form.location || '—'}</dd>
+                  <dd>{form.location || '-'}</dd>
                 </div>
                 <div className="fact">
                   <dt>Disruption Type</dt>
-                  <dd>{form.disruptionType || '—'}</dd>
+                  <dd>{form.disruptionType || '-'}</dd>
                 </div>
                 <div className="fact">
                   <dt>Detection Time</dt>
-                  <dd>{form.detectedAt.replace('T', ' ') || '—'}</dd>
+                  <dd>{form.detectedAt.replace('T', ' ') || '-'}</dd>
                 </div>
               </dl>
             </Section>
@@ -343,7 +343,7 @@ export function ReportPage(): React.JSX.Element {
                   <dt>Can Service Continue?</dt>
                   <dd>
                     {form.serviceContinues === ''
-                      ? '—'
+                      ? '-'
                       : form.serviceContinues === 'yes'
                         ? 'Yes'
                         : 'No'}
@@ -351,18 +351,18 @@ export function ReportPage(): React.JSX.Element {
                 </div>
                 <div className="fact">
                   <dt>Estimated Delay</dt>
-                  <dd>{form.estimatedDelayMinutes || '—'}</dd>
+                  <dd>{form.estimatedDelayMinutes || '-'}</dd>
                 </div>
                 <div className="fact">
                   <dt>Passenger Impact</dt>
-                  <dd>{form.passengerImpact || '—'}</dd>
+                  <dd>{form.passengerImpact || '-'}</dd>
                 </div>
                 <div className="fact">
                   <dt>Major Interchange Affected</dt>
                   <dd>{form.majorInterchangeAffected ? 'Yes' : 'No'}</dd>
                 </div>
               </dl>
-              <p>{form.description || '—'}</p>
+              <p>{form.description || '-'}</p>
             </Section>
           </>
         )}

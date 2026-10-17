@@ -14,7 +14,7 @@ interface RecoveryRecordRow {
 }
 
 /**
- * Recovery completion editor — Figma "03 AT Operations" frame.
+ * Recovery completion editor: Figma "03 AT Operations" frame.
  * The only place the recovery checklist is editable: check every task,
  * record the actual restoration time, save updates, then complete.
  * Completing requires all tasks done plus an actual time.
@@ -32,6 +32,7 @@ export function RecoveryPanel({ incident }: { incident: Incident }): React.JSX.E
   const [saved, setSaved] = useState(false);
 
   const locked = incident.operationalStatus === 'CLOSED';
+  const restored = locked || incident.operationalStatus === 'RESTORED';
   const done = incident.recoveryTasks.filter((t) => t.doneAt !== null).length;
   const total = incident.recoveryTasks.length;
   const allDone = total > 0 && done === total;
@@ -45,13 +46,15 @@ export function RecoveryPanel({ incident }: { incident: Incident }): React.JSX.E
         return;
       }
     }
-    updateRestoration(
-      incident.id,
-      ert.trim() === '' ? null : `${ert}:00+13:00`,
-    );
+    // Audit a restoration event only when the estimate actually changed.
+    const nextErt = ert.trim() === '' ? null : `${ert}:00+13:00`;
+    const nextMs = nextErt === null ? null : Date.parse(nextErt);
+    const currentMs =
+      incident.estimatedRestorationAt === null ? null : Date.parse(incident.estimatedRestorationAt);
+    if (nextMs !== currentMs) updateRestoration(incident.id, nextErt);
     const trimmedNote = note.trim();
     if (trimmedNote.length > 0 && trimmedNote.length < 10) {
-      setNoteError('Recovery notes need at least 10 characters — kept as a draft, not logged.');
+      setNoteError('Recovery notes need at least 10 characters: kept as a draft, not logged.');
       setSaved(false);
       return;
     }
@@ -84,7 +87,7 @@ export function RecoveryPanel({ incident }: { incident: Incident }): React.JSX.E
     ) {
       setCompleteError(undefined);
       setCompleteWarning(
-        'Actual restoration is earlier than the estimate — click Complete Recovery again to confirm.',
+        'Actual restoration is earlier than the estimate: click Complete Recovery again to confirm.',
       );
       setEarlyConfirmed(true);
       return;
@@ -128,20 +131,20 @@ export function RecoveryPanel({ incident }: { incident: Incident }): React.JSX.E
       label: 'Actual Restoration',
       sortable: true,
       sortValue: () => incident.restoredAt ?? '',
-      render: () => (incident.restoredAt ? formatNzdtShort(incident.restoredAt) : '—'),
+      render: () => (incident.restoredAt ? formatNzdtShort(incident.restoredAt) : '-'),
     },
     {
       key: 'owner',
       label: 'Owner',
       sortable: true,
       sortValue: () => incident.owner ?? '',
-      render: () => incident.owner ?? '— unassigned',
+      render: () => incident.owner ?? 'Unassigned',
     },
     {
       key: 'next',
       label: 'Next action',
       sortable: true,
-      sortValue: () => (incident.operationalStatus === 'RESTORED' ? 'Close Incident' : '—'),
+      sortValue: () => (incident.operationalStatus === 'RESTORED' ? 'Close Incident' : '-'),
       render: () =>
         incident.operationalStatus === 'RESTORED' ? (
           <FioriButton
@@ -152,7 +155,7 @@ export function RecoveryPanel({ incident }: { incident: Incident }): React.JSX.E
             Close Incident
           </FioriButton>
         ) : (
-          '—'
+          '-'
         ),
     },
   ];
@@ -162,7 +165,9 @@ export function RecoveryPanel({ incident }: { incident: Incident }): React.JSX.E
       <Section title="Operational Recovery">
         <div className="recovery-head">
           <p className="recovery-status">
-            {allDone ? (
+            {restored ? (
+              <span className="badge tg-good">✓ Restored</span>
+            ) : allDone ? (
               <span className="badge tg-good">✓ Ready to complete</span>
             ) : (
               <span className="badge st-ops">◈ In Progress</span>
@@ -282,7 +287,7 @@ export function RecoveryPanel({ incident }: { incident: Incident }): React.JSX.E
         <dl className="facts-grid">
           <div className="fact">
             <dt>Owner</dt>
-            <dd>{incident.owner ?? '— unassigned'}</dd>
+            <dd>{incident.owner ?? 'Unassigned'}</dd>
           </div>
           <div className="fact">
             <dt>Operator</dt>

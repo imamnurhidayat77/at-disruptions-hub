@@ -11,7 +11,7 @@ import type { Incident } from '../../domain/types.js';
 import { useAppStore } from '../../state/AppStore.js';
 
 /**
- * Reviews — Figma "05 Incident Closure & Review" worklist. Tracks
+ * Reviews: Figma "05 Incident Closure & Review" worklist. Tracks
  * post-incident reviews and corrective action completion, separately
  * from service recovery.
  *
@@ -132,7 +132,7 @@ function doneCountFor(i: Incident): number {
   return i.correctiveActions.filter((c) => c.status === 'DONE').length;
 }
 
-/** Review detail — stepper, corrective table, add-corrective form, review actions. */
+/** Review detail: stepper, corrective table, add-corrective form, review actions. */
 export function ReviewDetail(): React.JSX.Element {
   const { state, setRole, startReview, markCorrectiveDone, addCorrective } = useAppStore();
   const { id } = useParams();
@@ -239,7 +239,7 @@ export function ReviewDetail(): React.JSX.Element {
         </ol>
 
         {selected.correctiveActions.length === 0 ? (
-          <p className="muted">No corrective actions recorded yet — add the first one below.</p>
+          <p className="muted">No corrective actions recorded yet: add the first one below.</p>
         ) : (
           <div className="table-scroll">
             <table className="records">

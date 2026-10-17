@@ -16,7 +16,7 @@ interface SeverityPerfRow {
   met: number;
 }
 
-/** Analytics — prototype communication performance, derived from records. */
+/** Analytics: prototype communication performance, derived from records. */
 export function Analytics(): React.JSX.Element {
   const { state, setRole } = useAppStore();
 
@@ -69,7 +69,7 @@ export function Analytics(): React.JSX.Element {
         <Crumbs trail={['Operations', 'Analytics']} />
         <h1>Analytics</h1>
         <p className="lede">
-          Communication performance — derived from confirmation and
+          Communication performance, derived from confirmation and
           publication timestamps.
         </p>
       </div>
@@ -77,12 +77,12 @@ export function Analytics(): React.JSX.Element {
       <div className="kpi-grid">
         <KpiCard
           title="Average First Communication"
-          value={kpis.averageFirstCommMs === null ? '—' : formatMmSs(kpis.averageFirstCommMs)}
+          value={kpis.averageFirstCommMs === null ? '-' : formatMmSs(kpis.averageFirstCommMs)}
           context={`Across ${kpis.publishedCount} published updates`}
         />
         <KpiCard
           title="Within 10-Min Target"
-          value={kpis.achievedPct === null ? '—' : `${kpis.achievedPct}%`}
+          value={kpis.achievedPct === null ? '-' : `${kpis.achievedPct}%`}
           tone="good"
           context={`${kpis.achievedCount} of ${kpis.publishedCount} within target`}
         />

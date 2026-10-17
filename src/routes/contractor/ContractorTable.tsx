@@ -11,7 +11,7 @@ import { formatNzdtTime } from '../../domain/kpi.js';
 import type { Incident } from '../../domain/types.js';
 
 /**
- * Contractor incident table — business information only: ID, route,
+ * Contractor incident table, business information only: ID, route,
  * location, disruption type, AT status (operator wording), AT severity
  * only once assessed, last operator update, action. No SLA timers, no
  * KPI analytics, no AT-internal fields.
@@ -79,10 +79,13 @@ export function ContractorIncidentTable({
       key: 'updated',
       label: 'Last Operator Update',
       sortable: true,
-      sortValue: (i) => lastOperatorUpdateAt(i) ?? '',
+      sortValue: (i) => {
+        const lastUpdate = lastOperatorUpdateAt(i);
+        return lastUpdate ? Date.parse(lastUpdate) : null;
+      },
       render: (i) => {
         const lastUpdate = lastOperatorUpdateAt(i);
-        return lastUpdate ? formatNzdtTime(lastUpdate) : '—';
+        return lastUpdate ? formatNzdtTime(lastUpdate) : '-';
       },
     },
     {
