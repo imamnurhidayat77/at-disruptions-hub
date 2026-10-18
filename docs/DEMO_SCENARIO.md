@@ -6,6 +6,11 @@ Provide one deterministic end-to-end scenario for development, testing
 and presentation. This script is the acceptance test for the prototype:
 if it runs cleanly in under five minutes, the build is demo-ready.
 
+The staged version below runs in **2:30 with three presenters, strictly
+sequential** (no back-and-forth): IMAM (Steps 1–3, 1:05) → MUSA
+(Steps 4–6, 1:15) → DOHYUN (Steps 7–8, 0:10). One laptop, handed over
+twice, each presenter speaking only their own block.
+
 ## Canonical Test Data
 
 | Field | Value |
@@ -14,7 +19,7 @@ if it runs cleanly in under five minutes, the build is demo-ready.
 | Route | 70 |
 | Location | Newmarket (near Newmarket interchange) |
 | Disruption type | Vehicle breakdown |
-| Operator | Demo contractor account (Contractor role) |
+| Operator | City Bus Operator (Contractor role) |
 | Detected / onset | 09:02 NZDT |
 | Estimated delay | 25 minutes |
 | Passenger impact | High |
@@ -24,7 +29,7 @@ if it runs cleanly in under five minutes, the build is demo-ready.
 | Comms channels | AT Mobile App, Website (prototype labels) |
 | Root cause | Vehicle mechanical failure |
 | Corrective action | Review operator early-notification procedure |
-| Corrective owner | Operations Performance Manager |
+| Corrective owner | Any roster owner, e.g. Sarah Chen |
 | KPI target | First passenger publication ≤ 10 min after confirmation |
 
 > Design PNGs show illustrative IDs (`BUS-2026-0142`, Dominion Road).
@@ -34,87 +39,102 @@ if it runs cleanly in under five minutes, the build is demo-ready.
 ## Starting State
 
 - Role: Bus Contractor.
-- Incident: not yet reported (fresh/reset demo state).
-- Every screen shows `DEMO WORKSPACE · Synthetic data · No live
-  connections`; all times NZDT.
+- Incident: not yet reported (fresh/reset demo state). Note: opening
+  Operations → Incoming auto-creates incidents from SAP intake (live
+  `VALIDATED` records, or `CLOSED` demo archives without credentials) —
+  this does not affect the canonical INC-1043 contractor flow below.
+- Disclosure: footer bar (`AT Disruption Hub · All times NZDT`), per-dialog
+  demo disclaimers on publish/close/confirm actions, and Live/Demo badges
+  on SAP-sourced data; all times NZDT.
 
 ---
 
-## Scenario Script
+## Scenario Script (staged: IMAM → MUSA → DOHYUN, 2:30 total)
 
-### Step 1 — Contractor reports (09:02)
+Setup: Reset Demo done, role = Bus Contractor, Contractor Overview on
+screen. Timer starts on IMAM's first line.
 
-1. Select role **Bus Contractor**.
-2. Open **Report disruption** (`Capture disruption`).
-3. Enter: Route `70`, type `Vehicle breakdown`, location `Newmarket`,
-   onset `09:02`, delay `25 min`, impact `High`, interchange `Yes`,
-   plus a one-line description.
-4. Submit to AT.
+### IMAM — Step 1 Report (0:00–0:30, BUS CONTRACTOR)
+
+1. "Route 70, broken down at Newmarket" — open **Report Disruption**.
+2. Use demo values, type a one-line description (min. 10 characters).
+3. Submit to AT.
 
 **Expected:** `INC-1043` created with `operationalStatus = REPORTED`;
 timeline shows `09:02 — Operator submitted initial disruption
 notification`; INC-1043 appears in the AT Operations incoming queue.
 
-### Step 2 — Operations validates and assesses (09:03–09:05)
+### IMAM — Step 2 Validate (0:30–0:50, AT OPERATIONS)
 
-5. Switch role to **AT Operations** (data preserved).
-6. Open INC-1043 from the incoming queue; validate/accept the
-   notification (`REPORTED → VALIDATED/ACTIVE`, `confirmedAt`
+4. Switch role to **AT Operations** (data preserved).
+5. Open INC-1043 from the incoming queue; **Accept & Assess** the
+   notification (`REPORTED → VALIDATED`, `confirmedAt`
    recorded — KPI clock starts).
-7. Review the severity panel: system recommends **HIGH** with
-   contributing factors shown (25-min delay, high impact, interchange
-   affected) and a recommended action.
-8. Confirm HIGH (no override needed for the scripted run); assign owner
-   **Sarah Chen**.
-9. Start recovery: mark `Operator contacted` and `Replacement vehicle
-   requested` (`RECOVERY_IN_PROGRESS`).
+
+### IMAM — Step 3 Assess and assign (0:50–1:05, AT OPERATIONS)
+
+6. Complete the one-page assessment wizard: Step 1 confirms the
+   system-recommended **HIGH** with contributing factors shown (25-min
+   delay, high impact, interchange affected) and a recommended action;
+   Step 2 assigns owner **Sarah Chen** (no override needed for the
+   scripted run). Workspace opens with the KPI timer running.
+7. Hand over the laptop: "Over to Musa."
 
 **Expected:** severity HIGH + owner visible; timeline records each
 Operations action with actor + timestamp.
 
-### Step 3 — Customer Information publishes (~09:07, parallel track)
+### MUSA — Step 4 Recover and inform (1:05–1:25, OPERATIONS · CUSTOMER INFO)
 
-10. Switch role to **AT Customer Information** — *before* recovery
-    finishes (proves parallel workflow).
-11. Open the communication queue: INC-1043 listed as `REQUIRED`,
-    timer counting down (e.g. `Not published · 07:00 left` style).
-12. Open the composer: pre-filled template derived from incident data,
-    e.g. *"Route 70 services are currently experiencing delays near
-    Newmarket due to a vehicle breakdown. Please allow additional travel
-    time while we work with the operator to restore normal services."*
-13. Edit if needed, select channels (**AT Mobile App**, **Website**),
-    preview, then **Approve & Publish** via the confirmation dialog
-    (acknowledge "Demo publication only").
-14. Publish at ~09:07–09:08.
+8. State the parallel tracks (recovery checklist on one side, comms
+   `REQUIRED` on the other), then switch role to **Customer
+   Information** and open the communication queue: INC-1043 listed as
+   `REQUIRED` with the countdown running.
+
+### MUSA — Step 5 Publish (~1:25–1:50, CUSTOMER INFORMATION)
+
+9. Open the composer: pre-filled template derived from incident data,
+   e.g. *"Route 70 services are currently experiencing delays near
+   Newmarket due to a vehicle breakdown. Please allow additional travel
+   time while we work with the operator to restore normal services."*
+10. Change nothing, keep channels (**AT Mobile App**, **Website**),
+    preview, then **Approve & Publish** via the confirmation dialog.
+11. Publish at ~09:07–09:08.
 
 **Expected:** `communicationStatus = PUBLISHED`, `firstPublishedAt`
-recorded; timer stops; banner reads `Initial update published — target
-achieved` with elapsed time (e.g. `8 min from confirmation`,
+recorded; timer stops with elapsed time (e.g. `8 min from confirmation`,
 **< 10 min**); audit event recorded; dashboard KPIs update from the
 timestamps (nothing hard-coded).
 
-### Step 4 — Operations sees publication status
+### MUSA — Step 6 Restore and review (1:50–2:20, AT OPERATIONS)
 
-15. Switch back to **AT Operations**; open INC-1043.
-
-**Expected:** read-only comms panel shows `Passenger Notice —
-Published`, `Target — Met`, publication timestamp and channels.
-Recovery checklist is untouched by the role switch.
-
-### Step 5 — Restore, close, review (later, e.g. 09:42)
-
-16. Operator confirms replacement vehicle on site (contractor update).
-17. Operations marks **service restored** (`restoredAt` recorded,
-    `RESTORED`).
-18. Record root cause `Vehicle mechanical failure`, set **Review
-    required = Yes**, add corrective action `Review operator
-    early-notification procedure`, owner `Operations Performance
-    Manager`, due date set.
-19. **Close incident** via the confirmation dialog
+12. Switch back to **AT Operations**; open INC-1043. Read-only comms
+    panel shows `Passenger Notice — Published`, `Target — Met`;
+    recovery checklist is untouched by the role switch.
+13. Tick all recovery tasks, enter the actual restoration time,
+    **Complete Recovery** (`RESTORED`).
+14. Record root cause `Vehicle mechanical failure`, keep **Review
+    required = Yes** (mandatory for HIGH), keep the default corrective
+    action (`Review operator early-notification procedure`), owner
+    **Sarah Chen** (or any roster owner).
+15. **Close incident** via the confirmation dialog
     (`CLOSED`; dialog notes closure does not remove follow-up actions).
+16. Open **Reviews** (`/operations/reviews/:id`): **Start review**, mark
+    the corrective action done — the review completes automatically.
+    Hand over the laptop.
 
 **Expected:** closed record retains timeline, publication evidence and
-the open corrective action for the review screen.
+the corrective action; completing the review leaves the stepper showing
+all steps done.
+
+### DOHYUN — Step 7 Overview KPIs (2:20–2:25, AT OPERATIONS · OVERVIEW)
+
+17. Show Operations Overview: active incidents, average first
+    communication, share within target — all derived from timestamps.
+
+### DOHYUN — Step 8 Analytics (2:25–2:30, AT OPERATIONS · ANALYTICS)
+
+18. Show Analytics: performance by severity, where delays concentrate.
+    Close: "One record, three roles."
 
 ---
 
@@ -122,6 +142,8 @@ the open corrective action for the review screen.
 
 - [ ] Same INC-1043 visible across all three roles; no re-creation
       between role changes.
+- [ ] Single laptop handoff IMAM → MUSA → DOHYUN with no back-and-forth;
+      each presenter speaks only their own block, total ≤ 2:30.
 - [ ] Severity HIGH recommended and confirmed; override path (with
       mandatory reason) exists even though unused in the scripted run.
 - [ ] First communication time derived from `confirmedAt → 
@@ -132,5 +154,5 @@ the open corrective action for the review screen.
       action persist after closure.
 - [ ] Full run completes twice consecutively from reset without manual
       data repair, with no blocking console errors.
-- [ ] Every screen carries the synthetic-data disclosure; publish/close
-      dialogs carry the demo disclaimers.
+- [ ] Footer disclosure, per-dialog demo disclaimers, and SAP Live/Demo
+      badges are visible where applicable.
